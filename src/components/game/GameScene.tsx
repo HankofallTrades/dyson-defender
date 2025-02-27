@@ -135,7 +135,7 @@ export const GameScene: React.FC<GameSceneProps> = ({
         enemySpawnTimer = 0;
       }
 
-      // Update enemies
+      // Update enemies and animate tentacles
       for (let i = enemies.length - 1; i >= 0; i--) {
         const enemy = enemies[i];
         const wasRemoved = updateEnemy(
@@ -149,6 +149,9 @@ export const GameScene: React.FC<GameSceneProps> = ({
 
         if (wasRemoved) {
           enemies.splice(i, 1);
+        } else {
+          // Remove tentacle animation for now to ensure they stay attached
+          // We'll add movement back later if the attachment is stable
         }
       }
 
