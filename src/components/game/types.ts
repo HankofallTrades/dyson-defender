@@ -31,6 +31,7 @@ export interface GameState {
   level: number;
   playerPosition: THREE.Vector3;
   playerRotation: THREE.Euler;
+  pointerLocked: boolean;
 }
 
 export interface Laser {
