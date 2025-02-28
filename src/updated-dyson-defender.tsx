@@ -15,7 +15,8 @@ export const DysonSphereDefender: React.FC = () => {
     lastHitTime: 0,
     level: 1,
     playerPosition: new THREE.Vector3(0, 0, 10),
-    playerRotation: new THREE.Euler(0, 0, 0, 'YXZ')
+    playerRotation: new THREE.Euler(0, 0, 0, 'YXZ'),
+    pointerLocked: false
   });
   
   // Level-up notification state
@@ -40,7 +41,8 @@ export const DysonSphereDefender: React.FC = () => {
       lastHitTime: 0,
       level: 1,
       playerPosition: new THREE.Vector3(0, 0, 10),
-      playerRotation: new THREE.Euler(0, 0, 0, 'YXZ')
+      playerRotation: new THREE.Euler(0, 0, 0, 'YXZ'),
+      pointerLocked: false
     });
   };
   
@@ -56,7 +58,8 @@ export const DysonSphereDefender: React.FC = () => {
       lastHitTime: 0,
       level: 1,
       playerPosition: new THREE.Vector3(0, 0, 10),
-      playerRotation: new THREE.Euler(0, 0, 0, 'YXZ')
+      playerRotation: new THREE.Euler(0, 0, 0, 'YXZ'),
+      pointerLocked: false
     });
   };
 
