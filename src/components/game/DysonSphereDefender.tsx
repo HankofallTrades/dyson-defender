@@ -61,22 +61,31 @@ export const DysonSphereDefender: React.FC = () => {
     }
   }, [gameState.level]);
 
-  const startGame = () => {
-    setShowLevelUp(false);
-    prevLevel.current = 1;
+  const resetToNewGame = () => {
+    // First stop the current game
     setGameState({
       ...initialGameState,
-      started: true
+      started: false
     });
+
+    // Then start a new game after a brief delay
+    requestAnimationFrame(() => {
+      setGameState({
+        ...initialGameState,
+        started: true
+      });
+    });
+
+    setShowLevelUp(false);
+    prevLevel.current = 1;
+  };
+
+  const startGame = () => {
+    resetToNewGame();
   };
 
   const restartGame = () => {
-    setShowLevelUp(false);
-    prevLevel.current = 1;
-    setGameState({
-      ...initialGameState,
-      started: true
-    });
+    resetToNewGame();
   };
 
   const styles = {
