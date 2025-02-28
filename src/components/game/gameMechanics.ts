@@ -111,7 +111,8 @@ export function updateLasers(
   lasers: Laser[],
   enemies: Enemy[],
   scene: THREE.Scene,
-  setGameState: React.Dispatch<React.SetStateAction<GameState>>
+  setGameState: React.Dispatch<React.SetStateAction<GameState>>,
+  setShowLevelUp: React.Dispatch<React.SetStateAction<boolean>>
 ) {
   for (let i = lasers.length - 1; i >= 0; i--) {
     const laser = lasers[i];
@@ -137,6 +138,8 @@ export function updateLasers(
           const newScore = prev.score + POINTS_PER_KILL;
           // Check if we should level up
           if (newScore >= prev.level * POINTS_PER_LEVEL) {
+            // Level up detected, trigger the notification
+            setShowLevelUp(true);
             return {
               ...prev,
               score: newScore,
@@ -152,6 +155,12 @@ export function updateLasers(
         enemy.userData.health--;
 
         if (enemy.userData.health <= 0) {
+          // Clean up lightning effect if it exists
+          if (enemy.userData.lightning) {
+            enemy.userData.lightning.removeFromScene(scene);
+            enemy.userData.lightning.dispose();
+            enemy.userData.lightning = undefined;
+          }
           scene.remove(enemy);
           enemies.splice(j, 1);
         }
