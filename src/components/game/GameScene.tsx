@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import * as THREE from 'three';
 import { GameState, Enemy, Laser, KeyState } from './types';
 import { createGameObjects, createEnemy } from './gameObjects';
@@ -17,7 +17,7 @@ import {
 interface GameSceneProps {
   gameState: GameState;
   setGameState: React.Dispatch<React.SetStateAction<GameState>>;
-  setShowLevelUp: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowLevelUp: React.Dispatch<React.SetStateAction<boolean>>;  // Required for level up notifications
   mountRef: React.RefObject<HTMLDivElement>;
 }
 
@@ -144,7 +144,8 @@ export const GameScene: React.FC<GameSceneProps> = ({
           dysonSphere,
           enemyLasers,
           scene,
-          gameState.level
+          gameState.level,
+          setGameState
         );
 
         if (wasRemoved) {

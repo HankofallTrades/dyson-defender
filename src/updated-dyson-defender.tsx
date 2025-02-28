@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
-import { GameState, Laser, Enemy, KeyState } from './components/game/types';
+import { GameState } from './components/game/types';
 
 export const DysonSphereDefender: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
