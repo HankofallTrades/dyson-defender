@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { 
   COLORS, 
   LIGHTNING_SEGMENTS, 
-  LIGHTNING_WIDTH,
   LIGHTNING_UPDATE_INTERVAL
 } from '../constants';
 

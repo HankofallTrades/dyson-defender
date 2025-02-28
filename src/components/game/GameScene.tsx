@@ -17,8 +17,8 @@ import {
 interface GameSceneProps {
   gameState: GameState;
   setGameState: React.Dispatch<React.SetStateAction<GameState>>;
-  setShowLevelUp: React.Dispatch<React.SetStateAction<boolean>>;  // Required for level up notifications
-  mountRef: React.RefObject<HTMLDivElement>;
+  setShowLevelUp: React.Dispatch<React.SetStateAction<boolean>>;  // Used in updateLasers for level up notifications
+  mountRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export const GameScene: React.FC<GameSceneProps> = ({
