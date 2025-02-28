@@ -27,6 +27,7 @@ export interface Enemy extends THREE.Group {
     pulseValue: number;
     isFiringMode: boolean;
     attackDistance: number;
+    lightning?: import('./effects/Lightning').Lightning;
   };
 }
 
