@@ -120,6 +120,7 @@ export const GameScene: React.FC<GameSceneProps> = ({
       mountRef.current?.requestPointerLock();
     };
 
+    // Only add click listener for re-locking
     mountRef.current.addEventListener('click', requestPointerLock);
 
     // Add event listeners
