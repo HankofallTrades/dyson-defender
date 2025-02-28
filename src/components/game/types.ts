@@ -1,5 +1,26 @@
 import * as THREE from 'three';
 
+// Define the complete set of color constants
+export interface Colors {
+  DYSON_SPHERE: number;
+  DYSON_SPHERE_EMISSIVE: number;
+  CORE: number;
+  CORE_EMISSIVE: number;
+  CORE_GLOW: number;
+  PLAYER_LASER: number;
+  ENEMY_LASER: number;
+  ENEMY_BASE: number;
+  ENEMY_GLOW: number;
+  ENEMY_EYES: number;
+  ENEMY_EYES_EMISSIVE: number;
+  LIGHTNING_CORE: number;
+  LIGHTNING_GLOW: number;
+  LIGHTNING_BRANCH: number;
+  LIGHTNING_AURA: number;
+  ENEMY_EYES_SIEGE: number;
+  ENEMY_EYES_SIEGE_EMISSIVE: number;
+}
+
 export interface GameState {
   started: boolean;
   over: boolean;

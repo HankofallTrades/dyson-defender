@@ -74,8 +74,19 @@ export const GameScene: React.FC<GameSceneProps> = ({
 
     // Event handlers
     const handleKeyDown = (e: KeyboardEvent) => {
-      keys[e.key.toLowerCase()] = true;
-      if (e.key === ' ' || e.key.toLowerCase() === 'space') {
+      const key = e.key.toLowerCase();
+      keys[key] = true;
+      
+      if (key === ' ' || key === 'space') {
+        // Check all conditions that might prevent firing
+        console.log('Fire attempt:', {
+          key,
+          pointerLocked: !!document.pointerLockElement,
+          playerVisible: playerShip.visible,
+          gameStarted: gameState.started,
+          gameOver: gameState.over
+        });
+        
         shootLaser(playerShip, lasers, scene);
       }
     };
@@ -157,7 +168,7 @@ export const GameScene: React.FC<GameSceneProps> = ({
       }
 
       // Update projectiles
-      updateLasers(lasers, enemies, scene, setGameState);
+      updateLasers(lasers, enemies, scene, setGameState, setShowLevelUp);
       updateEnemyLasers(enemyLasers, dysonSphere, playerShip, scene, setGameState);
 
       // Update player movement and camera

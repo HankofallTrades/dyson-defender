@@ -23,7 +23,9 @@ export const MAX_DISTANCE_FROM_CENTER = 40;
 export const ENEMY_SPAWN_DISTANCE = 20;
 
 // Colors
-export const COLORS = {
+import { Colors } from './types';
+
+export const COLORS: Colors = {
   DYSON_SPHERE: 0x0088ff,
   DYSON_SPHERE_EMISSIVE: 0x0044aa,
   CORE: 0xffffff,
@@ -35,14 +37,16 @@ export const COLORS = {
   ENEMY_GLOW: 0x9900ff,
   ENEMY_EYES: 0x33ff00,
   ENEMY_EYES_EMISSIVE: 0x116600,
-  LIGHTNING_CORE: 0xff00ff, // Brighter purple
-  LIGHTNING_GLOW: 0xff66ff, // Lighter purple for glow
-  LIGHTNING_BRANCH: 0xff99ff, // Even lighter for branches
+  LIGHTNING_CORE: 0xff00ff, // Bright magenta core
+  LIGHTNING_GLOW: 0x9900ff, // Deep purple glow
+  LIGHTNING_AURA: 0x00ffff, // Cyan outer aura
+  ENEMY_EYES_SIEGE: 0xff0000, // Pure red eyes
+  ENEMY_EYES_SIEGE_EMISSIVE: 0xff0000, // Bright red glow
 };
 
 // Lightning settings
 export const LIGHTNING_SEGMENTS = 8; // Fewer segments for more dramatic zaps
 export const LIGHTNING_BRANCH_PROBABILITY = 0.4; // More branches
 export const LIGHTNING_UPDATE_INTERVAL = 50; // ms - Faster updates
-export const LIGHTNING_WIDTH = 0.1; // Thicker lines
+export const LIGHTNING_WIDTH = 0.2; // Much thicker lines for better visibility
 export const LIGHTNING_LENGTH = 3; // Longer branches
