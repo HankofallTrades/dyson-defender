@@ -11,15 +11,7 @@
 - ✓ Values persist during level transition
 - ✓ Implementation preserves both position and rotation
 
-### 2. Play Again Button Reset
-**Status:** Pending
-**Description:** Fix Play Again button to properly reset all game states.
-**Details:**
-- Current behavior may not reset all necessary states
-- Need to ensure complete game state reset
-- Should return to initial game state
-
-### 3. Alien Siege Mode Animation
+### 2. Alien Siege Mode Animation
 **Status:** Pending
 **Description:** Change alien attack animation to continuous lightning effect in siege mode.
 **Details:**
@@ -27,7 +19,7 @@
 - Implement continuous lightning visual effect
 - Apply effect when aliens are in siege/attack mode
 
-### 4. Alien Spawn Distance and Behavior
+### 3. Alien Spawn Distance and Behavior
 **Status:** Pending
 **Description:** Modify alien spawn distance and attack behavior.
 **Details:**

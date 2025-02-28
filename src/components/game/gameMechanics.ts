@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Enemy, Laser, GameState } from './types';
+import { Lightning } from './effects/Lightning';
 import { 
   LASER_SPEED, 
   ENEMY_LASER_SPEED, 
@@ -260,7 +261,29 @@ export function updateEnemy(
 
   // If close enough, stop moving and just attack
   if (distance <= enemy.userData.attackDistance) {
-    enemy.userData.isFiringMode = true;
+    try {
+      if (!enemy.userData.isFiringMode) {
+        // Initialize lightning effect when entering siege mode
+        const lightning = new Lightning(
+          enemy.position.clone(),
+          dysonSphere.position.clone()
+        );
+        lightning.addToScene(scene);
+        enemy.userData.lightning = lightning;
+      }
+      enemy.userData.isFiringMode = true;
+
+      // Update lightning effect
+      if (enemy.userData.lightning) {
+        enemy.userData.lightning.setOrigin(enemy.position.clone());
+        enemy.userData.lightning.setTarget(dysonSphere.position.clone());
+        enemy.userData.lightning.update(delta);
+      }
+    } catch (error) {
+      console.error('Error in lightning effect:', error);
+      // Safely continue without lightning if there's an error
+      enemy.userData.isFiringMode = true;
+    }
   }
 
   // Move enemy toward Dyson sphere only if not in firing mode
@@ -296,19 +319,79 @@ export function updateEnemy(
       }
     });
 
+    // Clean up lightning effect
+    if (enemy.userData.lightning) {
+      enemy.userData.lightning.removeFromScene(scene);
+      enemy.userData.lightning.dispose();
+    }
     scene.remove(enemy);
     return true; // Enemy was removed
   }
 
-  // Enemy shooting
-  enemy.userData.fireTimer += delta;
+  try {
+    // Handle attacks based on mode
+    if (enemy.userData.isFiringMode) {
+      // In siege mode: use continuous lightning attack
+      if (!enemy.userData.lightning) {
+        try {
+          // Create new lightning if it doesn't exist
+          const lightning = new Lightning(
+            enemy.position.clone(),
+            dysonSphere.position.clone()
+          );
+          lightning.addToScene(scene);
+          enemy.userData.lightning = lightning;
+        } catch (error) {
+          console.error('Error creating lightning for enemy:', error);
+        }
+      }
+      
+      // Update lightning if it exists
+      if (enemy.userData.lightning) {
+        enemy.userData.lightning.setOrigin(enemy.position.clone());
+        enemy.userData.lightning.setTarget(dysonSphere.position.clone());
+        enemy.userData.lightning.update(delta);
 
-  // Firing frequency depends on whether the enemy is in firing mode
-  const firingInterval = enemy.userData.isFiringMode ? 1.5 : 2.5;
-
-  if (enemy.userData.fireTimer > firingInterval) {
-    enemyShootLaser(enemy, enemyLasers, scene, level);
-    enemy.userData.fireTimer = 0;
+        // Apply damage more frequently with lightning
+        enemy.userData.fireTimer += delta;
+        if (enemy.userData.fireTimer > 0.5) { // Faster damage rate
+          setGameState(prev => {
+            if (prev.dysonsphereShield > 0) {
+              const newShield = Math.max(0, prev.dysonsphereShield - (ENEMY_LASER_DAMAGE * 0.3));
+              return {
+                ...prev,
+                dysonsphereShield: newShield,
+                lastHitTime: Date.now()
+              };
+            } else {
+              const newHealth = prev.dysonsphereHealth - (ENEMY_LASER_DAMAGE * 0.3);
+              return {
+                ...prev,
+                dysonsphereHealth: newHealth,
+                lastHitTime: Date.now(),
+                over: newHealth <= 0
+              };
+            }
+          });
+          enemy.userData.fireTimer = 0;
+        }
+      }
+    } else {
+      // Regular mode: shoot lasers
+      enemy.userData.fireTimer += delta;
+      if (enemy.userData.fireTimer > 2.5) {
+        enemyShootLaser(enemy, enemyLasers, scene, level);
+        enemy.userData.fireTimer = 0;
+      }
+    }
+  } catch (error) {
+    console.error('Error in enemy attack handling:', error);
+    // Fallback to regular laser attacks if lightning fails
+    enemy.userData.fireTimer += delta;
+    if (enemy.userData.fireTimer > 2.5) {
+      enemyShootLaser(enemy, enemyLasers, scene, level);
+      enemy.userData.fireTimer = 0;
+    }
   }
 
   return false; // Enemy was not removed
