@@ -17,7 +17,7 @@ import {
 interface GameSceneProps {
   gameState: GameState;
   setGameState: React.Dispatch<React.SetStateAction<GameState>>;
-  setShowLevelUp: React.Dispatch<React.SetStateAction<boolean>>;  // Used in updateLasers for level up notifications
+  setShowLevelUp: React.Dispatch<React.SetStateAction<boolean>>;
   mountRef: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -78,15 +78,6 @@ export const GameScene: React.FC<GameSceneProps> = ({
       keys[key] = true;
       
       if (key === ' ' || key === 'space') {
-        // Check all conditions that might prevent firing
-        console.log('Fire attempt:', {
-          key,
-          pointerLocked: !!document.pointerLockElement,
-          playerVisible: playerShip.visible,
-          gameStarted: gameState.started,
-          gameOver: gameState.over
-        });
-        
         shootLaser(playerShip, lasers, scene);
       }
     };
@@ -105,27 +96,45 @@ export const GameScene: React.FC<GameSceneProps> = ({
 
     // Handle pointer lock change
     const handlePointerLockChange = () => {
-      if (!document.pointerLockElement) {
+      const isLocked = document.pointerLockElement === mountRef.current;
+      if (!isLocked) {
         mouseDelta.set(0, 0);
       }
+      setGameState(prev => ({
+        ...prev,
+        pointerLocked: isLocked
+      }));
+    };
+
+    // Handle pointer lock error
+    const handlePointerLockError = () => {
+      console.error('Pointer lock failed');
+      setGameState(prev => ({
+        ...prev,
+        pointerLocked: false
+      }));
     };
 
     // Request pointer lock on mount
-    mountRef.current.addEventListener('click', () => {
+    const requestPointerLock = () => {
       mountRef.current?.requestPointerLock();
-    });
+    };
+
+    mountRef.current.addEventListener('click', requestPointerLock);
 
     // Add event listeners
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('pointerlockchange', handlePointerLockChange);
+    document.addEventListener('pointerlockerror', handlePointerLockError);
 
     // Animation loop
     const clock = new THREE.Clock();
+    let animationFrameId: number;
     
     function animate() {
-      requestAnimationFrame(animate);
+      animationFrameId = requestAnimationFrame(animate);
       const delta = clock.getDelta();
 
       // Update game objects
@@ -146,7 +155,7 @@ export const GameScene: React.FC<GameSceneProps> = ({
         enemySpawnTimer = 0;
       }
 
-      // Update enemies and animate tentacles
+      // Update enemies
       for (let i = enemies.length - 1; i >= 0; i--) {
         const enemy = enemies[i];
         const wasRemoved = updateEnemy(
@@ -161,9 +170,6 @@ export const GameScene: React.FC<GameSceneProps> = ({
 
         if (wasRemoved) {
           enemies.splice(i, 1);
-        } else {
-          // Remove tentacle animation for now to ensure they stay attached
-          // We'll add movement back later if the attachment is stable
         }
       }
 
@@ -171,14 +177,7 @@ export const GameScene: React.FC<GameSceneProps> = ({
       updateLasers(lasers, enemies, scene, setGameState, setShowLevelUp);
       updateEnemyLasers(enemyLasers, dysonSphere, playerShip, scene, setGameState);
 
-      // Update player movement and camera
-      updatePlayerMovement();
-
-      renderer.render(scene, camera);
-    }
-
-    function updatePlayerMovement() {
-      // Handle mouse look
+      // Update player movement
       if (Math.abs(mouseDelta.x) > 0 || Math.abs(mouseDelta.y) > 0) {
         const euler = new THREE.Euler(0, 0, 0, 'YXZ');
         euler.setFromQuaternion(playerShip.quaternion);
@@ -234,6 +233,8 @@ export const GameScene: React.FC<GameSceneProps> = ({
       
       // Hide player ship in first-person view
       playerShip.visible = false;
+
+      renderer.render(scene, camera);
     }
 
     // Start animation
@@ -250,20 +251,54 @@ export const GameScene: React.FC<GameSceneProps> = ({
 
     // Cleanup
     return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+
+      // Remove event listeners
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('resize', handleResize);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
+      document.removeEventListener('pointerlockerror', handlePointerLockError);
       
+      // Clean up game objects
+      enemies.forEach(enemy => {
+        if (enemy.userData.lightning) {
+          enemy.userData.lightning.removeFromScene(scene);
+          enemy.userData.lightning.dispose();
+        }
+        scene.remove(enemy);
+      });
+      
+      lasers.forEach(laser => scene.remove(laser.mesh));
+      enemyLasers.forEach(laser => scene.remove(laser.mesh));
+      
+      // Clean up THREE.js resources
+      scene.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          if (object.geometry) object.geometry.dispose();
+          if (Array.isArray(object.material)) {
+            object.material.forEach(material => material.dispose());
+          } else if (object.material) {
+            object.material.dispose();
+          }
+        }
+      });
+      
+      // Clean up renderer and mount point
       if (mountRef.current) {
-        mountRef.current?.removeEventListener('click', () => {
-          mountRef.current?.requestPointerLock();
-        });
-        mountRef.current.removeChild(renderer.domElement);
+        mountRef.current.removeEventListener('click', requestPointerLock);
+        if (renderer.domElement.parentNode === mountRef.current) {
+          mountRef.current.removeChild(renderer.domElement);
+        }
       }
+      
+      renderer.dispose();
+      scene.clear();
     };
-  }, [gameState.started, gameState.level]);
+  }, [gameState.started]);
 
   return null;
 };
