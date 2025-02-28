@@ -261,15 +261,23 @@ function createEnemyMeshes() {
     shininess: 100
   });
 
-  const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-  leftEye.position.set(0.25, 0.2, 0.3);
-  leftEye.rotation.z = -0.3; // Angle the eyes for more alien look
-  meshes.push(leftEye);
+  // Create eyes group
+  const eyesGroup = new THREE.Group();
+  eyesGroup.name = 'eyes';
 
-  const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+  const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
+  leftEye.name = 'leftEye';
+  leftEye.position.set(0.25, 0.2, 0.3);
+  leftEye.rotation.z = -0.3;
+  eyesGroup.add(leftEye);
+
+  const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
+  rightEye.name = 'rightEye';
   rightEye.position.set(-0.25, 0.2, 0.3);
   rightEye.rotation.z = 0.3;
-  meshes.push(rightEye);
+  eyesGroup.add(rightEye);
+
+  head.add(eyesGroup);
 
   // Add tentacles
   const numTentacles = 8;
