@@ -61,6 +61,13 @@ export const DysonSphereDefender: React.FC = () => {
     }
   }, [gameState.level]);
 
+  // Handle pointer lock based on game state
+  useEffect(() => {
+    if (gameState.over) {
+      document.exitPointerLock();
+    }
+  }, [gameState.over]);
+
   const resetToNewGame = () => {
     // First stop the current game
     setGameState({
@@ -81,10 +88,16 @@ export const DysonSphereDefender: React.FC = () => {
   };
 
   const startGame = () => {
+    // Request pointer lock before starting the game
+    canvasContainerRef.current?.requestPointerLock();
+    
     resetToNewGame();
   };
 
   const restartGame = () => {
+    // Request pointer lock before restarting the game
+    canvasContainerRef.current?.requestPointerLock();
+    
     resetToNewGame();
   };
 
