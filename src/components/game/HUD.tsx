@@ -138,15 +138,6 @@ export const HUD: React.FC<HUDProps> = ({
             <p className="mt-4">Mouse to look around</p>
           </div>
         </div>
-
-        <div className="text-center mt-8">
-          <h2 className="retro-header text-xl mb-4">Game Tips</h2>
-          <div className="space-y-3 retro-text text-sm">
-            <p>→ Aliens will stop at a distance and attack</p>
-            <p>→ Shield regenerates if not hit for 3 seconds</p>
-            <p>→ Score 100 points to reach the next level</p>
-          </div>
-        </div>
       </div>
     );
   }
