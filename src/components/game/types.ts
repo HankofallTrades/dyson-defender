@@ -15,7 +15,6 @@ export interface Colors {
   ENEMY_EYES_EMISSIVE: number;
   LIGHTNING_CORE: number;
   LIGHTNING_GLOW: number;
-  LIGHTNING_BRANCH: number;
   LIGHTNING_AURA: number;
   ENEMY_EYES_SIEGE: number;
   ENEMY_EYES_SIEGE_EMISSIVE: number;
