@@ -9,6 +9,8 @@ export interface GameState {
   dysonsphereMaxShield: number;
   lastHitTime: number;
   level: number;
+  playerPosition: THREE.Vector3;
+  playerRotation: THREE.Euler;
 }
 
 export interface Laser {

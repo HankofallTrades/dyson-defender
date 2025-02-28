@@ -34,8 +34,8 @@ export const GameScene: React.FC<GameSceneProps> = ({
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000020);
     
-    // Camera setup
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    // Camera setup with narrower FOV for better aiming
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     
     // Renderer setup
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -58,7 +58,7 @@ export const GameScene: React.FC<GameSceneProps> = ({
       playerShip,
       stars,
       reticle
-    } = createGameObjects();
+    } = createGameObjects(gameState.playerPosition, gameState.playerRotation);
 
     scene.add(dysonSphere, core, glow, playerShip, stars);
     camera.add(reticle);
@@ -196,6 +196,13 @@ export const GameScene: React.FC<GameSceneProps> = ({
       if (keys['e']) velocity.add(upDir.clone().multiplyScalar(speed));
       
       playerShip.position.add(velocity);
+      
+      // Update player position and rotation in game state
+      setGameState(prev => ({
+        ...prev,
+        playerPosition: playerShip.position.clone(),
+        playerRotation: playerShip.rotation.clone()
+      }));
 
       // Keep player within bounds
       const distanceToDyson = playerShip.position.length();
