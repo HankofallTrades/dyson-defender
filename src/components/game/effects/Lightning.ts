@@ -2,122 +2,176 @@ import * as THREE from 'three';
 import { 
   COLORS, 
   LIGHTNING_SEGMENTS, 
-  LIGHTNING_BRANCH_PROBABILITY,
   LIGHTNING_WIDTH,
-  LIGHTNING_LENGTH,
   LIGHTNING_UPDATE_INTERVAL
 } from '../constants';
 
+interface LightningStrand {
+  points: THREE.Vector3[];
+  line: THREE.Line;
+  auras: THREE.Mesh[];
+}
+
 export class Lightning {
-  private points: THREE.Vector3[];
-  private geometry: THREE.BufferGeometry | null;
-  private material: THREE.LineBasicMaterial | null;
-  private glowMaterial: THREE.LineBasicMaterial | null;
-  private line: THREE.Line | null;
-  private glow: THREE.Line | null;
-  private branches: Lightning[];
+  private strands: LightningStrand[];
+  private material: THREE.LineBasicMaterial;
+  private auraMaterials: THREE.MeshPhongMaterial[];
   private updateTimer: number;
+  private auraTime: number;
   private origin: THREE.Vector3;
   private target: THREE.Vector3;
 
   constructor(origin: THREE.Vector3, target: THREE.Vector3) {
-    this.points = [];
-    this.branches = [];
+    this.strands = [];
     this.updateTimer = 0;
+    this.auraTime = 0;
     this.origin = origin.clone();
     this.target = target.clone();
 
-    // Initialize as null
-    this.geometry = null;
-    this.material = null;
-    this.glowMaterial = null;
-    this.line = null;
-    this.glow = null;
+    // Create core lightning material
+    this.material = new THREE.LineBasicMaterial({
+      color: COLORS.LIGHTNING_CORE,
+      transparent: true,
+      opacity: 1.0,
+      blending: THREE.AdditiveBlending
+    });
 
-    try {
-      this.createLightning();
-    } catch (error) {
-      console.error('Error initializing lightning:', error);
-    }
+    // Create aura materials with emissive properties
+    this.auraMaterials = [
+      new THREE.MeshPhongMaterial({
+        color: COLORS.LIGHTNING_GLOW,
+        emissive: COLORS.LIGHTNING_GLOW,
+        emissiveIntensity: 1.0,
+        transparent: true,
+        opacity: 0.6,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide
+      }),
+      new THREE.MeshPhongMaterial({
+        color: COLORS.LIGHTNING_AURA,
+        emissive: COLORS.LIGHTNING_AURA,
+        emissiveIntensity: 0.8,
+        transparent: true,
+        opacity: 0.4,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide
+      }),
+      new THREE.MeshPhongMaterial({
+        color: COLORS.LIGHTNING_AURA,
+        emissive: COLORS.LIGHTNING_AURA,
+        emissiveIntensity: 0.6,
+        transparent: true,
+        opacity: 0.2,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide
+      })
+    ];
+
+    this.createLightning();
   }
 
   private createLightning() {
     try {
-      // Clean up existing components
+      // Clear existing strands
       this.dispose();
 
-      // Create new geometry
-      this.geometry = new THREE.BufferGeometry();
-      
-      // Create main lightning material
-      this.material = new THREE.LineBasicMaterial({
-        color: COLORS.LIGHTNING_CORE,
-        transparent: true,
-        opacity: 1,
-        linewidth: LIGHTNING_WIDTH * 2
-      });
+      // Create multiple lightning strands
+      const numStrands = 3;
+      for (let i = 0; i < numStrands; i++) {
+        const points = this.generateStrandPoints(i / numStrands * Math.PI * 2);
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        
+        // Create core line
+        const line = new THREE.Line(geometry, this.material);
+        
+        // Create aura tubes for this strand
+        const auras = this.auraMaterials.map((material, index) => {
+          const tubeGeometry = this.createTubeGeometry(points, 0.05 + index * 0.05);
+          return new THREE.Mesh(tubeGeometry, material);
+        });
 
-      // Create glow material
-      this.glowMaterial = new THREE.LineBasicMaterial({
-        color: COLORS.LIGHTNING_GLOW,
-        transparent: true,
-        opacity: 0.4,
-        linewidth: LIGHTNING_WIDTH * 4
-      });
-
-      // Create lines
-      if (this.geometry && this.material && this.glowMaterial) {
-        this.line = new THREE.Line(this.geometry, this.material);
-        this.glow = new THREE.Line(this.geometry.clone(), this.glowMaterial);
-        if (this.glow) {
-          this.glow.scale.multiplyScalar(1.2);
-        }
+        this.strands.push({ points, line, auras });
       }
-
-      this.generatePoints();
     } catch (error) {
-      console.error('Error creating lightning components:', error);
-      this.dispose();
+      console.error('Error creating lightning:', error);
     }
   }
 
-  private generatePoints() {
-    if (!this.geometry) return;
+  private createTubeGeometry(points: THREE.Vector3[], radius: number): THREE.BufferGeometry {
+    const curve = new THREE.CatmullRomCurve3(points);
+    return new THREE.TubeGeometry(curve, LIGHTNING_SEGMENTS, radius, 8, false);
+  }
 
-    this.points = [];
+  private generateStrandPoints(angleOffset: number): THREE.Vector3[] {
+    const points: THREE.Vector3[] = [];
     const direction = this.target.clone().sub(this.origin);
     const length = direction.length();
     direction.normalize();
 
-    // Create zigzag pattern
+    // Create a basis for offset calculation
+    const up = new THREE.Vector3(0, 1, 0);
+    const right = new THREE.Vector3().crossVectors(direction, up).normalize();
+    const realUp = new THREE.Vector3().crossVectors(right, direction).normalize();
+
     for (let i = 0; i <= LIGHTNING_SEGMENTS; i++) {
       const t = i / LIGHTNING_SEGMENTS;
-      const pos = this.origin.clone().add(direction.clone().multiplyScalar(length * t));
+      const basePoint = this.origin.clone().add(direction.clone().multiplyScalar(length * t));
       
-      // Add random offset except for start and end points
       if (i > 0 && i < LIGHTNING_SEGMENTS) {
-        const offset = new THREE.Vector3(
-          (Math.random() - 0.5) * 0.5,
-          (Math.random() - 0.5) * 0.5,
-          (Math.random() - 0.5) * 0.5
-        );
-        pos.add(offset);
+        // Create spiral-like offset
+        const angle = t * 4 * Math.PI + angleOffset;
+        const radius = Math.sin(t * Math.PI) * 0.3; // Maximum deviation in middle
+        const offset = right.clone().multiplyScalar(Math.cos(angle) * radius)
+          .add(realUp.clone().multiplyScalar(Math.sin(angle) * radius));
+        
+        // Add some randomness
+        offset.add(new THREE.Vector3(
+          (Math.random() - 0.5) * 0.1,
+          (Math.random() - 0.5) * 0.1,
+          (Math.random() - 0.5) * 0.1
+        ));
+        
+        basePoint.add(offset);
       }
       
-      this.points.push(pos);
+      points.push(basePoint);
     }
 
-    // Update geometry
-    this.geometry.setFromPoints(this.points);
+    return points;
   }
 
   update(delta: number) {
     try {
       this.updateTimer += delta * 1000;
+      this.auraTime += delta * 2;
+
       if (this.updateTimer >= LIGHTNING_UPDATE_INTERVAL) {
-        this.generatePoints();
+        // Update all strands
+        this.strands.forEach((strand, i) => {
+          const points = this.generateStrandPoints(i / this.strands.length * Math.PI * 2);
+          
+          // Update core line
+          strand.line.geometry.setFromPoints(points);
+          
+          // Update aura tubes
+          strand.auras.forEach((aura, index) => {
+            const newGeometry = this.createTubeGeometry(points, 0.05 + index * 0.05);
+            aura.geometry.dispose();
+            aura.geometry = newGeometry;
+          });
+        });
         this.updateTimer = 0;
       }
+
+      // Update aura materials for pulsing effect
+      this.strands.forEach(strand => {
+        strand.auras.forEach((aura, i) => {
+          if (aura.material instanceof THREE.MeshPhongMaterial) {
+            const baseIntensity = 1.0 - (i * 0.2);
+            aura.material.emissiveIntensity = baseIntensity + Math.sin(this.auraTime * 1.5) * 0.2;
+          }
+        });
+      });
     } catch (error) {
       console.error('Error updating lightning:', error);
     }
@@ -125,8 +179,12 @@ export class Lightning {
 
   addToScene(scene: THREE.Scene) {
     try {
-      if (this.glow) scene.add(this.glow);
-      if (this.line) scene.add(this.line);
+      this.strands.forEach(strand => {
+        // Add auras first (back to front)
+        strand.auras.reverse().forEach(aura => scene.add(aura));
+        // Add main line last
+        scene.add(strand.line);
+      });
     } catch (error) {
       console.error('Error adding lightning to scene:', error);
     }
@@ -134,51 +192,38 @@ export class Lightning {
 
   removeFromScene(scene: THREE.Scene) {
     try {
-      if (this.glow) scene.remove(this.glow);
-      if (this.line) scene.remove(this.line);
+      this.strands.forEach(strand => {
+        strand.auras.forEach(aura => scene.remove(aura));
+        scene.remove(strand.line);
+      });
     } catch (error) {
       console.error('Error removing lightning from scene:', error);
     }
   }
 
   setOrigin(origin: THREE.Vector3) {
-    try {
-      this.origin.copy(origin);
-      this.generatePoints();
-    } catch (error) {
-      console.error('Error setting lightning origin:', error);
-    }
+    this.origin.copy(origin);
   }
 
   setTarget(target: THREE.Vector3) {
-    try {
-      this.target.copy(target);
-      this.generatePoints();
-    } catch (error) {
-      console.error('Error setting lightning target:', error);
-    }
+    this.target.copy(target);
   }
 
   dispose() {
     try {
-      if (this.geometry) {
-        this.geometry.dispose();
-        this.geometry = null;
-      }
-      if (this.material) {
-        this.material.dispose();
-        this.material = null;
-      }
-      if (this.glowMaterial) {
-        this.glowMaterial.dispose();
-        this.glowMaterial = null;
-      }
-      if (this.line) {
-        this.line = null;
-      }
-      if (this.glow) {
-        this.glow = null;
-      }
+      this.strands.forEach(strand => {
+        strand.line.geometry.dispose();
+        if (strand.line.material instanceof THREE.Material) {
+          strand.line.material.dispose();
+        }
+        strand.auras.forEach(aura => {
+          aura.geometry.dispose();
+          if (aura.material instanceof THREE.Material) {
+            aura.material.dispose();
+          }
+        });
+      });
+      this.strands = [];
     } catch (error) {
       console.error('Error disposing lightning:', error);
     }
