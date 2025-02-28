@@ -48,6 +48,7 @@ export interface Enemy extends THREE.Group {
     pulseValue: number;
     isFiringMode: boolean;
     attackDistance: number;
+    firingRange: number;  // Required property: Distance at which normal firing begins (18-22 units)
     lightning?: import('./effects/Lightning').Lightning;
   };
 }
