@@ -32,8 +32,18 @@ export function shootLaser(
   // Get cannon positions in world space
   const leftCannonPos = new THREE.Vector3(-0.3, -0.1, -0.6);
   const rightCannonPos = new THREE.Vector3(0.3, -0.1, -0.6);
-  leftCannonPos.applyMatrix4(playerShip.matrixWorld);
-  rightCannonPos.applyMatrix4(playerShip.matrixWorld);
+  
+  // Create a matrix that represents the ship's current world transform
+  const shipMatrix: THREE.Matrix4 = new THREE.Matrix4();
+  shipMatrix.compose(
+    playerShip.position.clone(),  // Ensure we have a clean copy
+    playerShip.quaternion.clone(),  // Ensure we have a clean copy
+    new THREE.Vector3(1, 1, 1)  // Unit scale
+  );
+  
+  // Apply the ship's transform to get world positions
+  leftCannonPos.applyMatrix4(shipMatrix);
+  rightCannonPos.applyMatrix4(shipMatrix);
 
   leftLaser.position.copy(leftCannonPos);
   rightLaser.position.copy(rightCannonPos);
@@ -43,7 +53,8 @@ export function shootLaser(
 
   // Direction is forward from the player view
   const forwardDir = new THREE.Vector3(0, 0, -1)
-    .applyQuaternion(playerShip.quaternion);
+    .applyQuaternion(playerShip.quaternion)
+    .normalize();
 
   scene.add(leftLaser);
   scene.add(rightLaser);
@@ -121,7 +132,7 @@ export function updateLasers(
     );
 
     // Remove laser if it's too far
-    if (laser.mesh.position.length() > 30) {
+    if (laser.mesh.position.length() > 150) {
       scene.remove(laser.mesh);
       lasers.splice(i, 1);
       continue;
@@ -377,7 +388,7 @@ export function updateEnemy(
   } else if (!enemy.userData.isFiringMode) {
     // Regular mode: shoot lasers
     enemy.userData.fireTimer += delta;
-    if (enemy.userData.fireTimer > 2.5) {
+    if (enemy.userData.fireTimer > 2.5 && distance <= enemy.userData.firingRange) {  // Use the enemy's firing range
       enemyShootLaser(enemy, enemyLasers, scene, level);
       enemy.userData.fireTimer = 0;
     }
