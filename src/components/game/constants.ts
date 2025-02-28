@@ -20,7 +20,7 @@ export const ENEMY_LASER_DAMAGE = 5;
 
 // Game boundaries
 export const MAX_DISTANCE_FROM_CENTER = 40;
-export const ENEMY_SPAWN_DISTANCE = 20;
+export const ENEMY_SPAWN_DISTANCE = 25;
 
 // Colors
 import { Colors } from './types';

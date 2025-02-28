@@ -72,7 +72,7 @@ function createPlayerShip(position?: THREE.Vector3, rotation?: THREE.Euler) {
   if (position) {
     ship.position.copy(position);
   } else {
-    ship.position.set(0, 0, 10);
+    ship.position.set(0, 0, 25);
   }
   
   if (rotation) {

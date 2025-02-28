@@ -14,7 +14,7 @@ const initialGameState: GameState = {
   dysonsphereMaxShield: INITIAL_SHIELD,
   lastHitTime: 0,
   level: 1,
-  playerPosition: new THREE.Vector3(0, 0, 10),
+  playerPosition: new THREE.Vector3(0, 0, 25),
   playerRotation: new THREE.Euler(0, 0, 0, 'YXZ'),
   pointerLocked: false
 };
