@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import * as THREE from 'three';
 import { GameState } from './types';
 import { INITIAL_HEALTH, INITIAL_SHIELD } from './constants';
 import { GameScene } from './GameScene';
@@ -12,7 +13,9 @@ const initialGameState: GameState = {
   dysonsphereShield: INITIAL_SHIELD,
   dysonsphereMaxShield: INITIAL_SHIELD,
   lastHitTime: 0,
-  level: 1
+  level: 1,
+  playerPosition: new THREE.Vector3(0, 0, 10),
+  playerRotation: new THREE.Euler(0, 0, 0, 'YXZ')
 };
 
 const SHIELD_REGEN_DELAY = 3000;
@@ -20,7 +23,7 @@ const SHIELD_REGEN_RATE = 20;
 const LEVEL_UP_NOTIFICATION_DURATION = 2000;
 
 export const DysonSphereDefender: React.FC = () => {
-  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement | null>(null);
   const [gameState, setGameState] = useState<GameState>(initialGameState);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const prevLevel = useRef(gameState.level);
