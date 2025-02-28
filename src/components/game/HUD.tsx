@@ -154,34 +154,27 @@ export const HUD: React.FC<HUDProps> = ({
   // Game Over Screen
   if (over) {
     return (
-      <div style={styles.overlay} className="game-over-screen gradient-bg">
-        <div className="mb-16" style={{
-          fontSize: '8rem',
-          color: '#ff0066',
-          opacity: 0.1,
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%) rotate(-30deg)',
-          textShadow: 'none',
-          fontFamily: "'Press Start 2P', system-ui",
-          letterSpacing: '8px',
-          userSelect: 'none'
-        }}>GAME OVER</div>
-        <h1 className="retro-header text-5xl mb-8 game-over-text" style={{
+      <div style={{
+        ...styles.overlay,
+        padding: '4rem 0',
+        gap: '2rem'
+      }} className="game-over-screen gradient-bg">
+        <h1 className="retro-header text-5xl game-over-text" style={{
           position: 'relative',
           fontSize: '6rem',
           letterSpacing: '8px',
           color: '#ff0066',
+          marginBottom: '2rem',
           textShadow: `
             0 0 20px #ff0066,
             0 0 40px #ff0066,
             0 0 60px #ff0066
           `
         }}>GAME OVER</h1>
-        <div className="retro-text mb-12 gradient-bg" style={{
+        <div className="retro-text gradient-bg" style={{
           background: 'linear-gradient(45deg, rgba(0,0,0,0.8), rgba(83,0,130,0.8))',
           padding: '2rem',
+          marginBottom: '2rem',
           borderRadius: '12px',
           border: '2px solid #ff00ff',
           boxShadow: `
@@ -189,7 +182,7 @@ export const HUD: React.FC<HUDProps> = ({
             inset 0 0 20px rgba(255, 0, 255, 0.2)
           `
         }}>
-          <p className="text-2xl mb-6" style={{ color: '#00ffff' }}>Final Score: {score}</p>
+          <p className="text-2xl" style={{ color: '#00ffff', marginBottom: '1.5rem' }}>Final Score: {score}</p>
           <p className="text-xl" style={{ color: '#ff00ff' }}>You reached level {level}</p>
         </div>
         <button 
@@ -245,14 +238,7 @@ export const HUD: React.FC<HUDProps> = ({
           color: '#ff6600',
           transition: 'all 0.3s ease'
         }}>
-          Health: <span className="value-change">{dysonsphereHealth}</span>
-        </div>
-        <div className="mt-4 hud-value" style={{ 
-          fontSize: '0.6rem', 
-          color: '#00ff00',
-          transition: 'all 0.3s ease'
-        }}>
-          Next level: <span className="value-change">{level * 100}</span> pts
+          Health: <span className="value-change">{Math.floor(dysonsphereHealth)}</span>
         </div>
       </div>
 
