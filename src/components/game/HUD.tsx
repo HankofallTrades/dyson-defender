@@ -1,5 +1,6 @@
 import React from 'react';
 import { GameState } from './types';
+import './retro.css';
 
 interface HUDProps {
   gameState: GameState;
@@ -7,6 +8,24 @@ interface HUDProps {
   onStartGame: () => void;
   onRestartGame: () => void;
 }
+
+const KeyboardKey: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <span 
+    className="inline-block px-3 py-2 font-mono text-sm"
+    style={{
+      background: 'linear-gradient(45deg, #330066, #660066)',
+      border: '2px solid #ff00ff',
+      color: '#00ffff',
+      boxShadow: '0 0 10px rgba(255, 0, 255, 0.3)',
+      textShadow: '0 0 5px #00ffff',
+      borderRadius: '4px',
+      minWidth: '2.5rem',
+      textAlign: 'center'
+    }}
+  >
+    {children}
+  </span>
+);
 
 export const HUD: React.FC<HUDProps> = ({ 
   gameState, 
@@ -27,7 +46,7 @@ export const HUD: React.FC<HUDProps> = ({
       flexDirection: 'column' as const,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      background: 'linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(83,0,130,0.8) 100%)',
       color: 'white',
       pointerEvents: 'auto' as const,
     },
@@ -56,27 +75,77 @@ export const HUD: React.FC<HUDProps> = ({
   // Start Screen
   if (!started) {
     return (
-      <div style={styles.overlay}>
-        <h1 className="text-4xl font-bold mb-4">Dyson Sphere Defender</h1>
-        <p className="text-xl mb-8">Protect the white dwarf star's Dyson sphere from alien attackers!</p>
+      <div style={{
+        ...styles.overlay,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-evenly',
+        minHeight: '100vh',
+        padding: '4rem 0'
+      }}>
+        <h1 className="text-6xl font-black tracking-wider" style={{
+          fontFamily: "'Press Start 2P', system-ui, -apple-system, sans-serif",
+          color: '#ff00ff',
+          textShadow: `
+            0 0 10px #ff00ff,
+            0 0 20px #ff00ff,
+            0 0 40px #ff00ff,
+            0 2px 0 #000,
+            0 4px 0 #000,
+            0 6px 0 #000
+          `,
+          transform: 'perspective(500px) rotateX(10deg)',
+          letterSpacing: '4px'
+        }}>
+          DYSON<br/>DEFENDER
+        </h1>
+        <p className="retro-text text-xl" style={{
+          color: '#00ffff',
+          maxWidth: '600px',
+          textAlign: 'center',
+          lineHeight: '1.8',
+          padding: '0 20px',
+          textShadow: '0 0 10px #00ffff'
+        }}>
+          Defend the Dyson sphere from waves of alien invaders!
+        </p>
         <button 
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-lg"
+          className="retro-button"
           onClick={onStartGame}
         >
           Start Game
         </button>
-        <div className="mt-8 text-center">
-          <p className="mb-2">Controls:</p>
-          <p>WASD or Arrow Keys to move</p>
-          <p>Mouse to look around</p>
-          <p>Q/E to move up/down</p>
-          <p>Spacebar to shoot</p>
+        
+        <div className="text-center">
+          <h2 className="retro-header text-2xl mb-6">Controls</h2>
+          <div className="space-y-4 retro-text text-sm">
+            <p className="flex items-center justify-center gap-2">
+              <KeyboardKey>W</KeyboardKey>
+              <KeyboardKey>A</KeyboardKey>
+              <KeyboardKey>S</KeyboardKey>
+              <KeyboardKey>D</KeyboardKey>
+              <span className="ml-2">or Arrow Keys to move</span>
+            </p>
+            <p className="flex items-center justify-center gap-2">
+              <KeyboardKey>Q</KeyboardKey>
+              <KeyboardKey>E</KeyboardKey>
+              <span className="ml-2">to move up/down</span>
+            </p>
+            <p className="flex items-center justify-center gap-2">
+              <KeyboardKey>Space</KeyboardKey>
+              <span className="ml-2">to shoot</span>
+            </p>
+            <p className="mt-4">Mouse to look around</p>
+          </div>
         </div>
-        <div className="mt-4 text-center text-sm text-gray-300">
-          <p>Game tips:</p>
-          <p>- Aliens will stop at a distance and attack</p>
-          <p>- Shield regenerates if not hit for 3 seconds</p>
-          <p>- Score 100 points to reach the next level</p>
+
+        <div className="text-center mt-8">
+          <h2 className="retro-header text-xl mb-4">Game Tips</h2>
+          <div className="space-y-3 retro-text text-sm">
+            <p>→ Aliens will stop at a distance and attack</p>
+            <p>→ Shield regenerates if not hit for 3 seconds</p>
+            <p>→ Score 100 points to reach the next level</p>
+          </div>
         </div>
       </div>
     );
@@ -85,13 +154,52 @@ export const HUD: React.FC<HUDProps> = ({
   // Game Over Screen
   if (over) {
     return (
-      <div style={styles.overlay}>
-        <h1 className="text-4xl font-bold mb-4">Game Over</h1>
-        <p className="text-2xl mb-2">Final Score: {score}</p>
-        <p className="text-xl mb-8">You reached level {level}</p>
+      <div style={styles.overlay} className="game-over-screen gradient-bg">
+        <div className="mb-16" style={{
+          fontSize: '8rem',
+          color: '#ff0066',
+          opacity: 0.1,
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%) rotate(-30deg)',
+          textShadow: 'none',
+          fontFamily: "'Press Start 2P', system-ui",
+          letterSpacing: '8px',
+          userSelect: 'none'
+        }}>GAME OVER</div>
+        <h1 className="retro-header text-5xl mb-8 game-over-text" style={{
+          position: 'relative',
+          fontSize: '6rem',
+          letterSpacing: '8px',
+          color: '#ff0066',
+          textShadow: `
+            0 0 20px #ff0066,
+            0 0 40px #ff0066,
+            0 0 60px #ff0066
+          `
+        }}>GAME OVER</h1>
+        <div className="retro-text mb-12 gradient-bg" style={{
+          background: 'linear-gradient(45deg, rgba(0,0,0,0.8), rgba(83,0,130,0.8))',
+          padding: '2rem',
+          borderRadius: '12px',
+          border: '2px solid #ff00ff',
+          boxShadow: `
+            0 0 30px rgba(255, 0, 255, 0.3),
+            inset 0 0 20px rgba(255, 0, 255, 0.2)
+          `
+        }}>
+          <p className="text-2xl mb-6" style={{ color: '#00ffff' }}>Final Score: {score}</p>
+          <p className="text-xl" style={{ color: '#ff00ff' }}>You reached level {level}</p>
+        </div>
         <button 
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-lg"
+          className="retro-button"
           onClick={onRestartGame}
+          style={{
+            fontSize: '1.5rem',
+            padding: '1.5rem 3rem',
+            letterSpacing: '2px'
+          }}
         >
           Play Again
         </button>
@@ -100,24 +208,74 @@ export const HUD: React.FC<HUDProps> = ({
   }
 
   return (
-    <>
+    <div className="relative w-full h-full">
       {/* In-game HUD */}
-      <div style={styles.gameHUD}>
-        <div>Score: {score}</div>
-        <div>Level: {level}</div>
-        <div>Shield: {Math.floor(dysonsphereShield)}/{dysonsphereMaxShield}</div>
-        <div>Dyson Sphere Health: {dysonsphereHealth}</div>
-        <div className="mt-4 text-xs">
-          Next level at: {level * 100} points
+      <div style={{
+        ...styles.gameHUD,
+        fontFamily: "'Press Start 2P', system-ui",
+        fontSize: '0.8rem',
+        lineHeight: '1.8rem',
+        textShadow: '2px 2px 0 #000, 0 0 10px #00ffff',
+        background: 'linear-gradient(45deg, rgba(0,0,0,0.7), rgba(83,0,130,0.3))',
+        borderRight: '2px solid #ff00ff',
+        borderBottom: '2px solid #ff00ff',
+        borderRadius: '0 0 8px 0',
+        boxShadow: '0 0 20px rgba(255, 0, 255, 0.2)',
+        padding: '1.5rem'
+      }}>
+        <div className="hud-value" style={{ 
+          color: '#ff00ff',
+          transition: 'all 0.3s ease'
+        }}>
+          Score: <span className="value-change">{score}</span>
+        </div>
+        <div className="hud-value" style={{ 
+          color: '#00ffff',
+          transition: 'all 0.3s ease'
+        }}>
+          Level: <span className="value-change">{level}</span>
+        </div>
+        <div className="hud-value" style={{ 
+          color: '#ffff00',
+          transition: 'all 0.3s ease'
+        }}>
+          Shield: <span className="value-change">{Math.floor(dysonsphereShield)}</span>/{dysonsphereMaxShield}
+        </div>
+        <div className="hud-value" style={{ 
+          color: '#ff6600',
+          transition: 'all 0.3s ease'
+        }}>
+          Health: <span className="value-change">{dysonsphereHealth}</span>
+        </div>
+        <div className="mt-4 hud-value" style={{ 
+          fontSize: '0.6rem', 
+          color: '#00ff00',
+          transition: 'all 0.3s ease'
+        }}>
+          Next level: <span className="value-change">{level * 100}</span> pts
         </div>
       </div>
 
       {/* Level up notification */}
       {showLevelUp && (
-        <div style={styles.levelUp}>
-          Level {level}!
+        <div className="retro-header" style={{
+          ...styles.levelUp,
+          animation: 'glow 2s ease-in-out infinite',
+          fontSize: '4rem',
+          background: 'linear-gradient(180deg, #ff00ff, #00ffff)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          padding: '2rem',
+          border: '4px solid #ff00ff',
+          borderRadius: '16px',
+          boxShadow: '0 0 30px rgba(255, 0, 255, 0.5)',
+          transform: 'perspective(500px) rotateX(10deg) translate(-50%, -50%)'
+        }}>
+          LEVEL {level}
         </div>
       )}
-    </>
+
+
+    </div>
   );
 };

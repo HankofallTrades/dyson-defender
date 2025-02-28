@@ -15,7 +15,8 @@ const initialGameState: GameState = {
   lastHitTime: 0,
   level: 1,
   playerPosition: new THREE.Vector3(0, 0, 10),
-  playerRotation: new THREE.Euler(0, 0, 0, 'YXZ')
+  playerRotation: new THREE.Euler(0, 0, 0, 'YXZ'),
+  pointerLocked: false
 };
 
 const SHIELD_REGEN_DELAY = 3000;
