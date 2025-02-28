@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Enemy } from './types';
 import { COLORS, BASE_ENEMY_SPEED, SPEED_INCREASE_PER_LEVEL, ENEMY_SPAWN_DISTANCE } from './constants';
 
-export function createGameObjects() {
+export function createGameObjects(playerPosition?: THREE.Vector3, playerRotation?: THREE.Euler) {
   // Dyson Sphere
   const dysonSphereGeometry = new THREE.IcosahedronGeometry(5, 2);
   const dysonSphereMaterial = new THREE.MeshPhongMaterial({
@@ -36,7 +36,7 @@ export function createGameObjects() {
   const glow = new THREE.Mesh(glowGeometry, glowMaterial);
 
   // Player ship
-  const playerShip = createPlayerShip();
+  const playerShip = createPlayerShip(playerPosition, playerRotation);
 
   // Stars background
   const stars = createStarfield();
@@ -54,7 +54,7 @@ export function createGameObjects() {
   };
 }
 
-function createPlayerShip() {
+function createPlayerShip(position?: THREE.Vector3, rotation?: THREE.Euler) {
   const ship = new THREE.Group();
 
   // Main body
@@ -68,7 +68,16 @@ function createPlayerShip() {
   const cannons = createShipCannons();
   cannons.forEach(cannon => ship.add(cannon));
 
-  ship.position.set(0, 0, 10);
+  // Apply position and rotation from game state, or use defaults
+  if (position) {
+    ship.position.copy(position);
+  } else {
+    ship.position.set(0, 0, 10);
+  }
+  
+  if (rotation) {
+    ship.rotation.copy(rotation);
+  }
   return ship;
 }
 

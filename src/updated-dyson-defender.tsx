@@ -1,38 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
-// Type definitions
-interface GameState {
-  started: boolean;
-  over: boolean;
-  score: number;
-  dysonsphereHealth: number;
-  dysonsphereShield: number;
-  dysonsphereMaxShield: number;
-  lastHitTime: number;
-  level: number;
-}
-
-interface Laser {
-  mesh: THREE.Mesh;
-  direction: THREE.Vector3;
-}
-
-interface Enemy extends THREE.Group {
-  userData: {
-    health: number;
-    speed: number;
-    fireTimer: number;
-    pulseDirection: number;
-    pulseValue: number;
-    isFiringMode: boolean;
-    attackDistance: number;
-  };
-}
-
-interface KeyState {
-  [key: string]: boolean;
-}
+import { GameState, Laser, Enemy, KeyState } from './components/game/types';
 
 export const DysonSphereDefender: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -44,7 +13,9 @@ export const DysonSphereDefender: React.FC = () => {
     dysonsphereShield: 200,
     dysonsphereMaxShield: 200,
     lastHitTime: 0,
-    level: 1
+    level: 1,
+    playerPosition: new THREE.Vector3(0, 0, 10),
+    playerRotation: new THREE.Euler(0, 0, 0, 'YXZ')
   });
   
   // Level-up notification state
@@ -67,7 +38,9 @@ export const DysonSphereDefender: React.FC = () => {
       dysonsphereShield: 200,
       dysonsphereMaxShield: 200,
       lastHitTime: 0,
-      level: 1
+      level: 1,
+      playerPosition: new THREE.Vector3(0, 0, 10),
+      playerRotation: new THREE.Euler(0, 0, 0, 'YXZ')
     });
   };
   
@@ -81,7 +54,9 @@ export const DysonSphereDefender: React.FC = () => {
       dysonsphereShield: 200,
       dysonsphereMaxShield: 200,
       lastHitTime: 0,
-      level: 1
+      level: 1,
+      playerPosition: new THREE.Vector3(0, 0, 10),
+      playerRotation: new THREE.Euler(0, 0, 0, 'YXZ')
     });
   };
 
