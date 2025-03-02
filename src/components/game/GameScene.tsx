@@ -71,15 +71,13 @@ export const GameScene: React.FC<GameSceneProps> = ({
     const keys: KeyState = {};
     let enemySpawnTimer = 0;
     let mouseDelta = new THREE.Vector2(0, 0);
+    let lastShootTime = 0;  // Track when the player last shot
+    const SHOOT_COOLDOWN = 250;  // 250ms cooldown (twice as fast as half-second)
 
     // Event handlers
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
       keys[key] = true;
-      
-      if (key === ' ' || key === 'space') {
-        shootLaser(playerShip, lasers, scene);
-      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -206,6 +204,12 @@ export const GameScene: React.FC<GameSceneProps> = ({
       if (keys['d'] || keys['arrowright']) velocity.add(rightDir.clone().multiplyScalar(speed));
       if (keys['q']) velocity.add(upDir.clone().multiplyScalar(-speed));
       if (keys['e']) velocity.add(upDir.clone().multiplyScalar(speed));
+      
+      // Check for shooting
+      if ((keys[' '] || keys['space']) && Date.now() - lastShootTime >= SHOOT_COOLDOWN) {
+        shootLaser(playerShip, lasers, scene);
+        lastShootTime = Date.now();
+      }
       
       playerShip.position.add(velocity);
       

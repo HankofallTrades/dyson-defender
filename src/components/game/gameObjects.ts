@@ -145,37 +145,33 @@ function createStarfield() {
 function createReticle() {
   const reticleGroup = new THREE.Group();
 
-  // Outer ring
-  const outerRingGeometry = new THREE.RingGeometry(0.015, 0.02, 32);
+  // Create a shared material for all reticle elements
   const reticleMaterial = new THREE.MeshBasicMaterial({
     color: 0xff0000,
     transparent: true,
-    opacity: 0.8,
+    opacity: 0.4,
     side: THREE.DoubleSide,
     depthTest: false
   });
+
+  // Outer ring
+  const outerRingGeometry = new THREE.RingGeometry(0.015, 0.02, 32);
   const outerRing = new THREE.Mesh(outerRingGeometry, reticleMaterial);
   reticleGroup.add(outerRing);
 
-  // Inner crosshair
-  const innerCrosshairGeometry = new THREE.BufferGeometry();
-  const linePositions = new Float32Array([
-    -0.025, 0, 0,    // Left horizontal line
-    0.025, 0, 0,     // Right horizontal line
-    0, -0.025, 0,    // Bottom vertical line
-    0, 0.025, 0      // Top vertical line
-  ]);
-  innerCrosshairGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
-  innerCrosshairGeometry.setIndex([0, 1, 2, 3]);
+  // Inner crosshair - using planes instead of lines
+  const crossThickness = 0.002; // Thickness of the cross lines
+  const crossLength = 0.025;    // Length of the cross lines
 
-  const crosshairMaterial = new THREE.LineBasicMaterial({
-    color: 0xff0000,
-    linewidth: 2,
-    depthTest: false
-  });
+  // Horizontal line
+  const horizontalGeometry = new THREE.PlaneGeometry(crossLength * 2, crossThickness);
+  const horizontalLine = new THREE.Mesh(horizontalGeometry, reticleMaterial);
+  reticleGroup.add(horizontalLine);
 
-  const innerCrosshair = new THREE.LineSegments(innerCrosshairGeometry, crosshairMaterial);
-  reticleGroup.add(innerCrosshair);
+  // Vertical line
+  const verticalGeometry = new THREE.PlaneGeometry(crossThickness, crossLength * 2);
+  const verticalLine = new THREE.Mesh(verticalGeometry, reticleMaterial);
+  reticleGroup.add(verticalLine);
 
   // Center dot
   const centerDotGeometry = new THREE.CircleGeometry(0.005, 16);
