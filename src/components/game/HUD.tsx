@@ -28,68 +28,6 @@ const KeyboardKey: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </span>
 );
 
-// New constants for level system
-// export const ENEMIES_PER_LEVEL_BASE = 10; // Base number of enemies in level 1
-// export const ENEMIES_PER_LEVEL_INCREASE = 3; // Additional enemies per level
-// export const LEVEL_BREAK_DURATION = 5000; // 5 seconds between levels
-// export const MAX_ACTIVE_ENEMIES = 5; // Maximum enemies on screen at once
-
-// Define upgrade types
-const UPGRADE_TYPES = {
-  WEAPON: 'weapon',
-  DEFENSE: 'defense',
-  MOBILITY: 'mobility',
-  SPECIAL: 'special'
-};
-
-// Define available upgrades
-const UPGRADES = [
-  {
-    id: 'rapid_fire',
-    name: 'Rapid Fire',
-    description: 'Increase firing rate by 20%',
-    type: UPGRADE_TYPES.WEAPON,
-    minLevel: 1,
-    effect: (gameState: GameState) => {
-      // Since playerFireRate doesn't exist in GameState, we'll just return the state as is
-      // In a real implementation, you would add this property to GameState
-      return {
-        ...gameState
-      };
-    }
-  },
-  {
-    id: 'shield_boost',
-    name: 'Shield Boost',
-    description: 'Increase max shield by 15%',
-    type: UPGRADE_TYPES.DEFENSE,
-    minLevel: 1,
-    effect: (gameState: GameState) => {
-      const newMaxShield = gameState.dysonsphereMaxShield * 1.15;
-      return {
-        ...gameState,
-        dysonsphereMaxShield: newMaxShield,
-        dysonsphereShield: Math.max(gameState.dysonsphereShield, newMaxShield)
-      };
-    }
-  },
-  {
-    id: 'speed_boost',
-    name: 'Speed Boost',
-    description: 'Increase movement speed by 10%',
-    type: UPGRADE_TYPES.MOBILITY,
-    minLevel: 2,
-    effect: (gameState: GameState) => {
-      // Since playerSpeed doesn't exist in GameState, we'll just return the state as is
-      // In a real implementation, you would add this property to GameState
-      return {
-        ...gameState
-      };
-    }
-  },
-  // Add more upgrades here
-];
-
 export const HUD: React.FC<HUDProps> = ({ 
   gameState, 
   showLevelUp, 
