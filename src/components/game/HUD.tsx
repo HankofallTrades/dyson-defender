@@ -1,12 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { GameState } from './types';
 import './retro.css';
 import { PLAYER_MAX_BOOST_TIME, PLAYER_BOOST_COOLDOWN } from './constants';
-import * as THREE from 'three';
-import {
-  ENEMIES_PER_WAVE_BASE,
-  ENEMIES_PER_WAVE_INCREASE
-} from './constants';
 
 interface HUDProps {
   gameState: GameState;
@@ -94,19 +89,6 @@ const UPGRADES = [
   },
   // Add more upgrades here
 ];
-
-// Function to get available upgrades based on level
-function getAvailableUpgrades(level: number) {
-  return UPGRADES.filter(upgrade => upgrade.minLevel <= level);
-}
-
-// Function to apply an upgrade
-function applyUpgrade(upgradeId: string, setGameState: React.Dispatch<React.SetStateAction<GameState>>) {
-  const upgrade = UPGRADES.find(u => u.id === upgradeId);
-  if (upgrade) {
-    setGameState(prev => upgrade.effect(prev));
-  }
-}
 
 export const HUD: React.FC<HUDProps> = ({ 
   gameState, 
