@@ -70,7 +70,7 @@ export const GameScene: React.FC<GameSceneProps> = ({
     const enemyLasers: Laser[] = [];
     const keys: KeyState = {};
     let enemySpawnTimer = 0;
-    let mouseDelta = new THREE.Vector2(0, 0);
+    const mouseDelta = new THREE.Vector2(0, 0);
     let lastShootTime = 0;  // Track when the player last shot
     const SHOOT_COOLDOWN = 250;  // 250ms cooldown (twice as fast as half-second)
 
@@ -273,10 +273,12 @@ export const GameScene: React.FC<GameSceneProps> = ({
         if (enemy.userData.lightning) {
           enemy.userData.lightning.removeFromScene(scene);
           enemy.userData.lightning.dispose();
+          delete enemy.userData.lightning;
         }
         scene.remove(enemy);
       });
       
+      // Clean up lasers - simpler version
       lasers.forEach(laser => scene.remove(laser.mesh));
       enemyLasers.forEach(laser => scene.remove(laser.mesh));
       
