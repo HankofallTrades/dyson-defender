@@ -1,7 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { GameState } from './types';
 import './retro.css';
 import { PLAYER_MAX_BOOST_TIME, PLAYER_BOOST_COOLDOWN } from './constants';
+import * as THREE from 'three';
+import {
+  ENEMIES_PER_WAVE_BASE,
+  ENEMIES_PER_WAVE_INCREASE
+} from './constants';
 
 interface HUDProps {
   gameState: GameState;
@@ -27,6 +32,81 @@ const KeyboardKey: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     {children}
   </span>
 );
+
+// New constants for level system
+// export const ENEMIES_PER_LEVEL_BASE = 10; // Base number of enemies in level 1
+// export const ENEMIES_PER_LEVEL_INCREASE = 3; // Additional enemies per level
+// export const LEVEL_BREAK_DURATION = 5000; // 5 seconds between levels
+// export const MAX_ACTIVE_ENEMIES = 5; // Maximum enemies on screen at once
+
+// Define upgrade types
+const UPGRADE_TYPES = {
+  WEAPON: 'weapon',
+  DEFENSE: 'defense',
+  MOBILITY: 'mobility',
+  SPECIAL: 'special'
+};
+
+// Define available upgrades
+const UPGRADES = [
+  {
+    id: 'rapid_fire',
+    name: 'Rapid Fire',
+    description: 'Increase firing rate by 20%',
+    type: UPGRADE_TYPES.WEAPON,
+    minLevel: 1,
+    effect: (gameState: GameState) => {
+      // Since playerFireRate doesn't exist in GameState, we'll just return the state as is
+      // In a real implementation, you would add this property to GameState
+      return {
+        ...gameState
+      };
+    }
+  },
+  {
+    id: 'shield_boost',
+    name: 'Shield Boost',
+    description: 'Increase max shield by 15%',
+    type: UPGRADE_TYPES.DEFENSE,
+    minLevel: 1,
+    effect: (gameState: GameState) => {
+      const newMaxShield = gameState.dysonsphereMaxShield * 1.15;
+      return {
+        ...gameState,
+        dysonsphereMaxShield: newMaxShield,
+        dysonsphereShield: Math.max(gameState.dysonsphereShield, newMaxShield)
+      };
+    }
+  },
+  {
+    id: 'speed_boost',
+    name: 'Speed Boost',
+    description: 'Increase movement speed by 10%',
+    type: UPGRADE_TYPES.MOBILITY,
+    minLevel: 2,
+    effect: (gameState: GameState) => {
+      // Since playerSpeed doesn't exist in GameState, we'll just return the state as is
+      // In a real implementation, you would add this property to GameState
+      return {
+        ...gameState
+      };
+    }
+  },
+  // Add more upgrades here
+];
+
+// Function to get available upgrades based on level
+function getAvailableUpgrades(level: number) {
+  return UPGRADES.filter(upgrade => upgrade.minLevel <= level);
+}
+
+// Function to apply an upgrade
+function applyUpgrade(upgradeId: string, setGameState: React.Dispatch<React.SetStateAction<GameState>>) {
+  const upgrade = UPGRADES.find(u => u.id === upgradeId);
+  if (upgrade) {
+    setGameState(prev => upgrade.effect(prev));
+  }
+}
 
 export const HUD: React.FC<HUDProps> = ({ 
   gameState, 
@@ -198,31 +278,27 @@ export const HUD: React.FC<HUDProps> = ({
 
   return (
     <div className="relative w-full h-full">
-      {/* In-game HUD */}
-      <div style={{
-        ...styles.gameHUD,
-        fontFamily: "'Press Start 2P', system-ui",
+      {/* Main game HUD */}
+      <div className="retro-text pulse-border" style={{
+        position: 'absolute',
+        top: '20px',
+        left: '20px',
+        background: 'rgba(0, 0, 0, 0.7)',
+        padding: '15px',
+        borderRadius: '8px',
+        border: '2px solid #ff00ff',
+        boxShadow: '0 0 15px rgba(255, 0, 255, 0.5)',
+        minWidth: '250px',
+        fontFamily: "'Press Start 2P', monospace",
         fontSize: '0.8rem',
         lineHeight: '1.8rem',
-        textShadow: '2px 2px 0 #000, 0 0 10px #00ffff',
-        background: 'linear-gradient(45deg, rgba(0,0,0,0.7), rgba(83,0,130,0.3))',
-        borderRight: '2px solid #ff00ff',
-        borderBottom: '2px solid #ff00ff',
-        borderRadius: '0 0 8px 0',
-        boxShadow: '0 0 20px rgba(255, 0, 255, 0.2)',
-        padding: '1.5rem'
+        textShadow: '2px 2px 0 #000, 0 0 10px #00ffff'
       }}>
-        <div className="hud-value" style={{ 
-          color: '#ff00ff',
-          transition: 'all 0.3s ease'
-        }}>
-          Score: <span className="value-change">{score}</span>
-        </div>
         <div className="hud-value" style={{ 
           color: '#00ffff',
           transition: 'all 0.3s ease'
         }}>
-          Level: <span className="value-change">{level}</span>
+          Score: <span className="value-change">{score}</span>
         </div>
         <div className="hud-value" style={{ 
           color: '#ffff00',
@@ -236,6 +312,33 @@ export const HUD: React.FC<HUDProps> = ({
         }}>
           Health: <span className="value-change">{Math.floor(dysonsphereHealth)}</span>
         </div>
+        
+        {/* Wave information integrated into main HUD */}
+        {gameState.waveActive && (
+          <div className="wave-progress" style={{ marginTop: '15px' }}>
+            <div className="hud-value" style={{ 
+              color: '#ff00ff',
+              transition: 'all 0.3s ease'
+            }}>
+              Enemies: <span className="value-change">{gameState.enemiesRemainingInWave}</span>/{gameState.totalEnemiesInWave}
+            </div>
+            <div className="progress-bar" style={{ marginTop: '5px' }}>
+              <div 
+                className="progress-fill" 
+                style={{ 
+                  width: `${(1 - gameState.enemiesRemainingInWave / gameState.totalEnemiesInWave) * 100}%` 
+                }}
+              ></div>
+            </div>
+          </div>
+        )}
+        
+        {/* Wave cooldown information */}
+        {gameState.waveCooldown && (
+          <div className="wave-cooldown" style={{ marginTop: '15px' }}>
+            <span>Next wave in: {Math.ceil(gameState.waveCooldownTimer)}s</span>
+          </div>
+        )}
       </div>
 
       {/* Boost progress bar */}
@@ -304,10 +407,9 @@ export const HUD: React.FC<HUDProps> = ({
           boxShadow: '0 0 30px rgba(255, 0, 255, 0.5)',
           transform: 'perspective(500px) rotateX(10deg) translate(-50%, -50%)'
         }}>
-          LEVEL {level}
+          LEVEL {gameState.level + 1}
         </div>
       )}
-
 
     </div>
   );

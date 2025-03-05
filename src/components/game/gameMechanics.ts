@@ -9,7 +9,8 @@ import {
   ENEMY_CRASH_DAMAGE, 
   ENEMY_LASER_DAMAGE,
   POINTS_PER_KILL,
-  POINTS_PER_LEVEL
+  POINTS_PER_LEVEL,
+  WAVE_COOLDOWN_DURATION
 } from './constants';
 
 export function shootLaser(
@@ -149,16 +150,7 @@ export function updateLasers(
         // Enemy hit
         setGameState(prev => {
           const newScore = prev.score + POINTS_PER_KILL;
-          // Check if we should level up
-          if (newScore >= prev.level * POINTS_PER_LEVEL) {
-            // Level up detected, trigger the notification
-            setShowLevelUp(true);
-            return {
-              ...prev,
-              score: newScore,
-              level: prev.level + 1
-            };
-          }
+          // We no longer level up based on score, but on completing waves
           return { ...prev, score: newScore };
         });
 
@@ -203,6 +195,42 @@ export function updateLasers(
               if (enemyIndex !== -1) {
                 enemies.splice(enemyIndex, 1);
               }
+              
+              // Decrease the enemy count when an enemy is killed
+              // This is a critical update for wave progression
+              setGameState(prev => {
+                const newRemainingCount = Math.max(0, prev.enemiesRemainingInWave - 1);
+                console.log(`Enemy killed. Active enemies left: ${enemies.length}, Remaining to kill: ${newRemainingCount}`);
+                
+                // Check if this was the last enemy
+                const isLastEnemy = newRemainingCount === 0;
+                if (isLastEnemy) {
+                  console.log("*** LAST ENEMY KILLED! Should trigger wave completion ***");
+                  
+                  // Directly set wave completed state if it's the last enemy and all enemies were spawned
+                  if (prev.waveActive) {
+                    console.log("DIRECT WAVE COMPLETION: This was the last enemy, initiating wave cooldown");
+                    
+                    // Also trigger the level up notification here
+                    setShowLevelUp(true);
+                    
+                    return {
+                      ...prev,
+                      enemiesRemainingInWave: 0,
+                      waveActive: false,
+                      waveCooldown: true,
+                      waveCooldownTimer: WAVE_COOLDOWN_DURATION / 1000, // Convert to seconds for countdown
+                      score: prev.score + POINTS_PER_KILL
+                    };
+                  }
+                }
+                
+                return {
+                  ...prev,
+                  enemiesRemainingInWave: newRemainingCount,
+                  score: prev.score + POINTS_PER_KILL // Also update score here
+                };
+              });
             }
           }, enemy.userData.explosionDuration);
         } else {

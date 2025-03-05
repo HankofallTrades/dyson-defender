@@ -16,7 +16,12 @@ import {
   PLAYER_BASE_SPEED,
   PLAYER_BOOST_MULTIPLIER,
   PLAYER_MAX_BOOST_TIME,
-  PLAYER_BOOST_COOLDOWN
+  PLAYER_BOOST_COOLDOWN,
+  ENEMIES_PER_WAVE_BASE,
+  ENEMIES_PER_WAVE_INCREASE,
+  WAVE_COOLDOWN_DURATION,
+  MAX_ACTIVE_ENEMIES,
+  SPAWN_TIME_DECREASE_PER_LEVEL
 } from './constants';
 
 interface GameSceneProps {
@@ -111,6 +116,88 @@ export const GameScene: React.FC<GameSceneProps> = ({
     }
   }).current;
 
+  // Add a ref to track enemy spawning for the current wave
+  const waveManager = useRef({
+    spawnedEnemiesCount: 0,
+    waveLimit: ENEMIES_PER_WAVE_BASE,
+    reset: function(limit: number) {
+      this.spawnedEnemiesCount = 0;
+      this.waveLimit = limit;
+      console.log(`Wave manager reset. New wave limit: ${limit}`);
+    }
+  });
+
+  // Monitor changes in enemiesRemainingInWave to help with debugging
+  useEffect(() => {
+    if (gameState.started && !gameState.over) {
+      console.log(`enemiesRemainingInWave changed to: ${gameState.enemiesRemainingInWave}`);
+      
+      // If all enemies are killed, double-check wave completion
+      if (gameState.enemiesRemainingInWave === 0 && gameState.waveActive) {
+        console.log(`All enemies killed! FORCE CHECKING WAVE COMPLETION. Wave active: ${gameState.waveActive}, Enemies: ${waveManager.current.spawnedEnemiesCount}/${waveManager.current.waveLimit}`);
+        
+        // Force wave completion if all enemies were spawned
+        if (waveManager.current.spawnedEnemiesCount >= waveManager.current.waveLimit) {
+          console.log("Explicitly triggering wave completion because all enemies are killed!");
+          // Wave completed, start cooldown
+          setGameState(prev => ({
+            ...prev,
+            waveActive: false,
+            waveCooldown: true,
+            waveCooldownTimer: WAVE_COOLDOWN_DURATION / 1000 // Convert to seconds for countdown
+          }));
+        }
+      }
+    }
+  }, [gameState.enemiesRemainingInWave, gameState.started, gameState.over, gameState.waveActive]);
+
+  // Add a dedicated effect to handle the wave cooldown timer
+  useEffect(() => {
+    if (!gameState.started || gameState.over) return;
+    
+    // Only run this effect when the wave cooldown is active
+    if (!gameState.waveCooldown) return;
+    
+    console.log(`Wave cooldown active: ${gameState.waveCooldownTimer.toFixed(1)}s remaining`);
+    
+    // Set up an interval to update the timer every 100ms
+    const timerInterval = setInterval(() => {
+      setGameState(prev => {
+        // Update the timer by 0.1 seconds
+        const newTimer = Math.max(0, prev.waveCooldownTimer - 0.1);
+        
+        // If the timer reaches zero, start the next wave
+        if (newTimer <= 0) {
+          const nextLevel = prev.level + 1;
+          const enemiesInNextWave = ENEMIES_PER_WAVE_BASE + (nextLevel - 1) * ENEMIES_PER_WAVE_INCREASE;
+          
+          // Reset the wave manager for the new wave
+          waveManager.current.reset(enemiesInNextWave);
+          
+          console.log(`STARTING NEXT WAVE! Level ${nextLevel} with ${enemiesInNextWave} enemies`);
+          
+          return {
+            ...prev,
+            level: nextLevel,
+            waveActive: true,
+            waveCooldown: false,
+            enemiesRemainingInWave: enemiesInNextWave,
+            totalEnemiesInWave: enemiesInNextWave,
+            waveCooldownTimer: 0
+          };
+        }
+        
+        // Otherwise just update the timer
+        return {
+          ...prev,
+          waveCooldownTimer: newTimer
+        };
+      });
+    }, 100);
+    
+    return () => clearInterval(timerInterval);
+  }, [gameState.started, gameState.over, gameState.waveCooldown]);
+
   useEffect(() => {
     if (!gameState.started || !mountRef.current) return;
 
@@ -158,6 +245,12 @@ export const GameScene: React.FC<GameSceneProps> = ({
     const mouseDelta = new THREE.Vector2(0, 0);
     let lastShootTime = 0;  // Track when the player last shot
     const SHOOT_COOLDOWN = 250;  // 250ms cooldown (twice as fast as half-second)
+
+    // Reset wave manager when the level changes
+    waveManager.current.reset(
+      ENEMIES_PER_WAVE_BASE + (gameState.level - 1) * ENEMIES_PER_WAVE_INCREASE
+    );
+    console.log(`Game started/reset. Level: ${gameState.level}, Wave limit: ${waveManager.current.waveLimit}`);
 
     // Event handlers
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -251,6 +344,21 @@ export const GameScene: React.FC<GameSceneProps> = ({
     function animate() {
       animationFrameId = requestAnimationFrame(animate);
       
+      // Debug output every 10 seconds to track all relevant values
+      if (frameCount % 600 === 0) { // Assuming 60fps, log every 10 seconds
+        console.log(`DEBUG - Wave system state - Level: ${gameState.level}`);
+        console.log(`- Wave active: ${gameState.waveActive}, Wave cooldown: ${gameState.waveCooldown}`);
+        console.log(`- Spawned: ${waveManager.current.spawnedEnemiesCount}/${waveManager.current.waveLimit}`);
+        console.log(`- Remaining: ${gameState.enemiesRemainingInWave}, Active enemies: ${enemies.length}`);
+        console.log(`- All spawned: ${waveManager.current.spawnedEnemiesCount >= waveManager.current.waveLimit}`);
+        console.log(`- No active enemies: ${enemies.length === 0}`);
+        console.log(`- No remaining: ${gameState.enemiesRemainingInWave <= 0}`);
+        
+        if (gameState.waveCooldown) {
+          console.log(`- Wave cooldown timer: ${gameState.waveCooldownTimer.toFixed(1)}s`);
+        }
+      }
+      
       // Update boost manager with current time
       boostManager.update(Date.now());
       
@@ -275,17 +383,94 @@ export const GameScene: React.FC<GameSceneProps> = ({
       dysonSphere.rotation.y += delta * 0.15;
       core.rotation.y -= delta * 0.05;
 
-      // Spawn enemies
-      enemySpawnTimer += delta;
-      const spawnTime = Math.max(
-        MIN_SPAWN_TIME, 
-        BASE_SPAWN_TIME - (gameState.level * 0.3)
-      );
+      // Wave-based enemy spawning system
+      if (gameState.waveActive) {
+        // Log current state at regular intervals for debugging
+        if (frameCount % 60 === 0) { // Log once per second at 60fps
+          console.log(`Wave state: Level ${gameState.level}, Spawned: ${waveManager.current.spawnedEnemiesCount}/${waveManager.current.waveLimit}, Remaining: ${gameState.enemiesRemainingInWave}, Active enemies: ${enemies.length}`);
+        }
+        
+        // Only spawn enemies if we haven't reached the wave limit
+        // AND we haven't reached the maximum active enemies limit
+        const spawnedCount = waveManager.current.spawnedEnemiesCount;
+        const waveLimit = waveManager.current.waveLimit;
+        
+        if (spawnedCount < waveLimit && enemies.length < MAX_ACTIVE_ENEMIES) {
+          enemySpawnTimer += delta;
+          const spawnTime = Math.max(
+            MIN_SPAWN_TIME, 
+            BASE_SPAWN_TIME - (gameState.level * SPAWN_TIME_DECREASE_PER_LEVEL)
+          );
 
-      if (enemySpawnTimer > spawnTime) {
-        const enemy = createEnemy(scene, gameState.level);
-        enemies.push(enemy);
-        enemySpawnTimer = 0;
+          if (enemySpawnTimer > spawnTime) {
+            const enemy = createEnemy(scene, gameState.level);
+            enemies.push(enemy);
+            enemySpawnTimer = 0;
+            
+            // Increment the spawned count directly
+            waveManager.current.spawnedEnemiesCount++;
+            console.log(`Spawned enemy ${waveManager.current.spawnedEnemiesCount}/${waveLimit}. Active enemies: ${enemies.length}`);
+          }
+        }
+        
+        // Enhanced wave completion check
+        // Check if all enemies in this wave have been killed
+        // This is a critical condition for wave progression
+        const allEnemiesSpawned = waveManager.current.spawnedEnemiesCount >= waveManager.current.waveLimit;
+        const noActiveEnemies = enemies.length === 0;
+        const noRemainingEnemies = gameState.enemiesRemainingInWave <= 0;
+        
+        // Log every 60 frames or when any condition changes
+        if (frameCount % 60 === 0 || 
+            (allEnemiesSpawned && (noActiveEnemies || noRemainingEnemies !== (gameState.enemiesRemainingInWave <= 0)))) {
+          console.log(`Wave completion check: All spawned: ${allEnemiesSpawned}, No active: ${noActiveEnemies}, No remaining: ${noRemainingEnemies}, Enemies left: ${gameState.enemiesRemainingInWave}`);
+        }
+        
+        // Safety check: If enemiesRemainingInWave is 0, all enemies have been spawned, and there are no active enemies,
+        // but wave is still active, force the wave to complete
+        if (gameState.enemiesRemainingInWave === 0 && 
+            waveManager.current.spawnedEnemiesCount >= waveManager.current.waveLimit && 
+            enemies.length === 0 && 
+            frameCount % 30 === 0) { // Check every half second
+          console.log("SAFETY CHECK: Wave conditions met but wave still active. Forcing completion...");
+          setGameState(prev => ({
+            ...prev,
+            waveActive: false,
+            waveCooldown: true,
+            waveCooldownTimer: WAVE_COOLDOWN_DURATION / 1000
+          }));
+        }
+        
+        // Use a more reliable check to see if the wave is complete
+        // We only need to check if all enemies have been spawned and if there are no active enemies
+        if (allEnemiesSpawned && noActiveEnemies) {
+          // Fix counter if needed - this ensures the state is consistent
+          if (!noRemainingEnemies) {
+            console.log(`FIXING MISMATCH: All enemies appear to be killed but counter is ${gameState.enemiesRemainingInWave}. Setting to 0...`);
+            setGameState(prev => ({
+              ...prev,
+              enemiesRemainingInWave: 0
+            }));
+          } else {
+            console.log(`Wave ${gameState.level} completed! ALL CONDITIONS MET. Moving to next wave.`);
+            // Wave completed, start cooldown
+            setGameState(prev => ({
+              ...prev,
+              waveActive: false,
+              waveCooldown: true,
+              waveCooldownTimer: WAVE_COOLDOWN_DURATION / 1000 // Convert to seconds for countdown
+            }));
+            
+            // Show level up notification immediately when wave is completed
+            setShowLevelUp(true);
+          }
+        }
+      } else if (gameState.waveCooldown) {
+        // Wave cooldown is now handled by a dedicated useEffect
+        // Log wave cooldown progress if needed
+        if (frameCount % 60 === 0) {
+          console.log(`Wave cooldown in animation loop: ${gameState.waveCooldownTimer.toFixed(1)}s remaining`);
+        }
       }
 
       // Update enemies

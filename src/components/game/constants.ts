@@ -4,6 +4,12 @@ export const INITIAL_SHIELD = 200;
 export const POINTS_PER_KILL = 10;
 export const POINTS_PER_LEVEL = 100;
 
+// Wave-based level system
+export const ENEMIES_PER_WAVE_BASE = 5; // Base number of enemies in wave 1 (5 for level 1)
+export const ENEMIES_PER_WAVE_INCREASE = 3; // Additional enemies per wave
+export const WAVE_COOLDOWN_DURATION = 3000; // 3 seconds between waves
+export const MAX_ACTIVE_ENEMIES = 5; // Maximum enemies on screen at once
+
 // Player settings
 export const PLAYER_BASE_SPEED = 0.2;
 export const PLAYER_BOOST_MULTIPLIER = 1.5; // 50% speed increase
@@ -12,9 +18,12 @@ export const PLAYER_BOOST_COOLDOWN = 3.0; // 3 seconds
 
 // Enemy settings
 export const BASE_ENEMY_SPEED = 0.03;
-export const SPEED_INCREASE_PER_LEVEL = 0.005;
+export const SPEED_INCREASE_PER_LEVEL = 0.008;
 export const BASE_SPAWN_TIME = 3;
-export const MIN_SPAWN_TIME = 0.5;
+export const MIN_SPAWN_TIME = 0.4;
+export const SPAWN_TIME_DECREASE_PER_LEVEL = 0.4;
+export const BASE_ENEMY_HEALTH = 1;
+export const ENEMY_HEALTH_INCREASE_LEVEL_THRESHOLD = 3; // Enemies get +1 health every 3 levels
 
 // Weapon settings
 export const LASER_SPEED = 0.5;

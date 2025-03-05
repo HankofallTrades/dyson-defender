@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Enemy } from './types';
-import { COLORS, BASE_ENEMY_SPEED, SPEED_INCREASE_PER_LEVEL, ENEMY_SPAWN_DISTANCE } from './constants';
+import { COLORS, BASE_ENEMY_SPEED, SPEED_INCREASE_PER_LEVEL, ENEMY_SPAWN_DISTANCE, BASE_ENEMY_HEALTH, ENEMY_HEALTH_INCREASE_LEVEL_THRESHOLD } from './constants';
 
 export function createGameObjects(playerPosition?: THREE.Vector3, playerRotation?: THREE.Euler) {
   // Dyson Sphere
@@ -198,7 +198,7 @@ export function createEnemy(scene: THREE.Scene, level: number): Enemy {
 
   const enemy = new THREE.Group() as Enemy;
   enemy.userData = {
-    health: 1,
+    health: BASE_ENEMY_HEALTH + Math.floor((level - 1) / ENEMY_HEALTH_INCREASE_LEVEL_THRESHOLD),
     speed: BASE_ENEMY_SPEED + (SPEED_INCREASE_PER_LEVEL * (level - 1)),
     fireTimer: Math.random() * 100,
     pulseDirection: 1,

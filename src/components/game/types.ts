@@ -35,6 +35,12 @@ export interface GameState {
   boostActive: boolean;
   boostRemaining: number;
   boostCooldown: number;
+  // Wave-based level system properties
+  enemiesRemainingInWave: number;  // Enemies that still need to be killed to complete the wave
+  totalEnemiesInWave: number;
+  waveActive: boolean;
+  waveCooldown: boolean;
+  waveCooldownTimer: number;
 }
 
 export interface Laser {

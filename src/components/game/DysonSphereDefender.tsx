@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import * as THREE from 'three';
 import { GameState } from './types';
-import { INITIAL_HEALTH, INITIAL_SHIELD } from './constants';
+import { INITIAL_HEALTH, INITIAL_SHIELD, ENEMIES_PER_WAVE_BASE } from './constants';
 import { GameScene } from './GameScene';
 import { HUD } from './HUD';
 
@@ -19,12 +19,18 @@ const initialGameState: GameState = {
   pointerLocked: false,
   boostActive: false,
   boostRemaining: 3.0, // 3 seconds of boost
-  boostCooldown: 0
+  boostCooldown: 0,
+  // Wave-based level system properties
+  enemiesRemainingInWave: ENEMIES_PER_WAVE_BASE, // 5 enemies for level 1
+  totalEnemiesInWave: ENEMIES_PER_WAVE_BASE, // 5 enemies for level 1
+  waveActive: true,
+  waveCooldown: false,
+  waveCooldownTimer: 0
 };
 
 const SHIELD_REGEN_DELAY = 3000;
 const SHIELD_REGEN_RATE = 20;
-const LEVEL_UP_NOTIFICATION_DURATION = 2000;
+const LEVEL_UP_NOTIFICATION_DURATION = 3000;
 
 export const DysonSphereDefender: React.FC = () => {
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
@@ -53,16 +59,16 @@ export const DysonSphereDefender: React.FC = () => {
   }, [gameState.started, gameState.over, gameState.lastHitTime]);
 
   useEffect(() => {
-    if (gameState.level > prevLevel.current) {
-      setShowLevelUp(true);
+    if (showLevelUp) {
+      console.log(`Level up notification displayed, will hide in ${LEVEL_UP_NOTIFICATION_DURATION/1000} seconds`);
       const timer = setTimeout(() => {
         setShowLevelUp(false);
+        console.log('Level up notification hidden');
       }, LEVEL_UP_NOTIFICATION_DURATION);
-
-      prevLevel.current = gameState.level;
+      
       return () => clearTimeout(timer);
     }
-  }, [gameState.level]);
+  }, [showLevelUp]);
 
   // Handle pointer lock based on game state
   useEffect(() => {
@@ -72,22 +78,25 @@ export const DysonSphereDefender: React.FC = () => {
   }, [gameState.over]);
 
   const resetToNewGame = () => {
-    // First stop the current game
-    setGameState({
-      ...initialGameState,
-      started: false
-    });
-
-    // Then start a new game after a brief delay
-    requestAnimationFrame(() => {
-      setGameState({
-        ...initialGameState,
-        started: true
-      });
-    });
-
+    // Stop current game
+    setGameState(prev => ({
+      ...prev,
+      started: false,
+    }));
+  
+    // Hide level up notification
     setShowLevelUp(false);
-    prevLevel.current = 1;
+    
+    // Start new game after a brief delay
+    requestAnimationFrame(() => {
+      const freshState = { ...initialGameState };
+      freshState.started = true;
+      console.log("Starting new game with initial state:", freshState);
+      setGameState(freshState);
+      
+      // Reset level display
+      prevLevel.current = 1;
+    });
   };
 
   const startGame = () => {
