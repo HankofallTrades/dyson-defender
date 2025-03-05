@@ -1,15 +1,15 @@
 import * as THREE from 'three';
-import { Enemy, Laser, GameState, Explosion } from './types';
+import { Enemy, Laser, GameState } from './types';
 import { Lightning } from './effects/Lightning';
 import { Explosion as ExplosionEffect } from './effects/Explosion';
 import { 
+  COLORS, 
   LASER_SPEED, 
   ENEMY_LASER_SPEED, 
   ENEMY_CRASH_DAMAGE, 
   ENEMY_LASER_DAMAGE,
   POINTS_PER_KILL,
-  POINTS_PER_LEVEL,
-  COLORS
+  POINTS_PER_LEVEL
 } from './constants';
 
 export function shootLaser(
