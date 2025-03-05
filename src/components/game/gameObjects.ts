@@ -60,7 +60,13 @@ function createPlayerShip(position?: THREE.Vector3, rotation?: THREE.Euler) {
   // Main body
   const bodyGeometry = new THREE.ConeGeometry(0.5, 1.5, 4);
   bodyGeometry.rotateX(Math.PI / 2);
-  const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+  const bodyMaterial = new THREE.MeshPhongMaterial({ 
+    color: 0x00ff00,
+    emissive: 0x00ffff,
+    emissiveIntensity: 0,
+    shininess: 50,
+    specular: 0x666666
+  });
   const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
   ship.add(body);
 

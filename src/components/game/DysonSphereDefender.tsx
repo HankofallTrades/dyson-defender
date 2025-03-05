@@ -16,7 +16,10 @@ const initialGameState: GameState = {
   level: 1,
   playerPosition: new THREE.Vector3(0, 0, 25),
   playerRotation: new THREE.Euler(0, 0, 0, 'YXZ'),
-  pointerLocked: false
+  pointerLocked: false,
+  boostActive: false,
+  boostRemaining: 3.0, // 3 seconds of boost
+  boostCooldown: 0
 };
 
 const SHIELD_REGEN_DELAY = 3000;

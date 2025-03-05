@@ -1,6 +1,7 @@
 import React from 'react';
 import { GameState } from './types';
 import './retro.css';
+import { PLAYER_MAX_BOOST_TIME, PLAYER_BOOST_COOLDOWN } from './constants';
 
 interface HUDProps {
   gameState: GameState;
@@ -132,6 +133,10 @@ export const HUD: React.FC<HUDProps> = ({
               <span className="ml-2">to move up/down</span>
             </p>
             <p className="flex items-center justify-center gap-2">
+              <KeyboardKey>Shift</KeyboardKey>
+              <span className="ml-2">to boost (3s max, 5s cooldown)</span>
+            </p>
+            <p className="flex items-center justify-center gap-2">
               <KeyboardKey>Space</KeyboardKey>
               <span className="ml-2">to shoot</span>
             </p>
@@ -230,6 +235,57 @@ export const HUD: React.FC<HUDProps> = ({
           transition: 'all 0.3s ease'
         }}>
           Health: <span className="value-change">{Math.floor(dysonsphereHealth)}</span>
+        </div>
+      </div>
+
+      {/* Boost progress bar */}
+      <div style={{
+        position: 'absolute',
+        bottom: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '300px',
+        height: '24px',
+        background: 'rgba(0, 0, 0, 0.5)',
+        border: '2px solid',
+        borderColor: gameState.boostCooldown > 0 ? '#660066' : (gameState.boostActive ? '#ff00ff' : '#00ffff'),
+        borderRadius: '12px',
+        overflow: 'hidden',
+        boxShadow: gameState.boostActive 
+          ? '0 0 15px rgba(255, 0, 255, 0.6), inset 0 0 8px rgba(255, 0, 255, 0.4)' 
+          : '0 0 10px rgba(255, 0, 255, 0.3), inset 0 0 5px rgba(0, 0, 0, 0.5)',
+        transition: 'border-color 0.1s ease, box-shadow 0.1s ease'
+      }}>
+        <div style={{
+          width: gameState.boostCooldown > 0 
+            ? `${(1 - gameState.boostCooldown / PLAYER_BOOST_COOLDOWN) * 100}%` 
+            : `${(gameState.boostRemaining / PLAYER_MAX_BOOST_TIME) * 100}%`,
+          height: '100%',
+          background: gameState.boostCooldown > 0
+            ? 'linear-gradient(90deg, #330066, #660066)'
+            : (gameState.boostActive 
+                ? 'linear-gradient(90deg, #ff00ff, #00ffff)' 
+                : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
+          boxShadow: gameState.boostActive 
+            ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' 
+            : 'none',
+          transition: 'none'
+        }} />
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          fontSize: '0.65rem',
+          fontFamily: "'Press Start 2P', system-ui",
+          color: '#ffffff',
+          textShadow: '1px 1px 2px #000000',
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none'
+        }}>
+          {gameState.boostCooldown > 0 
+            ? `CHARGING` 
+            : `BOOST: ${gameState.boostActive ? 'ACTIVE' : 'READY'} [SHIFT]`}
         </div>
       </div>
 

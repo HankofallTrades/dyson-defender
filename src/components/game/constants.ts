@@ -4,6 +4,12 @@ export const INITIAL_SHIELD = 200;
 export const POINTS_PER_KILL = 10;
 export const POINTS_PER_LEVEL = 100;
 
+// Player settings
+export const PLAYER_BASE_SPEED = 0.2;
+export const PLAYER_BOOST_MULTIPLIER = 1.5; // 50% speed increase
+export const PLAYER_MAX_BOOST_TIME = 1.0; // 1 second
+export const PLAYER_BOOST_COOLDOWN = 3.0; // 3 seconds
+
 // Enemy settings
 export const BASE_ENEMY_SPEED = 0.03;
 export const SPEED_INCREASE_PER_LEVEL = 0.005;

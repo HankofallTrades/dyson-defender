@@ -32,6 +32,9 @@ export interface GameState {
   playerPosition: THREE.Vector3;
   playerRotation: THREE.Euler;
   pointerLocked: boolean;
+  boostActive: boolean;
+  boostRemaining: number;
+  boostCooldown: number;
 }
 
 export interface Laser {

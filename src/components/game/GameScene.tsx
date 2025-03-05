@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GameState, Enemy, Laser, KeyState } from './types';
 import { createGameObjects, createEnemy } from './gameObjects';
@@ -11,7 +11,11 @@ import {
 import { 
   BASE_SPAWN_TIME, 
   MIN_SPAWN_TIME,
-  MAX_DISTANCE_FROM_CENTER 
+  MAX_DISTANCE_FROM_CENTER,
+  PLAYER_BASE_SPEED,
+  PLAYER_BOOST_MULTIPLIER,
+  PLAYER_MAX_BOOST_TIME,
+  PLAYER_BOOST_COOLDOWN
 } from './constants';
 
 interface GameSceneProps {
@@ -27,6 +31,85 @@ export const GameScene: React.FC<GameSceneProps> = ({
   setShowLevelUp,
   mountRef
 }) => {
+  // Create a simple, direct boost state manager
+  const boostManager = useRef({
+    // Core state
+    active: false,
+    remaining: PLAYER_MAX_BOOST_TIME,
+    cooldown: 0,
+    
+    // Last frame time for delta calculation
+    lastFrameTime: 0,
+    
+    // Methods to manage boost state
+    update: function(currentTime: number) {
+      // Calculate delta time
+      const delta = this.lastFrameTime === 0 ? 0.016 : Math.min((currentTime - this.lastFrameTime) / 1000, 0.1);
+      this.lastFrameTime = currentTime;
+      
+      // Handle cooldown
+      if (this.cooldown > 0) {
+        // Update cooldown
+        this.cooldown = Math.max(0, this.cooldown - delta);
+        
+        // Refill boost based on cooldown progress
+        if (this.cooldown > 0) {
+          const progress = 1 - (this.cooldown / PLAYER_BOOST_COOLDOWN);
+          this.remaining = progress * PLAYER_MAX_BOOST_TIME;
+        } else {
+          // Cooldown complete
+          this.remaining = PLAYER_MAX_BOOST_TIME;
+        }
+        
+        // Ensure boost is not active during cooldown
+        this.active = false;
+        return;
+      }
+      
+      // Handle active boost
+      if (this.active) {
+        // Deplete boost
+        this.remaining = Math.max(0, this.remaining - delta);
+        
+        // Check if depleted
+        if (this.remaining <= 0) {
+          this.active = false;
+          this.cooldown = PLAYER_BOOST_COOLDOWN;
+        }
+      }
+    },
+    
+    // Activate boost if possible
+    activate: function() {
+      if (this.remaining > 0 && this.cooldown <= 0 && !this.active) {
+        this.active = true;
+        return true;
+      }
+      return false;
+    },
+    
+    // Deactivate boost and start cooldown if needed
+    deactivate: function() {
+      if (this.active) {
+        this.active = false;
+        if (this.remaining < PLAYER_MAX_BOOST_TIME) {
+          this.cooldown = PLAYER_BOOST_COOLDOWN;
+        }
+        return true;
+      }
+      return false;
+    },
+    
+    // Get current state for React
+    getState: function() {
+      return {
+        boostActive: this.active,
+        boostRemaining: this.remaining,
+        boostCooldown: this.cooldown
+      };
+    }
+  }).current;
+
   useEffect(() => {
     if (!gameState.started || !mountRef.current) return;
 
@@ -77,11 +160,38 @@ export const GameScene: React.FC<GameSceneProps> = ({
     // Event handlers
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      keys[key] = true;
+      if (!keys[key]) {
+        keys[key] = true;
+        
+        // Handle boost activation when shift is pressed
+        if (key === 'shift') {
+          if (boostManager.activate()) {
+            console.log('Boost activated!');
+            // Update React state
+            setGameState(prev => ({
+              ...prev,
+              boostActive: true
+            }));
+          }
+        }
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      keys[e.key.toLowerCase()] = false;
+      const key = e.key.toLowerCase();
+      keys[key] = false;
+      
+      // Handle boost deactivation when shift is released
+      if (key === 'shift') {
+        if (boostManager.deactivate()) {
+          console.log('Boost deactivated!');
+          // Update React state with the current boost state
+          setGameState(prev => ({
+            ...prev,
+            ...boostManager.getState()
+          }));
+        }
+      }
     };
 
     const handleMouseMove = (event: MouseEvent) => {
@@ -130,11 +240,33 @@ export const GameScene: React.FC<GameSceneProps> = ({
 
     // Animation loop
     const clock = new THREE.Clock();
+    // Start the clock immediately to avoid large initial delta
+    clock.start();
+    let lastTime = clock.getElapsedTime();
     let animationFrameId: number;
+    let frameCount = 0;
     
     function animate() {
       animationFrameId = requestAnimationFrame(animate);
-      const delta = clock.getDelta();
+      
+      // Update boost manager with current time
+      boostManager.update(Date.now());
+      
+      // Update React state with boost state if needed
+      const boostState = boostManager.getState();
+      if (boostState.boostActive !== gameState.boostActive || 
+          Math.abs(boostState.boostRemaining - gameState.boostRemaining) > 0.01 ||
+          Math.abs(boostState.boostCooldown - gameState.boostCooldown) > 0.01) {
+        setGameState(prev => ({
+          ...prev,
+          ...boostState
+        }));
+      }
+      
+      // Calculate delta time manually
+      const currentTime = clock.getElapsedTime();
+      const delta = Math.min(currentTime - lastTime, 0.1);
+      lastTime = currentTime;
 
       // Update game objects
       dysonSphere.rotation.x += delta * 0.1;
@@ -191,7 +323,9 @@ export const GameScene: React.FC<GameSceneProps> = ({
       }
 
       // Handle keyboard movement
-      const speed = 0.2;
+      // Use the boost manager to determine if boost is active
+      const isBoostActive = boostManager.active && keys['shift'];
+      const speed = PLAYER_BASE_SPEED * (isBoostActive ? PLAYER_BOOST_MULTIPLIER : 1.0);
       const velocity = new THREE.Vector3();
       
       const forwardDir = new THREE.Vector3(0, 0, -1).applyQuaternion(playerShip.quaternion);
@@ -220,6 +354,28 @@ export const GameScene: React.FC<GameSceneProps> = ({
         playerRotation: playerShip.rotation.clone()
       }));
 
+      // Add visual effect for boost
+      if (boostManager.active) {
+        // Find the player ship body (first child)
+        const shipBody = playerShip.children[0];
+        if (shipBody && shipBody instanceof THREE.Mesh && shipBody.material instanceof THREE.MeshPhongMaterial) {
+          // Pulse the emissive intensity for a boost effect
+          const pulseValue = (Math.sin(Date.now() * 0.01) + 1) * 0.5;
+          shipBody.material.emissive.setHex(0x00ffff);
+          shipBody.material.emissiveIntensity = 0.5 + pulseValue * 0.5;
+          
+          // Make ship slightly larger during boost for visual feedback
+          shipBody.scale.set(1.1, 1.1, 1.1);
+        }
+      } else {
+        // Reset visual effect when not boosting
+        const shipBody = playerShip.children[0];
+        if (shipBody && shipBody instanceof THREE.Mesh && shipBody.material instanceof THREE.MeshPhongMaterial) {
+          shipBody.material.emissiveIntensity = 0;
+          shipBody.scale.set(1.0, 1.0, 1.0);
+        }
+      }
+
       // Keep player within bounds
       const distanceToDyson = playerShip.position.length();
       if (distanceToDyson > MAX_DISTANCE_FROM_CENTER) {
@@ -240,6 +396,8 @@ export const GameScene: React.FC<GameSceneProps> = ({
       playerShip.visible = false;
 
       renderer.render(scene, camera);
+
+      frameCount++;
     }
 
     // Start animation
