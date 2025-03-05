@@ -8,6 +8,7 @@ import {
   updateEnemyLasers, 
   updateEnemy 
 } from './gameMechanics';
+import { Explosion } from './effects/Explosion';
 import { 
   BASE_SPAWN_TIME, 
   MIN_SPAWN_TIME,
@@ -151,6 +152,7 @@ export const GameScene: React.FC<GameSceneProps> = ({
     const enemies: Enemy[] = [];
     const lasers: Laser[] = [];
     const enemyLasers: Laser[] = [];
+    const explosions: Explosion[] = [];
     const keys: KeyState = {};
     let enemySpawnTimer = 0;
     const mouseDelta = new THREE.Vector2(0, 0);
@@ -296,7 +298,8 @@ export const GameScene: React.FC<GameSceneProps> = ({
           enemyLasers,
           scene,
           gameState.level,
-          setGameState
+          setGameState,
+          explosions
         );
 
         if (wasRemoved) {
@@ -305,8 +308,16 @@ export const GameScene: React.FC<GameSceneProps> = ({
       }
 
       // Update projectiles
-      updateLasers(lasers, enemies, scene, setGameState, setShowLevelUp);
+      updateLasers(lasers, enemies, scene, setGameState, setShowLevelUp, explosions);
       updateEnemyLasers(enemyLasers, dysonSphere, playerShip, scene, setGameState);
+
+      // Update explosions
+      for (let i = explosions.length - 1; i >= 0; i--) {
+        explosions[i].update();
+        if (explosions[i].isFinished()) {
+          explosions.splice(i, 1);
+        }
+      }
 
       // Update player movement
       if (Math.abs(mouseDelta.x) > 0 || Math.abs(mouseDelta.y) > 0) {
@@ -439,6 +450,11 @@ export const GameScene: React.FC<GameSceneProps> = ({
       // Clean up lasers - simpler version
       lasers.forEach(laser => scene.remove(laser.mesh));
       enemyLasers.forEach(laser => scene.remove(laser.mesh));
+      
+      // Clean up explosions
+      explosions.forEach(explosion => {
+        explosion.removeFromScene();
+      });
       
       // Clean up THREE.js resources
       scene.traverse((object) => {

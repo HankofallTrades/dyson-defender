@@ -53,9 +53,21 @@ export interface Enemy extends THREE.Group {
     attackDistance: number;
     firingRange: number;  // Required property: Distance at which normal firing begins (18-22 units)
     lightning?: import('./effects/Lightning').Lightning;
+    // Animation properties
+    isExploding?: boolean;
+    explosionStartTime?: number;
+    explosionDuration?: number;
+    originalScale?: THREE.Vector3;
   };
 }
 
 export interface KeyState {
   [key: string]: boolean;
+}
+
+export interface Explosion {
+  update: () => void;
+  addToScene: (scene: THREE.Scene) => void;
+  removeFromScene: () => void;
+  isFinished: () => boolean;
 }

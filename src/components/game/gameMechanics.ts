@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { Enemy, Laser, GameState } from './types';
+import { Enemy, Laser, GameState, Explosion } from './types';
 import { Lightning } from './effects/Lightning';
+import { Explosion as ExplosionEffect } from './effects/Explosion';
 import { 
   LASER_SPEED, 
   ENEMY_LASER_SPEED, 
@@ -123,7 +124,8 @@ export function updateLasers(
   enemies: Enemy[],
   scene: THREE.Scene,
   setGameState: React.Dispatch<React.SetStateAction<GameState>>,
-  setShowLevelUp: React.Dispatch<React.SetStateAction<boolean>>
+  setShowLevelUp: React.Dispatch<React.SetStateAction<boolean>>,
+  explosions: ExplosionEffect[] = []
 ) {
   for (let i = lasers.length - 1; i >= 0; i--) {
     const laser = lasers[i];
@@ -166,14 +168,81 @@ export function updateLasers(
         enemy.userData.health--;
 
         if (enemy.userData.health <= 0) {
-          // Clean up lightning effect if it exists
-          if (enemy.userData.lightning) {
-            enemy.userData.lightning.removeFromScene(scene);
-            enemy.userData.lightning.dispose();
-            enemy.userData.lightning = undefined;
-          }
-          scene.remove(enemy);
-          enemies.splice(j, 1);
+          // Add balloon animation before explosion
+          enemy.userData.isExploding = true;
+          enemy.userData.explosionStartTime = Date.now();
+          enemy.userData.explosionDuration = 300; // 300ms for the balloon effect
+          
+          // Store the original scale to restore it if needed
+          enemy.userData.originalScale = enemy.scale.clone();
+          
+          // Schedule the actual explosion after the balloon effect
+          setTimeout(() => {
+            // Only proceed if the enemy still exists in the scene
+            if (enemy.parent) {
+              // Create explosion effect at enemy position with shockwave for fatal hit
+              const explosion = new ExplosionEffect(
+                enemy.position.clone(),
+                COLORS.ENEMY_GLOW,
+                1.0, // Duration in seconds
+                true // Include shockwave
+              );
+              explosion.addToScene(scene);
+              explosions.push(explosion);
+              
+              // Clean up lightning effect if it exists
+              if (enemy.userData.lightning) {
+                enemy.userData.lightning.removeFromScene(scene);
+                enemy.userData.lightning.dispose();
+                enemy.userData.lightning = undefined;
+              }
+              scene.remove(enemy);
+              
+              // Find and remove the enemy from the array
+              const enemyIndex = enemies.findIndex(e => e === enemy);
+              if (enemyIndex !== -1) {
+                enemies.splice(enemyIndex, 1);
+              }
+            }
+          }, enemy.userData.explosionDuration);
+        } else {
+          // Create a smaller hit effect for non-fatal hits without shockwave
+          const hitEffect = new ExplosionEffect(
+            laser.mesh.position.clone(),
+            COLORS.ENEMY_GLOW,
+            0.5, // Shorter duration
+            false // No shockwave for non-fatal hits
+          );
+          hitEffect.addToScene(scene);
+          explosions.push(hitEffect);
+          
+          // Add a quick pulse effect to the enemy
+          const originalScale = enemy.scale.clone();
+          const hitPulse = () => {
+            // Quick expand
+            enemy.scale.multiplyScalar(1.2);
+            
+            // Make the glow brighter
+            const glowMesh = enemy.children[1] as THREE.Mesh;
+            if (glowMesh && glowMesh.material instanceof THREE.MeshBasicMaterial) {
+              glowMesh.material.opacity = 0.8; // Temporarily increase opacity
+            }
+            
+            // Return to normal after a short delay
+            setTimeout(() => {
+              if (enemy.parent) { // Check if enemy still exists
+                enemy.scale.copy(originalScale);
+                
+                // Reset glow
+                if (glowMesh && glowMesh.material instanceof THREE.MeshBasicMaterial) {
+                  glowMesh.material.opacity = 0.2 + (enemy.userData.pulseValue * 0.3);
+                }
+              }
+            }, 100);
+          };
+          
+          // Execute the pulse effect
+          hitPulse();
         }
         break;
       }
@@ -251,8 +320,28 @@ export function updateEnemy(
   enemyLasers: Laser[],
   scene: THREE.Scene,
   level: number,
-  setGameState: React.Dispatch<React.SetStateAction<GameState>>
+  setGameState: React.Dispatch<React.SetStateAction<GameState>>,
+  explosions: ExplosionEffect[] = []
 ) {
+  // Handle explosion animation if enemy is exploding
+  if (enemy.userData.isExploding) {
+    const elapsed = Date.now() - enemy.userData.explosionStartTime!;
+    const progress = Math.min(elapsed / enemy.userData.explosionDuration!, 1.0);
+    
+    // Balloon effect - scale up to 1.5x original size
+    const scaleFactor = 1.0 + (progress * 0.5); // Scale from 1.0 to 1.5
+    enemy.scale.set(scaleFactor, scaleFactor, scaleFactor);
+    
+    // Also make the enemy glow brighter as it's about to explode
+    const glowMesh = enemy.children[1] as THREE.Mesh;
+    if (glowMesh && glowMesh.material instanceof THREE.MeshBasicMaterial) {
+      glowMesh.material.opacity = 0.2 + (progress * 0.8); // Increase opacity for brighter glow
+    }
+    
+    // No need to process other updates if exploding
+    return false;
+  }
+
   // Update pulsating glow
   const glowMesh = enemy.children[1] as THREE.Mesh;
   if (glowMesh && glowMesh.material instanceof THREE.Material) {
@@ -347,13 +436,36 @@ export function updateEnemy(
       }
     });
 
-    // Clean up lightning effect
-    if (enemy.userData.lightning) {
-      enemy.userData.lightning.removeFromScene(scene);
-      enemy.userData.lightning.dispose();
-    }
-    scene.remove(enemy);
-    return true; // Enemy was removed
+    // Add balloon animation before explosion
+    enemy.userData.isExploding = true;
+    enemy.userData.explosionStartTime = Date.now();
+    enemy.userData.explosionDuration = 200; // Faster for crash (200ms)
+    enemy.userData.originalScale = enemy.scale.clone();
+    
+    // Schedule the actual explosion after the balloon effect
+    setTimeout(() => {
+      // Only proceed if the enemy still exists in the scene
+      if (enemy.parent) {
+        // Create explosion effect for the crash
+        const crashExplosion = new ExplosionEffect(
+          enemy.position.clone(),
+          COLORS.ENEMY_GLOW,
+          1.2, // Slightly longer duration for crash
+          true // Include shockwave
+        );
+        crashExplosion.addToScene(scene);
+        explosions.push(crashExplosion);
+
+        // Clean up lightning effect
+        if (enemy.userData.lightning) {
+          enemy.userData.lightning.removeFromScene(scene);
+          enemy.userData.lightning.dispose();
+        }
+        scene.remove(enemy);
+      }
+    }, enemy.userData.explosionDuration);
+    
+    return true; // Enemy was removed (will be removed after animation)
   }
 
   // Update lightning and apply damage in siege mode
