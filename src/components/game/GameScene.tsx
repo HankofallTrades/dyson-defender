@@ -344,6 +344,14 @@ export const GameScene: React.FC<GameSceneProps> = ({
     function animate() {
       animationFrameId = requestAnimationFrame(animate);
       
+      // Safety check: if game is over, don't proceed with updates
+      if (gameState.over) {
+        console.log("Game over detected in animation loop - suspending game updates");
+        // Still render the scene but don't update game state
+        renderer.render(scene, camera);
+        return;
+      }
+      
       // Debug output every 10 seconds to track all relevant values
       if (frameCount % 600 === 0) { // Assuming 60fps, log every 10 seconds
         console.log(`DEBUG - Wave system state - Level: ${gameState.level}`);
@@ -484,7 +492,8 @@ export const GameScene: React.FC<GameSceneProps> = ({
           scene,
           gameState.level,
           setGameState,
-          explosions
+          explosions,
+          playerShip
         );
 
         if (wasRemoved) {

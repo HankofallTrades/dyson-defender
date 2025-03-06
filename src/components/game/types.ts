@@ -24,23 +24,24 @@ export interface GameState {
   started: boolean;
   over: boolean;
   score: number;
+  level: number;
+  currentWave: number;
+  totalEnemiesInWave: number;
+  enemiesRemainingInWave: number;
+  waveCooldown: boolean;
+  waveCooldownTimer: number;
+  waveActive: boolean;
   dysonsphereHealth: number;
   dysonsphereShield: number;
   dysonsphereMaxShield: number;
+  playerHealth: number;
   lastHitTime: number;
-  level: number;
-  playerPosition: THREE.Vector3;
-  playerRotation: THREE.Euler;
+  playerPosition?: THREE.Vector3;
+  playerRotation?: THREE.Euler;
   pointerLocked: boolean;
   boostActive: boolean;
   boostRemaining: number;
   boostCooldown: number;
-  // Wave-based level system properties
-  enemiesRemainingInWave: number;  // Enemies that still need to be killed to complete the wave
-  totalEnemiesInWave: number;
-  waveActive: boolean;
-  waveCooldown: boolean;
-  waveCooldownTimer: number;
 }
 
 export interface Laser {

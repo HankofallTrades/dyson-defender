@@ -8,9 +8,26 @@ import {
   ENEMY_LASER_SPEED, 
   ENEMY_CRASH_DAMAGE, 
   ENEMY_LASER_DAMAGE,
+  PLAYER_LASER_DAMAGE,
   POINTS_PER_KILL,
   WAVE_COOLDOWN_DURATION
 } from './constants';
+
+// Helper function to handle game over state - this ensures consistency and can be expanded
+function setGameOver(prevState: GameState, isOver: boolean): GameState {
+  // If the game is already over, don't change the state unless explicitly reset by restart
+  if (prevState.over && isOver) {
+    // Game is already over, maintain the state
+    console.log("Game already in 'over' state, maintaining state");
+    return prevState;
+  }
+  
+  // Only allow changing to game over if not already over
+  return {
+    ...prevState,
+    over: isOver
+  };
+}
 
 export function shootLaser(
   playerShip: THREE.Object3D,
@@ -88,7 +105,8 @@ export function enemyShootLaser(
   enemy: Enemy,
   enemyLasers: Laser[],
   scene: THREE.Scene,
-  level: number
+  level: number,
+  playerShip: THREE.Object3D
 ) {
   const laserGeom = new THREE.CylinderGeometry(0.05, 0.05, 1, 8);
   laserGeom.rotateX(Math.PI / 2);
@@ -107,16 +125,46 @@ export function enemyShootLaser(
 
   // Position laser at the front of the enemy
   const laserOffset = new THREE.Vector3(0, 0, -0.5);
+  
+  // Save original rotation of enemy if not in siege mode and targeting player
+  let originalRotation = null;
+  if (!enemy.userData.isFiringMode) {
+    // Save original rotation
+    originalRotation = enemy.rotation.clone();
+    
+    // Temporarily face the player for more accurate aiming
+    enemy.lookAt(playerShip.position);
+  }
+  
   const worldPos = enemy.localToWorld(laserOffset.clone());
   laser.position.copy(worldPos);
 
-  // Calculate direction toward Dyson sphere
-  const direction = new THREE.Vector3(0, 0, 0)
-    .subVectors(new THREE.Vector3(), enemy.position)
-    .normalize();
+  // Calculate direction based on target (player if not in siege mode, dyson sphere if in siege mode)
+  let direction;
+  if (enemy.userData.isFiringMode) {
+    // Target Dyson sphere in siege mode (center of the scene)
+    direction = new THREE.Vector3(0, 0, 0)
+      .subVectors(new THREE.Vector3(), enemy.position)
+      .normalize();
+  } else {
+    // Target player when not in siege mode
+    direction = new THREE.Vector3()
+      .subVectors(playerShip.position, enemy.position)
+      .normalize();
+  }
 
   scene.add(laser);
   enemyLasers.push({ mesh: laser, direction });
+  
+  // Restore original rotation if it was saved
+  if (originalRotation && !enemy.userData.isFiringMode) {
+    // After a short delay to make the rotation change visible
+    setTimeout(() => {
+      if (enemy.parent) { // Check if enemy still exists
+        enemy.rotation.copy(originalRotation);
+      }
+    }, 150);
+  }
 }
 
 export function updateLasers(
@@ -296,7 +344,7 @@ export function updateEnemyLasers(
     );
 
     // Remove laser if it's too far
-    if (laser.mesh.position.length() > 30) {
+    if (laser.mesh.position.length() > 60) { // Increased from 30 to 60 to exceed player's max distance (40)
       scene.remove(laser.mesh);
       enemyLasers.splice(i, 1);
       continue;
@@ -318,11 +366,19 @@ export function updateEnemyLasers(
         } else {
           // Shield depleted, damage the Dyson sphere
           const newHealth = prev.dysonsphereHealth - ENEMY_LASER_DAMAGE;
+          // If health reaches 0, set game over
+          if (newHealth <= 0) {
+            return setGameOver({
+              ...prev,
+              dysonsphereHealth: newHealth,
+              lastHitTime: Date.now()
+            }, true);
+          }
+          
           return {
             ...prev,
             dysonsphereHealth: newHealth,
-            lastHitTime: Date.now(),
-            over: newHealth <= 0
+            lastHitTime: Date.now()
           };
         }
       });
@@ -334,6 +390,26 @@ export function updateEnemyLasers(
     // Check for collision with player
     const playerDistance = laser.mesh.position.distanceTo(playerShip.position);
     if (playerDistance < 0.7) {
+      // Apply damage to player when hit
+      setGameState(prev => {
+        const newPlayerHealth = Math.max(0, prev.playerHealth - PLAYER_LASER_DAMAGE);
+        
+        // If player health reaches 0, set game over
+        if (newPlayerHealth <= 0) {
+          return setGameOver({
+            ...prev,
+            playerHealth: newPlayerHealth,
+            lastHitTime: Date.now()
+          }, true);
+        }
+        
+        return {
+          ...prev,
+          playerHealth: newPlayerHealth,
+          lastHitTime: Date.now()
+        };
+      });
+      
       scene.remove(laser.mesh);
       enemyLasers.splice(i, 1);
     }
@@ -348,7 +424,8 @@ export function updateEnemy(
   scene: THREE.Scene,
   level: number,
   setGameState: React.Dispatch<React.SetStateAction<GameState>>,
-  explosions: ExplosionEffect[] = []
+  explosions: ExplosionEffect[] = [],
+  playerShip: THREE.Object3D
 ) {
   // Handle explosion animation if enemy is exploding
   if (enemy.userData.isExploding) {
@@ -436,10 +513,13 @@ export function updateEnemy(
       .subVectors(dysonSphere.position, enemy.position)
       .normalize();
     enemy.position.add(direction.multiplyScalar(enemy.userData.speed));
+    
+    // Make enemy face the player instead of the Dyson sphere when not in siege mode
+    enemy.lookAt(playerShip.position);
+  } else {
+    // Make enemy face the Dyson sphere when in siege mode
+    enemy.lookAt(dysonSphere.position);
   }
-
-  // Make enemy face the Dyson sphere
-  enemy.lookAt(dysonSphere.position);
 
   // Check if enemy reached Dyson sphere
   if (distance < 6) {
@@ -454,11 +534,19 @@ export function updateEnemy(
         };
       } else {
         const newHealth = prev.dysonsphereHealth - ENEMY_CRASH_DAMAGE;
+        // If health reaches 0, set game over
+        if (newHealth <= 0) {
+          return setGameOver({
+            ...prev,
+            dysonsphereHealth: newHealth,
+            lastHitTime: Date.now()
+          }, true);
+        }
+        
         return {
           ...prev,
           dysonsphereHealth: newHealth,
-          lastHitTime: Date.now(),
-          over: newHealth <= 0
+          lastHitTime: Date.now()
         };
       }
     });
@@ -506,19 +594,29 @@ export function updateEnemy(
     if (enemy.userData.fireTimer > 0.5) { // Faster damage rate
       setGameState(prev => {
         if (prev.dysonsphereShield > 0) {
-          const newShield = Math.max(0, prev.dysonsphereShield - (ENEMY_LASER_DAMAGE * 0.3));
+          // Double damage to shield with lightning (2.0 multiplier instead of 0.3)
+          const newShield = Math.max(0, prev.dysonsphereShield - (ENEMY_LASER_DAMAGE * 2.0));
           return {
             ...prev,
             dysonsphereShield: newShield,
             lastHitTime: Date.now()
           };
         } else {
+          // Normal damage to core health (0.3 multiplier unchanged)
           const newHealth = prev.dysonsphereHealth - (ENEMY_LASER_DAMAGE * 0.3);
+          // If health reaches 0, set game over
+          if (newHealth <= 0) {
+            return setGameOver({
+              ...prev,
+              dysonsphereHealth: newHealth,
+              lastHitTime: Date.now()
+            }, true);
+          }
+          
           return {
             ...prev,
             dysonsphereHealth: newHealth,
-            lastHitTime: Date.now(),
-            over: newHealth <= 0
+            lastHitTime: Date.now()
           };
         }
       });
@@ -528,7 +626,7 @@ export function updateEnemy(
     // Regular mode: shoot lasers
     enemy.userData.fireTimer += delta;
     if (enemy.userData.fireTimer > 2.5 && distance <= enemy.userData.firingRange) {  // Use the enemy's firing range
-      enemyShootLaser(enemy, enemyLasers, scene, level);
+      enemyShootLaser(enemy, enemyLasers, scene, level, playerShip);
       enemy.userData.fireTimer = 0;
     }
   }

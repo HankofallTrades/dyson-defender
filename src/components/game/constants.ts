@@ -1,6 +1,7 @@
 // Game settings
 export const INITIAL_HEALTH = 500;
 export const INITIAL_SHIELD = 200;
+export const INITIAL_PLAYER_HEALTH = 100;
 export const POINTS_PER_KILL = 10;
 export const POINTS_PER_LEVEL = 100;
 
@@ -26,12 +27,13 @@ export const BASE_ENEMY_HEALTH = 1;
 export const ENEMY_HEALTH_INCREASE_LEVEL_THRESHOLD = 3; // Enemies get +1 health every 3 levels
 
 // Weapon settings
-export const LASER_SPEED = 0.5;
-export const ENEMY_LASER_SPEED = 0.3;
+export const LASER_SPEED = 1.0;
+export const ENEMY_LASER_SPEED = 0.6;
 
 // Damage values
 export const ENEMY_CRASH_DAMAGE = 20;
 export const ENEMY_LASER_DAMAGE = 5;
+export const PLAYER_LASER_DAMAGE = 10;
 
 // Game boundaries
 export const MAX_DISTANCE_FROM_CENTER = 40;

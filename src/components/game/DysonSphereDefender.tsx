@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import * as THREE from 'three';
 import { GameState } from './types';
-import { INITIAL_HEALTH, INITIAL_SHIELD, ENEMIES_PER_WAVE_BASE } from './constants';
+import { INITIAL_HEALTH, INITIAL_SHIELD, ENEMIES_PER_WAVE_BASE, INITIAL_PLAYER_HEALTH } from './constants';
 import { GameScene } from './GameScene';
 import { HUD } from './HUD';
 
@@ -14,6 +14,7 @@ const initialGameState: GameState = {
   dysonsphereMaxShield: INITIAL_SHIELD,
   lastHitTime: 0,
   level: 1,
+  playerHealth: INITIAL_PLAYER_HEALTH,
   playerPosition: new THREE.Vector3(0, 0, 25),
   playerRotation: new THREE.Euler(0, 0, 0, 'YXZ'),
   pointerLocked: false,
@@ -23,9 +24,10 @@ const initialGameState: GameState = {
   // Wave-based level system properties
   enemiesRemainingInWave: ENEMIES_PER_WAVE_BASE, // 5 enemies for level 1
   totalEnemiesInWave: ENEMIES_PER_WAVE_BASE, // 5 enemies for level 1
-  waveActive: true,
+  currentWave: 1,
   waveCooldown: false,
-  waveCooldownTimer: 0
+  waveCooldownTimer: 0,
+  waveActive: true
 };
 
 const SHIELD_REGEN_DELAY = 3000;
@@ -45,13 +47,18 @@ export const DysonSphereDefender: React.FC = () => {
       const timeSinceLastHit = Date.now() - gameState.lastHitTime;
       
       if (timeSinceLastHit >= SHIELD_REGEN_DELAY && gameState.dysonsphereShield < gameState.dysonsphereMaxShield) {
-        setGameState(prev => ({
-          ...prev,
-          dysonsphereShield: Math.min(
-            prev.dysonsphereMaxShield,
-            prev.dysonsphereShield + (SHIELD_REGEN_RATE / 10)
-          )
-        }));
+        setGameState(prev => {
+          // Double check we're not in "game over" state before regenerating shield
+          if (prev.over) return prev;
+          
+          return {
+            ...prev,
+            dysonsphereShield: Math.min(
+              prev.dysonsphereMaxShield,
+              prev.dysonsphereShield + (SHIELD_REGEN_RATE / 10)
+            )
+          };
+        });
       }
     }, 100);
 
@@ -78,10 +85,13 @@ export const DysonSphereDefender: React.FC = () => {
   }, [gameState.over]);
 
   const resetToNewGame = () => {
+    console.log("Resetting game state - clearing game over flag");
+    
     // Stop current game
     setGameState(prev => ({
       ...prev,
       started: false,
+      over: false
     }));
   
     // Hide level up notification
@@ -91,6 +101,7 @@ export const DysonSphereDefender: React.FC = () => {
     requestAnimationFrame(() => {
       const freshState = { ...initialGameState };
       freshState.started = true;
+      freshState.over = false;
       console.log("Starting new game with initial state:", freshState);
       setGameState(freshState);
       
@@ -107,6 +118,7 @@ export const DysonSphereDefender: React.FC = () => {
   };
 
   const restartGame = () => {
+    console.log("Restart game called by user pressing Play Again button");
     // Request pointer lock before restarting the game
     canvasContainerRef.current?.requestPointerLock();
     

@@ -149,6 +149,7 @@ export const HUD: React.FC<HUDProps> = ({
 
   // Game Over Screen
   if (over) {
+    console.log("Showing Game Over screen");
     return (
       <div style={{
         ...styles.overlay,
@@ -183,7 +184,10 @@ export const HUD: React.FC<HUDProps> = ({
         </div>
         <button 
           className="retro-button"
-          onClick={onRestartGame}
+          onClick={() => {
+            console.log("Play Again button clicked");
+            onRestartGame();
+          }}
           style={{
             fontSize: '1.5rem',
             padding: '1.5rem 3rem',
@@ -261,54 +265,134 @@ export const HUD: React.FC<HUDProps> = ({
         )}
       </div>
 
-      {/* Boost progress bar */}
+      {/* Enhanced pilot vitals console with integrated boost bar */}
       <div style={{
         position: 'absolute',
         bottom: '20px',
         left: '50%',
         transform: 'translateX(-50%)',
         width: '300px',
-        height: '24px',
-        background: 'rgba(0, 0, 0, 0.5)',
-        border: '2px solid',
-        borderColor: gameState.boostCooldown > 0 ? '#660066' : (gameState.boostActive ? '#ff00ff' : '#00ffff'),
-        borderRadius: '12px',
-        overflow: 'hidden',
-        boxShadow: gameState.boostActive 
-          ? '0 0 15px rgba(255, 0, 255, 0.6), inset 0 0 8px rgba(255, 0, 255, 0.4)' 
-          : '0 0 10px rgba(255, 0, 255, 0.3), inset 0 0 5px rgba(0, 0, 0, 0.5)',
-        transition: 'border-color 0.1s ease, box-shadow 0.1s ease'
+        background: 'rgba(0, 0, 0, 0.7)',
+        borderRadius: '8px',
+        border: '0px solid #ff5722',
+        padding: '10px',
+        boxShadow: '0 0 10px rgba(255, 87, 34, 0.5)',
+        fontFamily: "'Press Start 2P', system-ui",
+        fontSize: '0.65rem',
+        color: '#ffffff',
+        textAlign: 'center',
+        textShadow: '1px 1px 2px #000000',
+        animation: 'pulseBorder 2s ease-in-out infinite',
+        zIndex: 10
       }}>
+        {/* Pilot Health Section */}
         <div style={{
-          width: gameState.boostCooldown > 0 
-            ? `${(1 - gameState.boostCooldown / PLAYER_BOOST_COOLDOWN) * 100}%` 
-            : `${(gameState.boostRemaining / PLAYER_MAX_BOOST_TIME) * 100}%`,
-          height: '100%',
-          background: gameState.boostCooldown > 0
-            ? 'linear-gradient(90deg, #330066, #660066)'
-            : (gameState.boostActive 
-                ? 'linear-gradient(90deg, #ff00ff, #00ffff)' 
-                : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
-          boxShadow: gameState.boostActive 
-            ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' 
-            : 'none',
-          transition: 'none'
-        }} />
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          fontSize: '0.65rem',
-          fontFamily: "'Press Start 2P', system-ui",
-          color: '#ffffff',
-          textShadow: '1px 1px 2px #000000',
-          whiteSpace: 'nowrap',
-          pointerEvents: 'none'
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '5px'
         }}>
-          {gameState.boostCooldown > 0 
-            ? `CHARGING` 
-            : `BOOST: ${gameState.boostActive ? 'ACTIVE' : 'READY'} [SHIFT]`}
+          <span style={{ 
+            color: gameState.playerHealth > 75 ? '#4CAF50' : 
+                   gameState.playerHealth > 50 ? '#FFC107' : 
+                   gameState.playerHealth > 25 ? '#FF9800' : '#F44336' 
+          }}>
+            HULL STATUS: <span>
+              {gameState.playerHealth > 75 ? 'OPTIMAL' : 
+               gameState.playerHealth > 50 ? 'FUNCTIONAL' : 
+               gameState.playerHealth > 25 ? 'WARNING' : 'CRITICAL'}
+            </span>
+          </span>
+        </div>
+        <div style={{
+          width: '100%',
+          height: '20px',
+          background: 'rgba(0, 0, 0, 0.5)',
+          border: '2px solid #555555',
+          borderRadius: '10px',
+          overflow: 'hidden',
+          boxShadow: '0 0 10px rgba(0, 0, 0, 0.3), inset 0 0 5px rgba(0, 0, 0, 0.5)',
+          position: 'relative'
+        }}>
+          <div style={{ 
+            width: `${gameState.playerHealth}%`,
+            height: '100%',
+            background: `linear-gradient(90deg, 
+              #F44336, 
+              ${gameState.playerHealth > 60 ? '#4CAF50' : 
+                gameState.playerHealth > 30 ? '#FFC107' : '#F44336'})`,
+            transition: 'width 0.3s ease'
+          }}></div>
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            color: '#ffffff',
+            textShadow: '1px 1px 2px #000000',
+            fontSize: '0.65rem',
+            fontWeight: 'bold'
+          }}>
+            {Math.round(gameState.playerHealth)}%
+          </div>
+        </div>
+
+        {/* Boost Bar Section */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '5px',
+          marginTop: '15px'
+        }}>
+          <span style={{ color: gameState.boostCooldown > 0 ? '#660066' : '#00ffff' }}>BOOST SYSTEM:</span>
+        </div>
+        <div style={{
+          width: '100%',
+          height: '20px',
+          background: 'rgba(0, 0, 0, 0.5)',
+          border: '2px solid #555555',
+          borderRadius: '10px',
+          overflow: 'hidden',
+          boxShadow: '0 0 10px rgba(0, 0, 0, 0.3), inset 0 0 5px rgba(0, 0, 0, 0.5)',
+          position: 'relative'
+        }}>
+          <div style={{
+            width: gameState.boostCooldown > 0 
+              ? `${(1 - gameState.boostCooldown / PLAYER_BOOST_COOLDOWN) * 100}%` 
+              : `${(gameState.boostRemaining / PLAYER_MAX_BOOST_TIME) * 100}%`,
+            height: '100%',
+            background: gameState.boostCooldown > 0
+              ? 'linear-gradient(90deg, #330066, #660066)'
+              : (gameState.boostActive 
+                  ? 'linear-gradient(90deg, #ff00ff, #00ffff)' 
+                  : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
+            boxShadow: gameState.boostActive 
+              ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' 
+              : 'none',
+            transition: 'none'
+          }} />
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            fontSize: '0.65rem',
+            fontFamily: "'Press Start 2P', system-ui",
+            color: '#ffffff',
+            textShadow: '1px 1px 2px #000000',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            width: '100%',
+            textAlign: 'center'
+          }}>
+            {gameState.boostCooldown > 0 
+              ? "CHARGING" 
+              : gameState.boostActive 
+                ? "ACTIVE" 
+                : "READY"
+            }
+          </div>
         </div>
       </div>
 

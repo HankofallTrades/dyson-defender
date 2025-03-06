@@ -205,7 +205,7 @@ export function createEnemy(scene: THREE.Scene, level: number): Enemy {
     pulseValue: 0,
     isFiringMode: false,
     attackDistance: 8 + (Math.random() * 2),
-    firingRange: Math.random() ? 18 + (Math.random() * 4) : 20  // Ensure a default value of 20 if random fails
+    firingRange: 30 + (Math.random() * 15)  // Increased from 18-22 to 30-45 to ensure they can shoot at max player distance
   };
 
   // Create enemy meshes
