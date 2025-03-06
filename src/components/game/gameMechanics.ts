@@ -591,7 +591,7 @@ export function updateEnemy(
 
     // Apply damage more frequently with lightning
     enemy.userData.fireTimer += delta;
-    if (enemy.userData.fireTimer > 0.5) { // Faster damage rate
+    if (enemy.userData.fireTimer > 0.3) { // Increased fire rate from 0.5 to 0.3
       setGameState(prev => {
         if (prev.dysonsphereShield > 0) {
           // Double damage to shield with lightning (2.0 multiplier instead of 0.3)
@@ -625,7 +625,7 @@ export function updateEnemy(
   } else if (!enemy.userData.isFiringMode) {
     // Regular mode: shoot lasers
     enemy.userData.fireTimer += delta;
-    if (enemy.userData.fireTimer > 2.5 && distance <= enemy.userData.firingRange) {  // Use the enemy's firing range
+    if (enemy.userData.fireTimer > 1.5 && distance <= enemy.userData.firingRange) {  // Increased fire rate from 2.5 to 1.5
       enemyShootLaser(enemy, enemyLasers, scene, level, playerShip);
       enemy.userData.fireTimer = 0;
     }

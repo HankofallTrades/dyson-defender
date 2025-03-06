@@ -18,8 +18,8 @@ export const PLAYER_MAX_BOOST_TIME = 1.0; // 1 second
 export const PLAYER_BOOST_COOLDOWN = 3.0; // 3 seconds
 
 // Enemy settings
-export const BASE_ENEMY_SPEED = 0.03;
-export const SPEED_INCREASE_PER_LEVEL = 0.008;
+export const BASE_ENEMY_SPEED = 0.06;
+export const SPEED_INCREASE_PER_LEVEL = 0.015;
 export const BASE_SPAWN_TIME = 3;
 export const MIN_SPAWN_TIME = 0.4;
 export const SPAWN_TIME_DECREASE_PER_LEVEL = 0.4;
@@ -28,7 +28,7 @@ export const ENEMY_HEALTH_INCREASE_LEVEL_THRESHOLD = 3; // Enemies get +1 health
 
 // Weapon settings
 export const LASER_SPEED = 1.0;
-export const ENEMY_LASER_SPEED = 0.6;
+export const ENEMY_LASER_SPEED = 1.2;
 
 // Damage values
 export const ENEMY_CRASH_DAMAGE = 20;
@@ -36,7 +36,7 @@ export const ENEMY_LASER_DAMAGE = 5;
 export const PLAYER_LASER_DAMAGE = 10;
 
 // Game boundaries
-export const MAX_DISTANCE_FROM_CENTER = 40;
+export const MAX_DISTANCE_FROM_CENTER = 60;
 export const ENEMY_SPAWN_DISTANCE = 25;
 
 // Colors
