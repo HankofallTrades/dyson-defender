@@ -65,6 +65,7 @@ export interface Enemy extends THREE.Group {
     explosionStartTime?: number;
     explosionDuration?: number;
     originalScale?: THREE.Vector3;
+    spawnTime: number; // Time when the enemy was created
   };
 }
 

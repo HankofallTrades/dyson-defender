@@ -468,6 +468,48 @@ export function updateEnemy(
     const wobbleAmount = 0.05;
     enemy.rotation.x = Math.sin(Date.now() * 0.002) * wobbleAmount;
     enemy.rotation.z = Math.cos(Date.now() * 0.0015) * wobbleAmount;
+    
+    // Pulse the eye glow for more visibility
+    const head = enemy.children[0] as THREE.Mesh;
+    if (head) {
+      const eyesGroup = head.children.find(child => child.name === 'eyes');
+      if (eyesGroup) {
+        // Calculate a shared pulse value for syncing all eye effects
+        const pulseValue = Math.sin(Date.now() * 0.004);
+        const normalizedPulse = (pulseValue + 1) / 2; // Convert from -1..1 to 0..1 range
+        
+        eyesGroup.children.forEach(eye => {
+          if (eye instanceof THREE.Mesh) {
+            // For the actual eyes, pulse the emissive intensity
+            if (eye.name === 'leftEye' || eye.name === 'rightEye') {
+              if (eye.material instanceof THREE.MeshPhongMaterial) {
+                // Pulse the emissive intensity with a more visible modulation
+                const pulseIntensity = 2.5 + normalizedPulse * 1.2; // Ranges from 2.5 to 3.7
+                eye.material.emissiveIntensity = pulseIntensity;
+                eye.material.needsUpdate = true;
+              }
+            } 
+            // For the glow meshes, pulse both opacity and scale
+            else if (eye.material instanceof THREE.MeshBasicMaterial) {
+              // Sync the glow opacity with eye pulsing
+              const baseOpacity = 0.6;
+              const pulseOpacity = baseOpacity + normalizedPulse * 0.3; // Ranges from 0.6 to 0.9
+              eye.material.opacity = pulseOpacity;
+              
+              // Add a subtle scale pulsation to make the glow project outward as it brightens
+              const baseScale = 1.0;
+              const maxScaleIncrease = 0.12; // Max 12% increase in size during pulse
+              const pulseScale = baseScale + normalizedPulse * maxScaleIncrease;
+              
+              // Apply the scale relative to the original mesh scale
+              eye.scale.set(pulseScale, pulseScale, pulseScale);
+              
+              eye.material.needsUpdate = true;
+            }
+          }
+        });
+      }
+    }
   }
 
   // Check distance to Dyson sphere
@@ -492,12 +534,42 @@ export function updateEnemy(
       if (head) {
         const eyesGroup = head.children.find(child => child.name === 'eyes');
         if (eyesGroup) {
+          // Set up pulsation for siege mode eyes
+          const siegePulseValue = Math.sin(Date.now() * 0.005); // Slightly faster pulsation in siege mode
+          const siegeNormalizedPulse = (siegePulseValue + 1) / 2; // 0..1 range
+          
           eyesGroup.children.forEach(eye => {
-            if (eye instanceof THREE.Mesh && eye.material instanceof THREE.MeshPhongMaterial) {
-              eye.material.color.setHex(COLORS.ENEMY_EYES_SIEGE);
-              eye.material.emissive.setHex(COLORS.ENEMY_EYES_SIEGE_EMISSIVE);
-              eye.material.emissiveIntensity = 3.0;
-              eye.material.needsUpdate = true;
+            if (eye instanceof THREE.Mesh) {
+              // Check if this is an actual eye or a glow mesh
+              if (eye.name === 'leftEye' || eye.name === 'rightEye') {
+                // This is an actual eye
+                if (eye.material instanceof THREE.MeshPhongMaterial) {
+                  eye.material.color.setHex(COLORS.ENEMY_EYES_SIEGE);
+                  eye.material.emissive.setHex(COLORS.ENEMY_EYES_SIEGE_EMISSIVE);
+                  
+                  // Pulsating intensity between 3.5 and 5.0 for a dramatic effect
+                  const siegePulseIntensity = 3.5 + siegeNormalizedPulse * 1.5;
+                  eye.material.emissiveIntensity = siegePulseIntensity;
+                  
+                  eye.material.needsUpdate = true;
+                }
+              } else {
+                // This is a glow mesh
+                if (eye.material instanceof THREE.MeshBasicMaterial) {
+                  // Make the glow bright red to match the eye
+                  eye.material.color.setHex(COLORS.ENEMY_EYES_SIEGE_EMISSIVE);
+                  
+                  // Pulsating opacity between 0.7 and 1.0
+                  const siegeGlowOpacity = 0.7 + siegeNormalizedPulse * 0.3;
+                  eye.material.opacity = siegeGlowOpacity;
+                  
+                  // Pulsating scale for a more dramatic effect
+                  const siegeGlowScale = 1.0 + siegeNormalizedPulse * 0.25; // Up to 25% increase
+                  eye.scale.set(siegeGlowScale, siegeGlowScale, siegeGlowScale);
+                  
+                  eye.material.needsUpdate = true;
+                }
+              }
             }
           });
         }
@@ -625,7 +697,12 @@ export function updateEnemy(
   } else if (!enemy.userData.isFiringMode) {
     // Regular mode: shoot lasers
     enemy.userData.fireTimer += delta;
-    if (enemy.userData.fireTimer > 1.5 && distance <= enemy.userData.firingRange) {  // Increased fire rate from 2.5 to 1.5
+    
+    // Check if enough time has passed since spawn (0.3 seconds)
+    const timeSinceSpawn = Date.now() - enemy.userData.spawnTime;
+    const canFire = timeSinceSpawn >= 300; // 300ms = 0.3 seconds
+    
+    if (canFire && enemy.userData.fireTimer > 1.5 && distance <= enemy.userData.firingRange) {  // Increased fire rate from 2.5 to 1.5
       enemyShootLaser(enemy, enemyLasers, scene, level, playerShip);
       enemy.userData.fireTimer = 0;
     }

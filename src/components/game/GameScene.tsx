@@ -9,6 +9,7 @@ import {
   updateEnemy 
 } from './gameMechanics';
 import { Explosion } from './effects/Explosion';
+import { Wormhole } from './effects/Wormhole';
 import { 
   BASE_SPAWN_TIME, 
   MIN_SPAWN_TIME,
@@ -21,7 +22,9 @@ import {
   ENEMIES_PER_WAVE_INCREASE,
   WAVE_COOLDOWN_DURATION,
   MAX_ACTIVE_ENEMIES,
-  SPAWN_TIME_DECREASE_PER_LEVEL
+  SPAWN_TIME_DECREASE_PER_LEVEL,
+  ENEMY_SPAWN_DISTANCE,
+  COLORS
 } from './constants';
 
 interface GameSceneProps {
@@ -240,6 +243,7 @@ export const GameScene: React.FC<GameSceneProps> = ({
     const lasers: Laser[] = [];
     const enemyLasers: Laser[] = [];
     const explosions: Explosion[] = [];
+    const wormholes: Wormhole[] = []; // Track active wormholes
     const keys: KeyState = {};
     let enemySpawnTimer = 0;
     const mouseDelta = new THREE.Vector2(0, 0);
@@ -411,8 +415,37 @@ export const GameScene: React.FC<GameSceneProps> = ({
           );
 
           if (enemySpawnTimer > spawnTime) {
-            const enemy = createEnemy(scene, gameState.level);
+            // Create spawn position for enemy
+            const angle = Math.random() * Math.PI * 2;
+            const distance = ENEMY_SPAWN_DISTANCE + Math.random() * 10;
+            
+            const x = Math.sin(angle) * distance;
+            const y = (Math.random() - 0.5) * distance;
+            const z = Math.cos(angle) * distance;
+            
+            const spawnPosition = new THREE.Vector3(x, y, z);
+            
+            // Create wormhole effect
+            const wormhole = new Wormhole(
+              spawnPosition,
+              new THREE.Vector3(0, 0, 0), // Dyson sphere position (center of the scene)
+              1.2, // Size the wormhole should grow to
+              1.5, // Duration in seconds
+              COLORS.ENEMY_GLOW // Color of the wormhole
+            );
+            wormhole.addToScene(scene);
+            
+            // Create the enemy (initially invisible)
+            const enemy = createEnemy(scene, gameState.level, false); // Pass false to make it initially invisible
+            enemy.position.copy(spawnPosition);
             enemies.push(enemy);
+            
+            // Link the enemy to the wormhole
+            wormhole.setEnemyMesh(enemy);
+            
+            // Add to wormholes array
+            wormholes.push(wormhole);
+            
             enemySpawnTimer = 0;
             
             // Increment the spawned count directly
@@ -509,7 +542,18 @@ export const GameScene: React.FC<GameSceneProps> = ({
       for (let i = explosions.length - 1; i >= 0; i--) {
         explosions[i].update();
         if (explosions[i].isFinished()) {
+          explosions[i].removeFromScene();
           explosions.splice(i, 1);
+        }
+      }
+      
+      // Update wormholes
+      for (let i = wormholes.length - 1; i >= 0; i--) {
+        wormholes[i].update();
+        if (wormholes[i].isFinished()) {
+          wormholes[i].removeFromScene();
+          wormholes[i].dispose();
+          wormholes.splice(i, 1);
         }
       }
 
@@ -648,6 +692,12 @@ export const GameScene: React.FC<GameSceneProps> = ({
       // Clean up explosions
       explosions.forEach(explosion => {
         explosion.removeFromScene();
+      });
+      
+      // Clean up wormholes
+      wormholes.forEach(wormhole => {
+        wormhole.removeFromScene();
+        wormhole.dispose();
       });
       
       // Clean up THREE.js resources

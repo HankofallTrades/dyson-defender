@@ -188,7 +188,7 @@ function createReticle() {
   return reticleGroup;
 }
 
-export function createEnemy(scene: THREE.Scene, level: number): Enemy {
+export function createEnemy(scene: THREE.Scene, level: number, initiallyVisible: boolean = true): Enemy {
   const angle = Math.random() * Math.PI * 2;
   const distance = ENEMY_SPAWN_DISTANCE + Math.random() * 10;
   
@@ -205,7 +205,8 @@ export function createEnemy(scene: THREE.Scene, level: number): Enemy {
     pulseValue: 0,
     isFiringMode: false,
     attackDistance: 8 + (Math.random() * 2),
-    firingRange: 30 + (Math.random() * 15)  // Increased from 18-22 to 30-45 to ensure they can shoot at max player distance
+    firingRange: 30 + (Math.random() * 15),  // Increased from 18-22 to 30-45 to ensure they can shoot at max player distance
+    spawnTime: Date.now() // Add spawn time to track when enemy was created
   };
 
   // Create enemy meshes
@@ -213,6 +214,7 @@ export function createEnemy(scene: THREE.Scene, level: number): Enemy {
   meshes.forEach(mesh => enemy.add(mesh));
 
   enemy.position.set(x, y, z);
+  enemy.visible = initiallyVisible; // Set initial visibility
   scene.add(enemy);
 
   return enemy;
@@ -258,9 +260,12 @@ function createEnemyMeshes() {
   // Eyes (slightly more alien)
   const eyeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
   eyeGeometry.scale(1.5, 1, 1); // Make eyes more oval
+  
+  // Base eye material with strong emissive properties
   const eyeMaterial = new THREE.MeshPhongMaterial({
     color: COLORS.ENEMY_EYES,
     emissive: COLORS.ENEMY_EYES_EMISSIVE,
+    emissiveIntensity: 3.0, // Strong emissive for base glow
     shininess: 100
   });
 
@@ -268,17 +273,46 @@ function createEnemyMeshes() {
   const eyesGroup = new THREE.Group();
   eyesGroup.name = 'eyes';
 
+  // Create left eye
   const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
   leftEye.name = 'leftEye';
   leftEye.position.set(0.25, 0.2, 0.3);
   leftEye.rotation.z = -0.3;
   eyesGroup.add(leftEye);
 
+  // Add a thin glow layer that sits directly on the eye (not much larger)
+  const leftEyeGlowGeometry = eyeGeometry.clone();
+  const eyeGlowScale = 1.15; // Increased from 1.05 to 1.15 - projects slightly outside the eye
+  leftEyeGlowGeometry.scale(eyeGlowScale, eyeGlowScale, eyeGlowScale);
+  
+  // Create a special material for the glow that uses additive blending
+  const eyeGlowMaterial = new THREE.MeshBasicMaterial({
+    color: COLORS.ENEMY_EYES_EMISSIVE,
+    transparent: true,
+    opacity: 0.7,
+    blending: THREE.AdditiveBlending, // Additive blending creates a more natural glow
+    depthWrite: false // Prevent z-fighting with the main eye
+  });
+  
+  const leftEyeGlow = new THREE.Mesh(leftEyeGlowGeometry, eyeGlowMaterial);
+  leftEyeGlow.position.copy(leftEye.position);
+  leftEyeGlow.rotation.copy(leftEye.rotation);
+  eyesGroup.add(leftEyeGlow);
+
+  // Create right eye with the same approach
   const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
   rightEye.name = 'rightEye';
   rightEye.position.set(-0.25, 0.2, 0.3);
   rightEye.rotation.z = 0.3;
   eyesGroup.add(rightEye);
+
+  // Add the thin glow layer to the right eye too
+  const rightEyeGlowGeometry = eyeGeometry.clone();
+  rightEyeGlowGeometry.scale(eyeGlowScale, eyeGlowScale, eyeGlowScale);
+  const rightEyeGlow = new THREE.Mesh(rightEyeGlowGeometry, eyeGlowMaterial);
+  rightEyeGlow.position.copy(rightEye.position);
+  rightEyeGlow.rotation.copy(rightEye.rotation);
+  eyesGroup.add(rightEyeGlow);
 
   head.add(eyesGroup);
 
