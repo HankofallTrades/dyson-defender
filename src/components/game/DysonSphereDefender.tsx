@@ -4,6 +4,7 @@ import { GameState } from './types';
 import { INITIAL_HEALTH, INITIAL_SHIELD, ENEMIES_PER_WAVE_BASE, INITIAL_PLAYER_HEALTH } from './constants';
 import { GameScene } from './GameScene';
 import { HUD } from './HUD';
+import { unlockAudio, createSimpleSound } from './utils/soundEffects';
 
 const initialGameState: GameState = {
   started: false,
@@ -39,6 +40,11 @@ export const DysonSphereDefender: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(initialGameState);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const prevLevel = useRef(gameState.level);
+
+  // Unlock audio on mount
+  useEffect(() => {
+    unlockAudio();
+  }, []);
 
   useEffect(() => {
     if (!gameState.started || gameState.over) return;
@@ -110,11 +116,20 @@ export const DysonSphereDefender: React.FC = () => {
     });
   };
 
-  const startGame = () => {
+  // Handle click to start game
+  const handleStartGame = () => {
+    // Unlock audio when user clicks start
+    unlockAudio();
+    // Play a sound to confirm audio is working
+    createSimpleSound('laser');
+    
     // Request pointer lock before starting the game
     canvasContainerRef.current?.requestPointerLock();
     
-    resetToNewGame();
+    setGameState(prev => ({
+      ...prev,
+      started: true
+    }));
   };
 
   const restartGame = () => {
@@ -169,7 +184,7 @@ export const DysonSphereDefender: React.FC = () => {
           <HUD
             gameState={gameState}
             showLevelUp={showLevelUp}
-            onStartGame={startGame}
+            onStartGame={handleStartGame}
             onRestartGame={restartGame}
           />
         </div>

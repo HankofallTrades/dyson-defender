@@ -10,6 +10,7 @@ import {
 } from './gameMechanics';
 import { Explosion } from './effects/Explosion';
 import { Wormhole } from './effects/Wormhole';
+import { preloadSounds, unlockAudio } from './utils/soundEffects';
 import { 
   BASE_SPAWN_TIME, 
   MIN_SPAWN_TIME,
@@ -204,6 +205,12 @@ export const GameScene: React.FC<GameSceneProps> = ({
   useEffect(() => {
     if (!gameState.started || !mountRef.current) return;
 
+    // Preload sound effects
+    preloadSounds();
+    
+    // Attempt to unlock audio immediately
+    unlockAudio();
+    
     // Scene setup
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000020);
@@ -273,6 +280,9 @@ export const GameScene: React.FC<GameSceneProps> = ({
             }));
           }
         }
+        
+        // Unlock audio on user input
+        unlockAudio();
       }
     };
 
@@ -293,23 +303,27 @@ export const GameScene: React.FC<GameSceneProps> = ({
       }
     };
 
+    // Handle mouse movement - now only attached when pointer is locked
     const handleMouseMove = (event: MouseEvent) => {
-      if (document.pointerLockElement) {
-        const sensitivityFactor = 0.002;
-        mouseDelta.x = event.movementX * sensitivityFactor;
-        mouseDelta.y = event.movementY * sensitivityFactor;
-      }
+      // Store mouse delta for smoother rotation in the next frame
+      mouseDelta.x = event.movementX * 0.002;
+      mouseDelta.y = event.movementY * 0.002;
     };
 
     // Handle pointer lock change
     const handlePointerLockChange = () => {
-      const isLocked = document.pointerLockElement === mountRef.current;
-      if (!isLocked) {
-        mouseDelta.set(0, 0);
+      const locked = document.pointerLockElement === mountRef.current;
+      if (locked) {
+        document.addEventListener('mousemove', handleMouseMove);
+        // Unlock audio when the user clicks to start the game
+        unlockAudio();
+      } else {
+        document.removeEventListener('mousemove', handleMouseMove);
+        mouseDelta.set(0, 0); // Reset delta when pointer is unlocked
       }
       setGameState(prev => ({
         ...prev,
-        pointerLocked: isLocked
+        pointerLocked: locked
       }));
     };
 
@@ -333,7 +347,6 @@ export const GameScene: React.FC<GameSceneProps> = ({
     // Add event listeners
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('pointerlockchange', handlePointerLockChange);
     document.addEventListener('pointerlockerror', handlePointerLockError);
 
@@ -671,7 +684,6 @@ export const GameScene: React.FC<GameSceneProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('resize', handleResize);
-      document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
       document.removeEventListener('pointerlockerror', handlePointerLockError);
       
@@ -722,8 +734,13 @@ export const GameScene: React.FC<GameSceneProps> = ({
       
       renderer.dispose();
       scene.clear();
+
+      // Make sure to remove the mousemove listener if it's still attached
+      if (document.pointerLockElement === mountRef.current) {
+        document.removeEventListener('mousemove', handleMouseMove);
+      }
     };
-  }, [gameState.started]);
+  }, [gameState.started, gameState.level, setGameState, setShowLevelUp, mountRef]);
 
   return null;
 };

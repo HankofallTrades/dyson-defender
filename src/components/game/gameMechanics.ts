@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Enemy, Laser, GameState } from './types';
 import { Lightning } from './effects/Lightning';
 import { Explosion as ExplosionEffect } from './effects/Explosion';
+import { playSound, playHitSound, playExplosionSound, createSimpleSound, initAudioContext, createNoiseBuffer } from './utils/soundEffects';
 import { 
   COLORS, 
   LASER_SPEED, 
@@ -34,6 +35,13 @@ export function shootLaser(
   lasers: Laser[],
   scene: THREE.Scene
 ) {
+  // Create a high-frequency laser sound for the player ship
+  // The AudioContext gives the most reliable sound
+  createPlayerLaserSound();
+  
+  // Play player laser sound effect (keep as fallback)
+  playSound('/sounds/laser_player.mp3', 0.7, 1.0);
+
   // Create laser geometry and material
   const laserGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 8);
   laserGeometry.rotateX(Math.PI / 2);
@@ -108,6 +116,13 @@ export function enemyShootLaser(
   level: number,
   playerShip: THREE.Object3D
 ) {
+  // Create a lower-frequency laser sound for enemy ships
+  // The AudioContext gives the most reliable sound
+  createEnemyLaserSound(level);
+  
+  // Play enemy laser sound with a deeper pitch based on enemy level (keep as fallback)
+  playSound('/sounds/laser_enemy.mp3', 0.5, 0.8 + (level * 0.02));
+
   const laserGeom = new THREE.CylinderGeometry(0.05, 0.05, 1, 8);
   laserGeom.rotateX(Math.PI / 2);
 
@@ -165,6 +180,112 @@ export function enemyShootLaser(
       }
     }, 150);
   }
+}
+
+// Helper functions to create more distinct laser sounds
+function createPlayerLaserSound() {
+  const ctx = initAudioContext();
+  if (!ctx) return;
+  
+  // Higher pitched, cleaner sound for player lasers
+  const oscillator = ctx.createOscillator();
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(1900, ctx.currentTime);
+  oscillator.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.15);
+  
+  // Second oscillator for more complexity
+  const oscillator2 = ctx.createOscillator();
+  oscillator2.type = 'sawtooth';
+  oscillator2.frequency.setValueAtTime(1200, ctx.currentTime);
+  oscillator2.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.15);
+  
+  // Filter for a cleaner, more "high-tech" sound
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 2000;
+  filter.Q.value = 8;
+  
+  // Gain nodes for envelope shaping
+  const gain1 = ctx.createGain();
+  gain1.gain.setValueAtTime(0.01, ctx.currentTime);
+  gain1.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.02);
+  gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+  
+  const gain2 = ctx.createGain();
+  gain2.gain.setValueAtTime(0.01, ctx.currentTime);
+  gain2.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
+  gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+  
+  // Connect everything
+  oscillator.connect(filter);
+  filter.connect(gain1);
+  gain1.connect(ctx.destination);
+  
+  oscillator2.connect(gain2);
+  gain2.connect(ctx.destination);
+  
+  // Start and stop
+  oscillator.start(ctx.currentTime);
+  oscillator2.start(ctx.currentTime);
+  
+  oscillator.stop(ctx.currentTime + 0.25);
+  oscillator2.stop(ctx.currentTime + 0.25);
+}
+
+function createEnemyLaserSound(level: number) {
+  const ctx = initAudioContext();
+  if (!ctx) return;
+  
+  // Lower pitched, harsher sound for enemy lasers
+  const oscillator = ctx.createOscillator();
+  oscillator.type = 'sawtooth';
+  
+  // Higher level enemies have slightly higher pitched sounds
+  const basePitch = 400 + (level * 50);
+  oscillator.frequency.setValueAtTime(basePitch, ctx.currentTime);
+  oscillator.frequency.exponentialRampToValueAtTime(basePitch * 0.5, ctx.currentTime + 0.2);
+  
+  // Noise component for a grittier sound
+  const noiseBuffer = createNoiseBuffer(ctx, 0.2);
+  const noiseSource = ctx.createBufferSource();
+  noiseSource.buffer = noiseBuffer;
+  
+  // Filters
+  const oscillatorFilter = ctx.createBiquadFilter();
+  oscillatorFilter.type = 'lowpass';
+  oscillatorFilter.frequency.value = 1000 + (level * 100);
+  
+  const noiseFilter = ctx.createBiquadFilter();
+  noiseFilter.type = 'bandpass';
+  noiseFilter.frequency.value = 800;
+  noiseFilter.Q.value = 3;
+  
+  // Gain nodes
+  const oscGain = ctx.createGain();
+  oscGain.gain.setValueAtTime(0.01, ctx.currentTime);
+  oscGain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+  oscGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+  
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.01, ctx.currentTime);
+  noiseGain.gain.exponentialRampToValueAtTime(0.1, ctx.currentTime + 0.05);
+  noiseGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+  
+  // Connect everything
+  oscillator.connect(oscillatorFilter);
+  oscillatorFilter.connect(oscGain);
+  oscGain.connect(ctx.destination);
+  
+  noiseSource.connect(noiseFilter);
+  noiseFilter.connect(noiseGain);
+  noiseGain.connect(ctx.destination);
+  
+  // Start and stop
+  oscillator.start(ctx.currentTime);
+  noiseSource.start(ctx.currentTime);
+  
+  oscillator.stop(ctx.currentTime + 0.3);
+  noiseSource.stop(ctx.currentTime + 0.3);
 }
 
 export function updateLasers(
@@ -280,6 +401,12 @@ export function updateLasers(
               });
             }
           }, enemy.userData.explosionDuration);
+
+          // Use the direct sound method that works with the button
+          createSimpleSound('explosion');
+          
+          // Play explosion sound (keep as fallback)
+          playExplosionSound();
         } else {
           // Create a smaller hit effect for non-fatal hits without shockwave
           const hitEffect = new ExplosionEffect(
@@ -318,6 +445,12 @@ export function updateLasers(
           
           // Execute the pulse effect
           hitPulse();
+
+          // Use the direct sound method that works with the button
+          createSimpleSound('hit');
+          
+          // Play hit sound (keep as fallback)
+          playHitSound();
         }
         break;
       }
@@ -354,6 +487,10 @@ export function updateEnemyLasers(
     const distance = laser.mesh.position.distanceTo(dysonSphere.position);
 
     if (distance < 5.5) { // Slightly larger than Dyson sphere radius
+      // Play hit sound for Dyson sphere
+      createSimpleSound('hit');
+      playHitSound();
+      
       setGameState(prev => {
         if (prev.dysonsphereShield > 0) {
           // Hit shield first
@@ -389,8 +526,11 @@ export function updateEnemyLasers(
 
     // Check for collision with player
     const playerDistance = laser.mesh.position.distanceTo(playerShip.position);
-    if (playerDistance < 0.7) {
-      // Apply damage to player when hit
+    if (playerDistance < 0.8) { // Player hitbox for lasers
+      // Play hit sound for player with higher volume and lower pitch for impact
+      createSimpleSound('hit');
+      playSound('/sounds/hit.mp3', 0.9, 0.7);
+      
       setGameState(prev => {
         const newPlayerHealth = Math.max(0, prev.playerHealth - PLAYER_LASER_DAMAGE);
         
