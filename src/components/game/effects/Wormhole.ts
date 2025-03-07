@@ -7,16 +7,11 @@ export class Wormhole {
   private targetPosition: THREE.Vector3; // Position of the Dyson sphere
   private startTime: number;
   private duration: number; // Total duration of the wormhole effect in ms
-  private growDuration: number; // Duration of the growth phase
-  private stableDuration: number; // Duration of the stable phase
-  private shrinkDuration: number; // Duration of the shrink phase
   private isComplete: boolean = false;
-  private size: number; // Size the wormhole should grow to
   private wormholeMesh: THREE.Mesh;
   private particleSystem: THREE.Points;
   private innerGlow: THREE.Mesh;
   private spiralMesh: THREE.Line;
-  private color: number;
   private enemyMesh: THREE.Object3D | null = null;
   private enemyShowing: boolean = false;
   private originalEnemyScale: THREE.Vector3 | null = null;
@@ -30,13 +25,8 @@ export class Wormhole {
   ) {
     this.position = position.clone();
     this.targetPosition = targetPosition.clone();
-    this.size = size;
     this.duration = duration * 1000; // Convert to milliseconds
-    this.growDuration = this.duration * 0.3; // 30% of time spent growing
-    this.stableDuration = this.duration * 0.4; // 40% of time spent stable
-    this.shrinkDuration = this.duration * 0.3; // 30% of time spent shrinking
     this.startTime = Date.now();
-    this.color = color;
 
     // Calculate direction from position to target (Dyson sphere)
     const direction = new THREE.Vector3().subVectors(this.targetPosition, this.position).normalize();
