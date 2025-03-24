@@ -1,6 +1,4 @@
 import * as THREE from 'three';
-import { PlayerShipVisual } from './PlayerShipVisual';
-import { PlayerShip } from '../core/entities/PlayerShip';
 
 /**
  * Three.js Scene Management System
@@ -28,9 +26,6 @@ export class SceneManager {
   private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
   
-  // Game objects
-  private playerShipVisual: PlayerShipVisual | null = null;
-  
   // Container element
   private container: HTMLElement;
   
@@ -49,16 +44,22 @@ export class SceneManager {
    * @param container The HTML element where the scene will be rendered
    */
   private constructor(container: HTMLElement) {
+    console.log('Creating SceneManager instance');
     this.container = container;
+    
+    // Initialize in specific order
     this.initScene();
-    this.initCamera();
     this.initRenderer();
+    this.initCamera();
     this.initLights();
     this.initInputHandling();
+    
+    // Handle initial resize
     this.handleResize();
     
     // Set up resize listener
     window.addEventListener('resize', this.handleResize);
+    console.log('SceneManager initialization complete');
   }
   
   /**
@@ -76,6 +77,7 @@ export class SceneManager {
    * Initialize the Three.js scene
    */
   private initScene(): void {
+    console.log('Initializing scene');
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x000020); // Dark blue background
   }
@@ -84,6 +86,7 @@ export class SceneManager {
    * Initialize the camera
    */
   private initCamera(): void {
+    console.log('Initializing camera');
     const aspect = this.container.clientWidth / this.container.clientHeight;
     this.camera = new THREE.PerspectiveCamera(
       75, // Field of view
@@ -100,6 +103,7 @@ export class SceneManager {
    * Initialize the WebGL renderer
    */
   private initRenderer(): void {
+    console.log('Initializing renderer');
     this.renderer = new THREE.WebGLRenderer({ 
       antialias: true,
       alpha: false 
@@ -123,6 +127,7 @@ export class SceneManager {
    * Add basic lighting to the scene
    */
   private initLights(): void {
+    console.log('Initializing lights');
     // Add ambient light
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(ambientLight);
@@ -134,22 +139,10 @@ export class SceneManager {
   }
   
   /**
-   * Set the player ship entity
-   * @param playerShip The player ship entity to visualize
-   */
-  public setPlayerShip(playerShip: PlayerShip): void {
-    if (this.playerShipVisual) {
-      this.removeFromScene(this.playerShipVisual.getMesh());
-      this.playerShipVisual.dispose();
-    }
-    this.playerShipVisual = new PlayerShipVisual(playerShip);
-    this.addToScene(this.playerShipVisual.getMesh());
-  }
-  
-  /**
    * Initialize input handling
    */
   private initInputHandling(): void {
+    console.log('Initializing input handling');
     window.addEventListener('keydown', (event) => {
       switch (event.key.toLowerCase()) {
         case 'w': this.inputState.forward = true; break;
@@ -177,6 +170,7 @@ export class SceneManager {
    * Handle window resize events
    */
   private handleResize = (): void => {
+    console.log('Handling resize');
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
     
@@ -193,19 +187,9 @@ export class SceneManager {
   }
   
   /**
-   * Update the scene
-   */
-  public update(): void {
-    if (this.playerShipVisual) {
-      this.playerShipVisual.update();
-    }
-  }
-  
-  /**
    * Render the scene
    */
   public render(): void {
-    this.update();
     this.renderer.render(this.scene, this.camera);
   }
   
@@ -250,17 +234,12 @@ export class SceneManager {
    * Clean up resources
    */
   public dispose(): void {
+    console.log('Disposing SceneManager');
     window.removeEventListener('resize', this.handleResize);
     
     // Remove input event listeners
     window.removeEventListener('keydown', () => {});
     window.removeEventListener('keyup', () => {});
-    
-    // Dispose of player ship visual
-    if (this.playerShipVisual) {
-      this.playerShipVisual.dispose();
-      this.playerShipVisual = null;
-    }
     
     // Dispose of renderer
     this.renderer.dispose();

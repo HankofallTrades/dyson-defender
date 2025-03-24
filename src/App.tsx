@@ -1,79 +1,75 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import './App.css'
-import Game from './core/Game'
-import { GameState } from './core/State'
+import { SceneManager } from './rendering/SceneManager'
+import { World } from './core/World'
+import { createDysonSphere } from './core/entities/DysonSphereEntity'
+import { AutoRotateSystem } from './core/systems/AutoRotateSystem'
 
 function App() {
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const gameRef = useRef<Game | null>(null);
-  const [gameState, setGameState] = useState<GameState | null>(null);
+  console.log('App component rendering');
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
-    
-    console.log("Creating game instance");
-    console.log("Container dimensions:", {
-      width: canvasRef.current.clientWidth,
-      height: canvasRef.current.clientHeight
+    console.log('App useEffect triggered');
+    if (!containerRef.current) {
+      console.error('Container ref is null');
+      return;
+    }
+
+    console.log('Initializing game...');
+    console.log('Container dimensions:', {
+      width: containerRef.current.clientWidth,
+      height: containerRef.current.clientHeight
     });
+
+    // Initialize scene manager
+    const sceneManager = SceneManager.getInstance(containerRef.current);
+    console.log('Scene manager initialized');
     
-    const game = new Game(canvasRef.current);
-    gameRef.current = game;
+    // Initialize world and systems
+    const world = new World();
+    const autoRotateSystem = new AutoRotateSystem(world);
+    world.addSystem(autoRotateSystem);
+    console.log('World and systems initialized');
     
-    // Start the game
-    game.start();
+    // Create Dyson Sphere
+    const dysonSphereEntity = createDysonSphere(world, sceneManager.getScene());
+    console.log('Created Dyson Sphere entity:', dysonSphereEntity);
     
-    // Set up interval to update the UI with game state
-    const stateInterval = setInterval(() => {
-      if (game) {
-        const state = game.getGameState();
-        setGameState(state);
-      }
-    }, 100); // Update UI at 10 FPS to avoid performance issues
+    // Position camera to see the Dyson Sphere
+    const camera = sceneManager.getCamera();
+    camera.position.set(0, 0, 150);
+    camera.lookAt(0, 0, 0);
+    console.log('Camera positioned:', camera.position);
     
+    // Animation loop
+    let lastTime = performance.now();
+    let animationFrameId: number;
+    
+    const animate = (currentTime: number) => {
+      const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+      lastTime = currentTime;
+      
+      world.update(deltaTime);
+      sceneManager.render();
+      
+      animationFrameId = requestAnimationFrame(animate);
+    };
+    
+    animationFrameId = requestAnimationFrame(animate);
+    console.log('Animation loop started');
+    
+    // Cleanup
     return () => {
-      console.log("Disposing game instance");
-      clearInterval(stateInterval);
-      game.dispose();
+      console.log('Cleaning up...');
+      cancelAnimationFrame(animationFrameId);
+      sceneManager.dispose();
     };
   }, []);
-  
-  const handleStartStop = () => {
-    if (!gameRef.current) return;
-    
-    if (gameState?.isPaused) {
-      gameRef.current.start();
-    } else {
-      gameRef.current.pause();
-    }
-  };
-  
-  const handleReset = () => {
-    if (!gameRef.current) return;
-    gameRef.current.resetGame();
-  };
 
   return (
     <div className="app">
-      <div className="game-ui">
-        <div className="game-hud">
-          {gameState && (
-            <>
-              <div className="hud-item">Score: {gameState.score}</div>
-              <div className="hud-item">Health: {gameState.dysonSphereHealth}/{gameState.dysonSphereMaxHealth}</div>
-              <div className="hud-item">Wave: {gameState.currentWave}</div>
-              <div className="hud-item">Enemies: {gameState.enemiesRemaining}</div>
-            </>
-          )}
-        </div>
-        <div className="game-controls">
-          <button onClick={handleStartStop}>
-            {gameState?.isPaused ? 'Start' : 'Pause'}
-          </button>
-          <button onClick={handleReset}>Reset</button>
-        </div>
-      </div>
-      <div id="game-container" className="game-container" ref={canvasRef}></div>
+      <div id="game-container" className="game-container" ref={containerRef}></div>
     </div>
   )
 }

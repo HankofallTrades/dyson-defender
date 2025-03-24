@@ -3,7 +3,7 @@ import { GameState, GameStateManager } from './State';
 import { SceneManager } from '../rendering/SceneManager';
 import { EntityManager } from './EntityManager';
 import { DysonSphere } from './entities/DysonSphere';
-import { PlayerShip } from './entities/PlayerShip';
+import { PlayerShip } from './entities/PlayerShipEntity';
 
 /**
  * Main Game Controller
