@@ -46,6 +46,7 @@ class Game {
   private animationFrameId: number | null = null;
   private lastFrameTime: number = 0;
   private hudSystem!: HUDSystem; // Use definite assignment assertion
+  private waveSystem!: WaveSystem; // Use definite assignment assertion
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -76,7 +77,10 @@ class Game {
     this.hudSystem = new HUDSystem(this.world);
     this.world.addSystem(this.hudSystem);
     
-    this.world.addSystem(new WaveSystem(this.world));
+    // Create and store reference to Wave system
+    this.waveSystem = new WaveSystem(this.world);
+    this.world.addSystem(this.waveSystem);
+    
     this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
   }
 
@@ -85,11 +89,19 @@ class Game {
     const playerShip = createPlayerShip(this.world);
     createCamera(this.world, playerShip);
     createHUD(this.world, playerShip, dysonSphere);
+    
+    // Force the WaveSystem to find the Dyson Sphere again
+    // since it was likely looking for it before it was created
+    this.waveSystem.findDysonSphereEntity();
   }
 
   public startGame(): void {
     // Update the game state to playing through the HUD system
     this.hudSystem.startGame();
+    
+    // Ensure the WaveSystem is properly set up
+    this.waveSystem.findDysonSphereEntity();
+    this.waveSystem.resetWaves();
     
     if (!this.isRunning) {
       this.isRunning = true;
