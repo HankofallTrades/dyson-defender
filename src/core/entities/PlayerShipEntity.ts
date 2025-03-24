@@ -1,6 +1,6 @@
 // src/core/entities/PlayerShipEntity.ts
 import { World } from '../World';
-import { Position, Velocity, Renderable, InputReceiver, Rotation, MouseLook, LaserCooldown, Collider } from '../components';
+import { Position, Velocity, Renderable, InputReceiver, Rotation, MouseLook, LaserCooldown, Collider, Health } from '../components';
 import { COLORS } from '../../constants/colors';
 
 export function createPlayerShip(world: World): number {
@@ -27,6 +27,12 @@ export function createPlayerShip(world: World): number {
     pitchMax: Math.PI / 2.5,  // Limit looking down
     yaw: Math.PI/2,    // Initial yaw should match the ship's rotation      
     pitch: 0
+  });
+  
+  // Add health component
+  world.addComponent(entity, 'Health', {
+    current: 100,
+    max: 100
   });
   
   // Add weapon cooldown component

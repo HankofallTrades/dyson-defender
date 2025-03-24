@@ -181,6 +181,13 @@ export class CollisionSystem implements System {
     } else if (colliderB.layer === 'enemy' && colliderA.layer === 'dysonSphere') {
       this.handleEnemyDysonSphereCollision(entityB, entityA);
     }
+    
+    // Handle player-enemy collision
+    if (colliderA.layer === 'player' && colliderB.layer === 'enemy') {
+      this.handlePlayerEnemyCollision(entityA, entityB);
+    } else if (colliderB.layer === 'player' && colliderA.layer === 'enemy') {
+      this.handlePlayerEnemyCollision(entityB, entityA);
+    }
   }
   
   private handleEnemyDysonSphereCollision(enemyEntity: number, dysonSphereEntity: number): void {
@@ -237,6 +244,40 @@ export class CollisionSystem implements System {
     
     // Remove the projectile
     this.world.removeEntity(projectileEntity);
+  }
+  
+  private handlePlayerEnemyCollision(playerEntity: number, enemyEntity: number): void {
+    // Get player health
+    const playerHealth = this.world.getComponent<Health>(playerEntity, 'Health');
+    if (!playerHealth) return;
+    
+    // Get enemy component
+    const enemy = this.world.getComponent<{ damage: number }>(enemyEntity, 'Enemy');
+    if (!enemy) return;
+    
+    // Apply damage to player
+    playerHealth.current -= enemy.damage;
+    
+    // Clamp health to minimum of 0
+    playerHealth.current = Math.max(0, playerHealth.current);
+    
+    // Get HUD system to display message
+    const hudSystem = this.getHUDSystem();
+    if (hudSystem) {
+      hudSystem.displayMessage("Ship damaged! Hull integrity compromised.", 2);
+    }
+    
+    // Remove the enemy
+    this.world.removeEntity(enemyEntity);
+    
+    // Check if player is destroyed
+    if (playerHealth.current <= 0) {
+      // For now, just display a game over message
+      // In a full implementation, this would trigger a game over state
+      if (hudSystem) {
+        hudSystem.displayMessage("GAME OVER - Ship destroyed", 5);
+      }
+    }
   }
   
   // Get the HUD system from the world

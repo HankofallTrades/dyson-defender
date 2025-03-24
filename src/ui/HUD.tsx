@@ -10,7 +10,7 @@ interface HUDProps {
 
 const HUD: React.FC<HUDProps> = ({ world }) => {
   // State to hold UI data
-  const [playerHealth, setPlayerHealth] = useState({ current: 0, max: 0 });
+  const [playerHealth, setPlayerHealth] = useState({ current: 100, max: 100 });
   const [score, setScore] = useState(0);
   const [message, setMessage] = useState('');
   const [dysonHealth, setDysonHealth] = useState(100);
@@ -75,6 +75,24 @@ const HUD: React.FC<HUDProps> = ({ world }) => {
     return `#${hexColor.toString(16).padStart(6, '0')}`;
   };
   
+  // Calculate player health percentage
+  const playerHealthPercentage = (playerHealth.current / playerHealth.max) * 100;
+  
+  // Determine hull status text and color based on health percentage
+  const getHullStatus = () => {
+    if (playerHealthPercentage > 75) {
+      return { text: 'OPTIMAL', color: '#4CAF50' };
+    } else if (playerHealthPercentage > 50) {
+      return { text: 'FUNCTIONAL', color: '#FFC107' };
+    } else if (playerHealthPercentage > 25) {
+      return { text: 'WARNING', color: '#FF9800' };
+    } else {
+      return { text: 'CRITICAL', color: '#F44336' };
+    }
+  };
+  
+  const hullStatus = getHullStatus();
+  
   return (
     <>
       {/* Dyson Sphere HUD - Top Left */}
@@ -120,28 +138,82 @@ const HUD: React.FC<HUDProps> = ({ world }) => {
         zIndex: 10,
         pointerEvents: 'none'
       }}>
-        <div style={{ color: '#ff5722', textAlign: 'center' }}>
-          HULL STATUS: {playerHealth.current < playerHealth.max * 0.2 ? 'CRITICAL' : 'NOMINAL'}
+        {/* Pilot Health Section with Dynamic Color */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '5px',
+          color: hullStatus.color
+        }}>
+          <span>HULL STATUS: <span>{hullStatus.text}</span></span>
         </div>
-        <div className="progress-bar">
-          <div 
-            className="progress-fill player-health"
-            style={{ 
-              width: `${(playerHealth.current / playerHealth.max) * 100}%`,
-            }}
-          />
+        {/* Health Bar with Gradient and Percentage */}
+        <div style={{
+          width: '100%',
+          height: '20px',
+          background: 'rgba(0, 0, 0, 0.5)',
+          border: '2px solid #555555',
+          borderRadius: '10px',
+          overflow: 'hidden',
+          boxShadow: '0 0 10px rgba(0, 0, 0, 0.3), inset 0 0 5px rgba(0, 0, 0, 0.5)',
+          position: 'relative'
+        }}>
+          <div style={{ 
+            width: `${playerHealthPercentage}%`,
+            height: '100%',
+            background: `linear-gradient(90deg, 
+              #F44336, 
+              ${playerHealthPercentage > 60 ? '#4CAF50' : 
+                playerHealthPercentage > 30 ? '#FFC107' : '#F44336'})`,
+            transition: 'width 0.3s ease'
+          }}></div>
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            color: '#ffffff',
+            textShadow: '1px 1px 2px #000000',
+            fontSize: '0.65rem',
+            fontWeight: 'bold'
+          }}>
+            {Math.round(playerHealthPercentage)}%
+          </div>
         </div>
         
         <div style={{ color: '#00ffff', textAlign: 'center', marginTop: '10px' }}>
           BOOST SYSTEM: {boostReady ? 'READY' : 'CHARGING'}
         </div>
-        <div className="progress-bar">
-          <div 
-            className="progress-fill boost"
-            style={{ 
-              width: boostReady ? '100%' : '60%',
-            }}
-          />
+        {/* Thicker Boost Bar */}
+        <div style={{
+          width: '100%',
+          height: '20px',
+          background: 'rgba(0, 0, 0, 0.5)',
+          border: '2px solid #555555',
+          borderRadius: '10px',
+          overflow: 'hidden',
+          boxShadow: '0 0 10px rgba(0, 0, 0, 0.3), inset 0 0 5px rgba(0, 0, 0, 0.5)',
+          position: 'relative'
+        }}>
+          <div style={{ 
+            width: boostReady ? '100%' : '60%',
+            height: '100%',
+            background: 'linear-gradient(90deg, #00ffff, #ff00ff)',
+            transition: 'width 0.3s ease'
+          }}></div>
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            color: '#ffffff',
+            textShadow: '1px 1px 2px #000000',
+            fontSize: '0.65rem',
+            fontWeight: 'bold'
+          }}>
+            {boostReady ? 'READY' : '60%'}
+          </div>
         </div>
       </div>
       
