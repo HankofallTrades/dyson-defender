@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+Description: Maintain clear boundaries between game logic, rendering, and UI. Game logic (in TypeScript) should only update the game state, rendering (in Three.js) should only read the state to display it, and UI (in React) should reflect the state without managing it. Avoid mixing these concerns in the same files or modules.
+Why: This separation prevents tight coupling, making it easier to debug, test, and extend the codebase. For example, swapping out the rendering engine or UI framework won’t disrupt the game logic.
+File Pattern: Applies to src/core/*.ts, src/rendering/*.ts, and src/ui/*.tsx.

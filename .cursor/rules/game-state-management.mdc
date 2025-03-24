@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Description: Structure the game state to be easily serializable (e.g., convertible to JSON). Avoid including non-serializable data like functions or complex objects in the state.
+
+Why: This prepares the game for future multiplayer integration, allowing the state to be sent over the WebSocket API with minimal refactoring.
+
+File Pattern: Applies to src/core/State.ts and related state management files.

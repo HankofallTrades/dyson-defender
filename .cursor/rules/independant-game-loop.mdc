@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Description: Keep the game loop (handling updates and rendering) independent of UI updates. The loop should target a consistent frame rate (e.g., 60 FPS), while React manages UI updates separately without blocking the game.
+
+Why: This ensures a responsive game experience, preventing UI rendering from slowing down the core game loop.
+
+File Pattern: Applies to src/core/Game.ts and src/ui/*.tsx.

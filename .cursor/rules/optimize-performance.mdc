@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Description: Optimize code for performance:
+In game logic, minimize operations that trigger garbage collection (e.g., avoid frequent object allocations).
+In rendering, use efficient Three.js practices like instancing for repeated objects and proper disposal of unused objects (e.g., mesh.dispose()).
+
+Why: Performance is critical in games, especially with 3D rendering, to ensure smooth gameplay and efficient resource use.
+
+File Pattern: Applies to src/core/Mechanics.ts and src/rendering/Scene.ts.

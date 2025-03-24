@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Description: Design the codebase with modularity as a priority. Break the game into small, independent modules—each with a single responsibility (e.g., player movement, enemy AI, collision detection) and a clear interface. Avoid creating large, monolithic files or classes that handle multiple concerns.
+Why: Modular code is easier to maintain, test, and scale. It prevents the pitfalls of tangled, hard-to-refactor monoliths, especially as the game grows or multiplayer features are added.
+File Pattern: Applies to src/core/*.ts and src/rendering/*.ts.

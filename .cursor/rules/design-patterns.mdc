@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Description: Implement game development design patterns, such as the Entity-Component-System (ECS) pattern, to manage game entities and their behaviors efficiently.
+
+Why: Patterns like ECS provide flexibility and scalability, making it easier to add new features or modify existing ones without breaking the system.
+
+File Pattern: Applies to src/core/Mechanics.ts and entity-related files.
