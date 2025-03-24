@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { World, System } from '../World';
 import { Position, Collider, Projectile, Health } from '../components';
+import { HUDSystem } from './HUDSystem';
 
 /**
  * Collision System
@@ -217,14 +218,38 @@ export class CollisionSystem implements System {
       
       // Check if entity is destroyed
       if (health.current <= 0) {
-        // Handle entity destruction
-        // This could spawn effects, update score, etc.
-        // For now, just remove it
+        // Get HUD system to update score
+        const hudSystem = this.getHUDSystem();
+        
+        // If this is an enemy, update the score
+        if (this.world.hasComponent(targetEntity, 'Enemy')) {
+          if (hudSystem) {
+            // Add score based on enemy type (10 points per enemy)
+            hudSystem.incrementScore(10);
+            hudSystem.displayMessage("Enemy destroyed! +10 points", 1.5);
+          }
+        }
+        
+        // Remove the destroyed entity
         this.world.removeEntity(targetEntity);
       }
     }
     
     // Remove the projectile
     this.world.removeEntity(projectileEntity);
+  }
+  
+  // Get the HUD system from the world
+  private getHUDSystem(): HUDSystem | null {
+    const systems = (this.world as any).systems;
+    if (!systems) return null;
+    
+    for (const system of systems) {
+      if (system instanceof HUDSystem) {
+        return system;
+      }
+    }
+    
+    return null;
   }
 } 

@@ -5,6 +5,7 @@ import { World } from './World';
 import { createDysonSphere } from './entities/DysonSphereEntity';
 import { createPlayerShip } from './entities/PlayerShipEntity';
 import { createCamera } from './entities/CameraEntity';
+import { createHUD } from './entities/HUDEntity';
 import { InputSystem } from './systems/InputSystem';
 import { MovementSystem } from './systems/MovementSystem';
 import { RenderingSystem } from './systems/RenderingSystem';
@@ -14,6 +15,7 @@ import { WeaponSystem } from './systems/WeaponSystem';
 import { CollisionSystem } from './systems/CollisionSystem';
 import { WaveSystem } from './systems/WaveSystem';
 import { EnemySystem } from './systems/EnemySystem';
+import { HUDSystem } from './systems/HUDSystem';
 
 /**
  * Main Game Controller
@@ -68,13 +70,15 @@ class Game {
     this.world.addSystem(new WeaponSystem(this.world, this.sceneManager));
     this.world.addSystem(new EnemySystem(this.world));
     this.world.addSystem(new CollisionSystem(this.world));
+    this.world.addSystem(new HUDSystem(this.world));
     this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
   }
 
   private initEntities(): void {
-    createDysonSphere(this.world);
+    const dysonSphere = createDysonSphere(this.world);
     const playerShip = createPlayerShip(this.world);
     createCamera(this.world, playerShip);
+    createHUD(this.world, playerShip, dysonSphere);
   }
 
   public start(): void {

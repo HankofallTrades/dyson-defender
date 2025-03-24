@@ -1,0 +1,365 @@
+@keyframes scanlines {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 4px;
+  }
+}
+
+@keyframes glow {
+  0% {
+    text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 30px #ff00ff;
+  }
+  50% {
+    text-shadow: 0 0 20px #ff00ff, 0 0 30px #ff00ff, 0 0 40px #ff00ff;
+  }
+  100% {
+    text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 30px #ff00ff;
+  }
+}
+
+.retro-button {
+  background: linear-gradient(45deg, #ff00ff, #00ffff);
+  border: 3px solid #ffffff;
+  color: white;
+  font-family: 'Press Start 2P', system-ui;
+  font-size: 1.2rem;
+  padding: 1rem 2rem;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+  text-shadow: 2px 2px 0 #000;
+  box-shadow: 
+    0 0 10px rgba(255, 0, 255, 0.5),
+    0 0 20px rgba(255, 0, 255, 0.3),
+    0 0 30px rgba(255, 0, 255, 0.1);
+}
+
+.retro-button:hover {
+  transform: scale(1.05);
+  box-shadow: 
+    0 0 20px rgba(255, 0, 255, 0.8),
+    0 0 30px rgba(255, 0, 255, 0.6),
+    0 0 40px rgba(255, 0, 255, 0.4);
+}
+
+.retro-button:active {
+  transform: scale(0.95);
+}
+
+.retro-text {
+  font-family: 'Press Start 2P', system-ui;
+  color: #00ffff;
+  text-shadow: 2px 2px 0 #000;
+  letter-spacing: 2px;
+}
+
+.retro-header {
+  font-family: 'Press Start 2P', system-ui;
+  color: #ff00ff;
+  text-shadow: 
+    0 0 10px #ff00ff,
+    0 0 20px #ff00ff,
+    2px 2px 0 #000;
+  letter-spacing: 4px;
+  animation: glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.05);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+.pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes gameOverScanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.game-over-screen {
+  position: relative;
+  overflow: hidden;
+}
+
+.game-over-screen::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(255, 0, 255, 0.2),
+    transparent
+  );
+  animation: gameOverScanline 2s linear infinite;
+  pointer-events: none;
+}
+
+.game-over-text {
+  animation: glitchText 0.2s ease-in-out infinite alternate;
+}
+
+@keyframes glitchText {
+  0% {
+    text-shadow: 
+      2px 0 #00ffff,
+      -2px 0 #ff00ff;
+  }
+  100% {
+    text-shadow: 
+      -2px 0 #00ffff,
+      2px 0 #ff00ff;
+  }
+}
+
+@keyframes valueChange {
+  0% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(2);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+.value-change {
+  animation: valueChange 0.3s ease-out;
+}
+
+.hud-value {
+  transition: filter 0.3s ease;
+}
+
+.hud-value:hover {
+  filter: brightness(1.5);
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+
+.bounce {
+  animation: bounce 1s ease-in-out infinite;
+}
+
+/* Add a subtle gradient animation to the background */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-bg {
+  background: linear-gradient(
+    45deg, 
+    rgba(0,0,0,0.95), 
+    rgba(83,0,130,0.95),
+    rgba(130,0,83,0.95)
+  );
+  background-size: 200% 200%;
+  animation: gradientShift 5s ease infinite;
+}
+
+@keyframes pulseBorder {
+  0% {
+    box-shadow: 
+      0 0 20px rgba(255, 0, 255, 0.3),
+      0 0 40px rgba(255, 0, 255, 0.2),
+      inset 0 0 20px rgba(255, 0, 255, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 0 30px rgba(255, 0, 255, 0.5),
+      0 0 60px rgba(255, 0, 255, 0.3),
+      inset 0 0 30px rgba(255, 0, 255, 0.3);
+  }
+  100% {
+    box-shadow: 
+      0 0 20px rgba(255, 0, 255, 0.3),
+      0 0 40px rgba(255, 0, 255, 0.2),
+      inset 0 0 20px rgba(255, 0, 255, 0.2);
+  }
+}
+
+.pulse-border {
+  animation: pulseBorder 2s ease-in-out infinite;
+}
+
+/* Progress bar styles */
+.progress-bar {
+  width: 100%;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid #00ffff;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00ffff, #ff00ff);
+  transition: width 0.3s ease;
+}
+
+.progress-fill.shield {
+  background-color: #21a9f3;
+  box-shadow: 0 0 12px 2px rgba(33, 169, 243, 0.7), 0 0 4px 1px rgba(33, 169, 243, 0.9) inset;
+}
+
+.progress-fill.player-health {
+  background-color: #ff5722;
+  box-shadow: 0 0 12px 2px rgba(255, 87, 34, 0.7), 0 0 4px 1px rgba(255, 87, 34, 0.9) inset;
+}
+
+.progress-fill.boost {
+  background-color: #ffeb3b;
+  box-shadow: 0 0 12px 2px rgba(255, 235, 59, 0.7), 0 0 4px 1px rgba(255, 235, 59, 0.9) inset;
+}
+
+/* Wave cooldown styles */
+.wave-cooldown {
+  font-size: 0.9rem;
+  color: #ff00ff;
+  text-shadow: 0 0 5px #ff00ff;
+  animation: pulse 1s infinite alternate;
+  margin-top: 10px;
+}
+
+/* Level-up notification styles */
+.level-up-notification {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  border: 4px solid #ff00ff;
+  border-radius: 16px;
+  padding: 30px;
+  text-align: center;
+  color: #00ffff;
+  font-family: 'Press Start 2P', monospace;
+  box-shadow: 0 0 30px rgba(255, 0, 255, 0.7);
+  animation: scaleIn 0.5s ease-out, glow 2s ease-in-out infinite;
+  z-index: 100;
+}
+
+.level-up-notification h2 {
+  margin: 0 0 20px 0;
+  font-size: 2rem;
+  background: linear-gradient(180deg, #ff00ff, #00ffff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.level-up-notification h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.5rem;
+  color: #ff00ff;
+  text-shadow: 0 0 10px #ff00ff;
+}
+
+.level-up-notification p {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #ffffff;
+  text-shadow: 0 0 5px #00ffff;
+}
+
+.level-up-notification p:last-child {
+  margin-top: 10px;
+  font-size: 1rem;
+  color: #ffff00;
+  text-shadow: 0 0 5px #ffff00;
+  animation: pulse 1s infinite alternate;
+}
+
+@keyframes scaleIn {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Additional pulse animation for class names */
+@keyframes pulse-opacity {
+  0% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* HUD container specific styling */
+.retro-hud-container {
+  padding: 1rem;
+  border: 2px solid #00ffff;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.3);
+  animation: pulseBorder 2s ease-in-out infinite;
+}
+
+/* HUD label styling */
+.retro-hud-label {
+  font-family: 'Press Start 2P', system-ui;
+  color: #ff00ff;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 0 #000;
+}
+
+/* Score display styling */
+.retro-score {
+  font-family: 'Press Start 2P', system-ui;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid #ff00ff;
+  border-radius: 8px;
+  padding: 0.75rem;
+  color: #ffff00;
+  text-shadow: 0 0 10px #ffff00;
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+} 

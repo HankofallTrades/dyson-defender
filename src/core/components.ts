@@ -101,3 +101,27 @@ export interface WaveInfo {
   nextWaveTimer: number;
   isActive: boolean;
 }
+
+// UI-related components
+export interface UIDisplay {
+  visible: boolean;
+}
+
+export interface HealthDisplay {
+  entity: number;  // Reference to the entity whose health we're displaying
+}
+
+export interface ScoreDisplay {
+  score: number;
+}
+
+export interface MessageDisplay {
+  message: string;
+  duration: number;  // How long to display the message
+  timeRemaining: number;
+}
+
+export interface DysonSphereStatus {
+  healthPercentage: number;
+  criticalThreshold: number;  // Percentage at which to show warning
+}
