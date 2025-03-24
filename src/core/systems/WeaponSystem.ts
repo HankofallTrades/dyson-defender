@@ -102,7 +102,7 @@ export class WeaponSystem implements System {
     };
     
     // Create the laser entity
-    createLaser(this.world, this.scene, spawnPos, forward);
+    createLaser(this.world, this.scene, spawnPos, forward, entity);
   }
   
   private updateProjectiles(deltaTime: number): void {

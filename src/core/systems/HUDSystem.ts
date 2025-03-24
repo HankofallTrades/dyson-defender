@@ -1,8 +1,9 @@
 import { System, World } from '../World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, Renderable, DamageEffect } from '../components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, Renderable, DamageEffect, GameStateDisplay, GameOverStats } from '../components';
 
 export class HUDSystem implements System {
   private world: World;
+  private gameStartTime: number = 0;
   
   constructor(world: World) {
     this.world = world;
@@ -17,6 +18,7 @@ export class HUDSystem implements System {
       this.updateDysonSphereStatus(hudEntity);
       this.updateMessages(hudEntity, deltaTime);
       this.updateDamageEffect(hudEntity, deltaTime);
+      this.updateGameState(hudEntity);
     }
   }
   
@@ -85,7 +87,62 @@ export class HUDSystem implements System {
     }
   }
   
-  // Method to display a message - can be called from other systems
+  private updateGameState(hudEntity: number): void {
+    const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
+    if (!gameStateDisplay) return;
+    
+    // Only check for game over conditions if we're currently playing
+    if (gameStateDisplay.currentState !== 'playing') return;
+    
+    // Check for game over condition - Dyson Sphere destroyed
+    const dysonSphereEntities = this.world.getEntitiesWith(['Health', 'Renderable']);
+    for (const entity of dysonSphereEntities) {
+      const renderable = this.world.getComponent<Renderable>(entity, 'Renderable');
+      if (renderable && renderable.modelId === 'dysonSphere') {
+        const health = this.world.getComponent<Health>(entity, 'Health');
+        if (health && health.current <= 0) {
+          this.triggerGameOver(hudEntity, 'Dyson Sphere Destroyed');
+          return;
+        }
+      }
+    }
+    
+    // Check for game over condition - Player destroyed
+    const playerEntities = this.world.getEntitiesWith(['Health', 'InputReceiver']);
+    if (playerEntities.length > 0) {
+      const playerEntity = playerEntities[0];
+      const health = this.world.getComponent<Health>(playerEntity, 'Health');
+      if (health && health.current <= 0) {
+        this.triggerGameOver(hudEntity, 'Player Ship Destroyed');
+        return;
+      }
+    }
+  }
+  
+  private triggerGameOver(hudEntity: number, reason: string): void {
+    const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
+    if (!gameStateDisplay) return;
+    
+    // Update game state to game over
+    gameStateDisplay.currentState = 'game_over';
+    
+    // Update game over stats
+    const gameOverStats = this.world.getComponent<GameOverStats>(hudEntity, 'GameOverStats');
+    const scoreDisplay = this.world.getComponent<ScoreDisplay>(hudEntity, 'ScoreDisplay');
+    
+    if (gameOverStats && scoreDisplay) {
+      gameOverStats.finalScore = scoreDisplay.score;
+      gameOverStats.survivalTime = (Date.now() - this.gameStartTime) / 1000; // in seconds
+      
+      // Calculate enemies defeated based on score
+      // This is a simplified example - you might have a dedicated counter in a real game
+      gameOverStats.enemiesDefeated = Math.floor(scoreDisplay.score / 100);
+    }
+    
+    // Display game over message
+    this.displayMessage(`GAME OVER - ${reason}`, 0); // Duration 0 means permanent
+  }
+  
   public displayMessage(message: string, duration: number = 3): void {
     const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'MessageDisplay']);
     if (hudEntities.length === 0) return;
@@ -108,7 +165,6 @@ export class HUDSystem implements System {
     }
   }
   
-  // Method to activate damage effect with specified intensity
   public activateDamageEffect(intensity: number = 0.8, duration: number = 0.5): void {
     const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'DamageEffect']);
     if (hudEntities.length === 0) return;
@@ -119,6 +175,20 @@ export class HUDSystem implements System {
       damageEffect.intensity = intensity;
       damageEffect.duration = duration;
       damageEffect.timeRemaining = duration;
+    }
+  }
+  
+  public startGame(): void {
+    const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
+    if (hudEntities.length === 0) return;
+    
+    const hudEntity = hudEntities[0];
+    const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
+    
+    if (gameStateDisplay) {
+      gameStateDisplay.currentState = 'playing';
+      this.gameStartTime = Date.now();
+      this.displayMessage('Game Started! Protect the Dyson Sphere!', 3);
     }
   }
 } 

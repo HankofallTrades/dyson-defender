@@ -19,13 +19,10 @@ function App() {
     // Get access to the world for HUD rendering
     // Access the private field using bracket notation
     // This is a workaround to access private fields in TypeScript
-    const gameWorld = (game as any).world;
+    const gameWorld = game.getWorld();
     if (gameWorld) {
       setWorld(gameWorld);
     }
-    
-    // Start the game
-    game.start();
     
     // Cleanup
     return () => {
@@ -35,11 +32,29 @@ function App() {
       }
     };
   }, []);
+  
+  const handleStartGame = () => {
+    if (gameRef.current) {
+      gameRef.current.startGame();
+    }
+  };
+
+  const handleRestartGame = () => {
+    if (gameRef.current) {
+      gameRef.current.restart();
+    }
+  };
 
   return (
     <div className="app">
       <div id="game-container" className="game-container" ref={containerRef}></div>
-      {world && <HUD world={world} />}
+      {world && (
+        <HUD 
+          world={world} 
+          onStartGame={handleStartGame}
+          onRestartGame={handleRestartGame}
+        />
+      )}
     </div>
   )
 }

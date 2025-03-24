@@ -16,6 +16,7 @@ import { CollisionSystem } from './systems/CollisionSystem';
 import { WaveSystem } from './systems/WaveSystem';
 import { EnemySystem } from './systems/EnemySystem';
 import { HUDSystem } from './systems/HUDSystem';
+import { GameStateDisplay } from './components';
 
 /**
  * Main Game Controller
@@ -44,6 +45,7 @@ class Game {
   private isRunning: boolean = false;
   private animationFrameId: number | null = null;
   private lastFrameTime: number = 0;
+  private hudSystem!: HUDSystem; // Use definite assignment assertion
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -54,13 +56,12 @@ class Game {
 
     this.initSystems();
     this.initEntities();
-    this.world.addSystem(new WaveSystem(this.world));
 
     this.render();
     window.addEventListener('resize', this.handleResize);
     
-    // Start the game automatically
-    this.start();
+    // Don't start the game automatically - just render the start screen
+    this.animationFrameId = requestAnimationFrame(this.animate);
   }
 
   private initSystems(): void {
@@ -68,9 +69,14 @@ class Game {
     this.world.addSystem(new MovementSystem(this.sceneManager, this.world));
     this.world.addSystem(new CameraSystem(this.sceneManager, this.world));
     this.world.addSystem(new WeaponSystem(this.world, this.sceneManager));
-    this.world.addSystem(new EnemySystem(this.world));
+    this.world.addSystem(new EnemySystem(this.world, this.sceneManager.getScene()));
     this.world.addSystem(new CollisionSystem(this.world));
-    this.world.addSystem(new HUDSystem(this.world));
+    
+    // Create and store reference to HUD system
+    this.hudSystem = new HUDSystem(this.world);
+    this.world.addSystem(this.hudSystem);
+    
+    this.world.addSystem(new WaveSystem(this.world));
     this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
   }
 
@@ -81,19 +87,40 @@ class Game {
     createHUD(this.world, playerShip, dysonSphere);
   }
 
+  public startGame(): void {
+    // Update the game state to playing through the HUD system
+    this.hudSystem.startGame();
+    
+    if (!this.isRunning) {
+      this.isRunning = true;
+      this.lastFrameTime = performance.now();
+    }
+  }
+
+  public restart(): void {
+    // Stop the current game loop
+    this.pause();
+    
+    // Clear all entities by creating a new World instance
+    this.world = new World();
+    
+    // Reinitialize systems and entities
+    this.initSystems();
+    this.initEntities();
+    
+    // Start the game
+    this.startGame();
+  }
+
   public start(): void {
     if (!this.isRunning) {
       this.isRunning = true;
       this.lastFrameTime = performance.now();
-      this.stateManager.updateState({ isPaused: false });
-      this.animate();
     }
   }
 
   public pause(): void {
     if (this.isRunning && this.animationFrameId !== null) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
       this.isRunning = false;
       this.stateManager.updateState({ isPaused: true });
     }
@@ -101,17 +128,30 @@ class Game {
 
   private animate = (): void => {
     this.animationFrameId = requestAnimationFrame(this.animate);
-    const currentTime = performance.now();
-    const deltaTime = (currentTime - this.lastFrameTime) / 1000;
-    this.lastFrameTime = currentTime;
-
-    const gameState = this.stateManager.getState();
-    if (gameState.isGameOver || gameState.isPaused) {
-      return;
+    
+    // Check if the game is in a playing state
+    let isPlaying = false;
+    const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
+    
+    if (hudEntities.length > 0) {
+      const hudEntity = hudEntities[0];
+      const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
+      
+      if (gameStateDisplay) {
+        isPlaying = gameStateDisplay.currentState === 'playing';
+      }
     }
-
-    this.stateManager.updateState({ lastUpdateTime: Date.now() });
-    this.world.update(deltaTime);
+    
+    // Always render, but only update game logic if playing
+    if (isPlaying && this.isRunning) {
+      const currentTime = performance.now();
+      const deltaTime = (currentTime - this.lastFrameTime) / 1000;
+      this.lastFrameTime = currentTime;
+      
+      this.stateManager.updateState({ lastUpdateTime: Date.now() });
+      this.world.update(deltaTime);
+    }
+    
     this.render();
   };
 
@@ -125,13 +165,16 @@ class Game {
     return this.stateManager.getState();
   }
 
-  public resetGame(): void {
-    this.stateManager.resetState();
-    this.start();
+  public getWorld(): World {
+    return this.world;
   }
 
   public dispose(): void {
     this.pause();
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
     window.removeEventListener('resize', this.handleResize);
     this.sceneManager.dispose();
   }

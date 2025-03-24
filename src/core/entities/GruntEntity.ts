@@ -31,7 +31,10 @@ export function createGrunt(
     speed: 10, // Units per second
     damage: 10,
     attackCooldown: 2, // Seconds between attacks
-    currentCooldown: 0
+    currentCooldown: 0,
+    inSiegeMode: false, // Start in normal mode
+    laserCooldown: 3.0, // Fire a laser every 3 seconds
+    currentLaserCooldown: 0
   });
   
   // Add health component

@@ -22,7 +22,7 @@ export class InputSystem implements System {
   private world: World;
   private inputManager: InputManager;
   private sceneManager: SceneManager;
-  private readonly BASE_SPEED = 20.0; // Base movement speed
+  private readonly BASE_SPEED = 40.0; // Base movement speed (doubled from 20.0)
 
   constructor(world: World, sceneManager: SceneManager) {
     this.world = world;

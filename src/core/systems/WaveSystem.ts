@@ -83,7 +83,7 @@ export class WaveSystem implements System {
   
   private spawnEnemy(): void {
     // Pick a random position on a sphere around the Dyson Sphere
-    const radius = 80; // Increased spawn radius for better visibility
+    const radius = 160; // Doubled spawn radius from 80 to 160
     const position = this.getRandomPositionOnSphere(radius);
     
     // Create the enemy entity

@@ -1,14 +1,18 @@
 import React, { useEffect, useState, CSSProperties } from 'react';
 import { World } from '../core/World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect } from '../core/components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats } from '../core/components';
 import { COLORS } from '../constants/colors';
+import StartScreen from './StartScreen';
+import GameOverScreen from './GameOverScreen';
 import './styles/retro.css';
 
 interface HUDProps {
   world: World;
+  onStartGame: () => void;
+  onRestartGame: () => void;
 }
 
-const HUD: React.FC<HUDProps> = ({ world }) => {
+const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame }) => {
   // State to hold UI data
   const [playerHealth, setPlayerHealth] = useState({ current: 100, max: 100 });
   const [score, setScore] = useState(0);
@@ -17,6 +21,8 @@ const HUD: React.FC<HUDProps> = ({ world }) => {
   const [enemiesRemaining, setEnemiesRemaining] = useState({ current: 0, total: 0 });
   const [boostReady, setBoostReady] = useState(true);
   const [damageEffect, setDamageEffect] = useState({ active: false, intensity: 0 });
+  const [gameState, setGameState] = useState<'not_started' | 'playing' | 'paused' | 'game_over'>('not_started');
+  const [gameOverStats, setGameOverStats] = useState({ finalScore: 0, survivalTime: 0, enemiesDefeated: 0 });
   
   // Update UI data from ECS world
   useEffect(() => {
@@ -63,9 +69,22 @@ const HUD: React.FC<HUDProps> = ({ world }) => {
         });
       }
       
-      // Update enemy count - in a real implementation this would come from the wave system
-      // This is just a placeholder
-      setEnemiesRemaining({ current: 3, total: 8 });
+      // Update game state
+      const gameStateDisplay = world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
+      if (gameStateDisplay) {
+        setGameState(gameStateDisplay.currentState);
+      }
+      
+      // Update game over stats if in game over state
+      if (gameState === 'game_over') {
+        const stats = world.getComponent<GameOverStats>(hudEntity, 'GameOverStats');
+        if (stats) {
+          setGameOverStats(stats);
+        }
+      }
+      
+      // Update enemy count
+      setEnemiesRemaining({ current: 3, total: 8 }); // Placeholder
       
       // Request next frame update
       requestAnimationFrame(updateHUD);
@@ -78,7 +97,7 @@ const HUD: React.FC<HUDProps> = ({ world }) => {
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [world]);
+  }, [world, gameState]);
   
   // Convert hex color to CSS color format
   const hexToCSS = (hexColor: number): string => {
@@ -114,6 +133,16 @@ const HUD: React.FC<HUDProps> = ({ world }) => {
     return 'translate(0, 0)';
   };
   
+  // Render appropriate screen based on game state
+  if (gameState === 'not_started') {
+    return <StartScreen onStartGame={onStartGame} />;
+  }
+  
+  if (gameState === 'game_over') {
+    return <GameOverScreen stats={gameOverStats} onRestart={onRestartGame} />;
+  }
+  
+  // Main game HUD (only show when playing)
   return (
     <>
       {/* Damage effect overlay */}

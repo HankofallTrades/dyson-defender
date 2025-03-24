@@ -6,7 +6,9 @@ export function createLaser(
   world: World,
   scene: THREE.Scene,
   position: { x: number, y: number, z: number },
-  direction: { x: number, y: number, z: number }
+  direction: { x: number, y: number, z: number },
+  ownerEntity: number, // Entity that created this laser
+  color: number = COLORS.LASER_GREEN // Optional color parameter with default green
 ) {
   const entity = world.createEntity();
   
@@ -46,7 +48,7 @@ export function createLaser(
   world.addComponent(entity, 'Renderable', {
     modelId: 'laser',
     scale: 0.5,
-    color: COLORS.LASER_GREEN // Green color for lasers
+    color: color // Use the provided color
   });
   
   // Add projectile component
@@ -54,7 +56,8 @@ export function createLaser(
     speed: laserSpeed,
     damage: 10,
     lifetime: 6, // 6 seconds lifetime - doubled to allow lasers to travel further
-    timeAlive: 0
+    timeAlive: 0,
+    ownerEntity: ownerEntity // Store the owner entity ID
   });
   
   // Add collider component for collision detection

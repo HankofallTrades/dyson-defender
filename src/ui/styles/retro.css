@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
 @keyframes scanlines {
   from {
     background-position: 0 0;
@@ -378,4 +380,186 @@
   pointer-events: none;
   z-index: 1000;
   animation: damage-pulse 0.3s ease-out;
+}
+
+/* Retro Sci-fi UI Styles */
+
+/* Animation keyframes */
+@keyframes pulse {
+  0% { box-shadow: 0 0 10px rgba(255, 0, 255, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(255, 0, 255, 0.8); }
+  100% { box-shadow: 0 0 10px rgba(255, 0, 255, 0.5); }
+}
+
+@keyframes text-glow {
+  0% { text-shadow: 0 0 5px #00ffff; }
+  50% { text-shadow: 0 0 15px #00ffff; }
+  100% { text-shadow: 0 0 5px #00ffff; }
+}
+
+@keyframes damage-pulse {
+  0% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+/* Full screen overlay styles */
+.retro-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: #00ffff;
+  font-family: 'Press Start 2P', monospace;
+  z-index: 1000;
+  pointer-events: all;
+}
+
+/* Container for screen content */
+.retro-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px;
+  border: 2px solid #ff00ff;
+  background-color: rgba(0, 0, 20, 0.9);
+  box-shadow: 0 0 20px rgba(255, 0, 255, 0.7);
+  border-radius: 5px;
+  animation: pulse 2s infinite;
+  max-width: 700px;
+  width: 80%;
+}
+
+/* Title and subtitle styles */
+.retro-title {
+  font-size: 32px;
+  color: #00ffff;
+  margin-bottom: 15px;
+  text-align: center;
+  text-transform: uppercase;
+  animation: text-glow 2s infinite;
+}
+
+.retro-subtitle {
+  font-size: 16px;
+  color: #ff00ff;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+/* Panel for instructions or stats */
+.retro-panel {
+  background-color: rgba(0, 0, 60, 0.5);
+  border: 1px solid #00ffff;
+  padding: 20px;
+  margin-bottom: 30px;
+  width: 100%;
+  border-radius: 5px;
+}
+
+.retro-panel h2 {
+  font-size: 18px;
+  color: #00ffff;
+  margin-bottom: 15px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* Button styles */
+.retro-button {
+  background-color: rgba(0, 0, 60, 0.7);
+  color: #00ffff;
+  border: 2px solid #00ffff;
+  padding: 15px 30px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 5px;
+  outline: none;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+.retro-button:hover {
+  background-color: rgba(0, 255, 255, 0.3);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+  transform: scale(1.05);
+}
+
+.retro-button:active {
+  transform: scale(0.98);
+}
+
+/* Instructions panel specific styles */
+.instruction-panel ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.instruction-panel li {
+  font-size: 14px;
+  color: #ffffff;
+  margin-bottom: 10px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.instruction-panel li:before {
+  content: ">";
+  position: absolute;
+  left: 0;
+  color: #ff00ff;
+}
+
+/* Stats panel specific styles */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 15px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-label {
+  color: #ff00ff;
+  font-size: 14px;
+}
+
+.stat-value {
+  color: #00ffff;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Damage effect */
+.damage-effect {
+  pointer-events: none;
+  animation: damage-pulse 0.4s ease-out;
+}
+
+/* Add pulse border animation */
+.pulse-border {
+  position: relative;
+}
+
+.pulse-border::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid #ff00ff;
+  border-radius: 8px;
+  animation: pulse 2s infinite;
+  pointer-events: none;
 } 

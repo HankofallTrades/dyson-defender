@@ -136,3 +136,14 @@ export interface DamageEffect {
   intensity: number;     // Intensity of the effect (0-1)
   timeRemaining: number; // Time left for the effect
 }
+
+// Game state UI components
+export interface GameStateDisplay {
+  currentState: 'not_started' | 'playing' | 'paused' | 'game_over';
+}
+
+export interface GameOverStats {
+  finalScore: number;
+  survivalTime: number;
+  enemiesDefeated: number;
+}
