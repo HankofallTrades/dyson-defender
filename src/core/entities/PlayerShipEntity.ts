@@ -1,6 +1,6 @@
 // src/core/entities/PlayerShipEntity.ts
 import { World } from '../World';
-import { Position, Velocity, Renderable, InputReceiver, Rotation, MouseLook } from '../components';
+import { Position, Velocity, Renderable, InputReceiver, Rotation, MouseLook, LaserCooldown } from '../components';
 
 export function createPlayerShip(world: World): number {
   const entity = world.createEntity();
@@ -26,6 +26,13 @@ export function createPlayerShip(world: World): number {
     pitchMax: Math.PI / 2.5,  // Limit looking down
     yaw: Math.PI/2,    // Initial yaw should match the ship's rotation      
     pitch: 0
+  });
+  
+  // Add weapon cooldown component
+  world.addComponent(entity, 'LaserCooldown', {
+    current: 0,
+    max: 0.25, // 4 shots per second
+    canFire: true
   });
 
   return entity;

@@ -61,3 +61,16 @@ export interface MouseLook {
 export interface CameraMount {
   parentEntity: number;  // ID of the entity this camera is mounted to
 }
+
+export interface Projectile {
+  speed: number;
+  damage: number;
+  lifetime: number;  // How long the projectile exists in seconds
+  timeAlive: number; // Current time the projectile has been alive
+}
+
+export interface LaserCooldown {
+  current: number;  // Current cooldown time in seconds
+  max: number;      // Maximum cooldown time in seconds
+  canFire: boolean; // Whether the entity can fire
+}

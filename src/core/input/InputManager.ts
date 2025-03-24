@@ -27,7 +27,8 @@ export class InputManager {
     left: false,
     right: false,
     up: false,
-    down: false
+    down: false,
+    shoot: false
   };
   
   private mouseState = {
@@ -62,6 +63,7 @@ export class InputManager {
         case 'd': this.inputState.right = true; break;
         case 'e': this.inputState.up = true; break;
         case 'q': this.inputState.down = true; break;
+        case ' ': this.inputState.shoot = true; break; // Space bar for shooting
       }
     };
 
@@ -73,6 +75,7 @@ export class InputManager {
         case 'd': this.inputState.right = false; break;
         case 'e': this.inputState.up = false; break;
         case 'q': this.inputState.down = false; break;
+        case ' ': this.inputState.shoot = false; break; // Space bar for shooting
       }
     };
 
@@ -82,13 +85,20 @@ export class InputManager {
     window.addEventListener('keyup', keyupHandler);
 
     // Mouse input handling - use mousedown for reliable interaction
-    const clickHandler = () => {
+    const clickHandler = (event: MouseEvent) => {
       if (!this.mouseState.isPointerLocked) {
         try {
           this.container.requestPointerLock();
         } catch (e) {
           // Silently handle errors
         }
+      } else if (event.button === 0) { // Left mouse button
+        this.inputState.shoot = true;
+        
+        // Reset shoot state after a short delay (we want it to be a single shot per click)
+        setTimeout(() => {
+          this.inputState.shoot = false;
+        }, 100);
       }
     };
     

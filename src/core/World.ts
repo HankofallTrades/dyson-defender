@@ -71,4 +71,15 @@ export class World {
   public getActiveEntities(): Set<Entity> {
     return this.activeEntities;
   }
+
+  public removeEntity(entity: Entity): void {
+    if (this.activeEntities.has(entity)) {
+      this.activeEntities.delete(entity);
+      
+      // Remove entity from all component maps
+      for (const componentMap of this.components.values()) {
+        componentMap.delete(entity);
+      }
+    }
+  }
 }

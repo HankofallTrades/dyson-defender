@@ -19,6 +19,8 @@ export class RenderingSystem implements System {
       return this.createDysonSphereMesh(renderable);
     } else if (renderable.modelId === 'playerShip') {
       return this.createPlayerShipMesh(renderable);
+    } else if (renderable.modelId === 'laser') {
+      return this.createLaserMesh(renderable);
     }
     
     // Default to a simple cube if no matching modelId
@@ -77,6 +79,31 @@ export class RenderingSystem implements System {
     });
     const innerMesh = new THREE.Mesh(innerGeometry, innerMaterial);
     group.add(innerMesh);
+    
+    // Apply scale
+    group.scale.set(renderable.scale, renderable.scale, renderable.scale);
+    
+    return group;
+  }
+
+  private createLaserMesh(renderable: Renderable): THREE.Object3D {
+    // Create a laser cylinder that's long and thin
+    const geometry = new THREE.CylinderGeometry(0.25, 0.25, 5, 16);
+    
+    // Rotate the cylinder to point forward along the z-axis (90 degrees around X axis)
+    // We need to use a group to handle the rotation correctly
+    const group = new THREE.Group();
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({ 
+      color: renderable.color,
+      emissive: renderable.color,
+      emissiveIntensity: 2.0,
+      shininess: 100
+    }));
+    
+    // Rotate the mesh to point along z-axis (cylinders are normally aligned with y-axis)
+    mesh.rotation.x = Math.PI / 2;
+    
+    group.add(mesh);
     
     // Apply scale
     group.scale.set(renderable.scale, renderable.scale, renderable.scale);

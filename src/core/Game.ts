@@ -10,6 +10,7 @@ import { MovementSystem } from './systems/MovementSystem';
 import { RenderingSystem } from './systems/RenderingSystem';
 import { AutoRotateSystem } from './systems/AutoRotateSystem';
 import { CameraSystem } from './systems/CameraSystem';
+import { WeaponSystem } from './systems/WeaponSystem';
 
 /**
  * Main Game Controller
@@ -63,6 +64,7 @@ class Game {
     this.world.addSystem(new MovementSystem(this.sceneManager, this.world));
     this.world.addSystem(new CameraSystem(this.sceneManager, this.world));
     this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
+    this.world.addSystem(new WeaponSystem(this.world, this.sceneManager));
   }
 
   private initEntities(): void {

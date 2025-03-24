@@ -70,6 +70,12 @@ export class MovementSystem implements System {
         if (Math.abs(velocity.z) < this.MIN_VELOCITY) velocity.z = 0;
       }
 
+      // Skip distance constraints for projectiles
+      const isProjectile = this.world.hasComponent(entity, 'Projectile');
+      if (isProjectile) {
+        continue;
+      }
+
       // Check if we need to enforce distance constraints
       const distanceFromCenter = Math.sqrt(
         position.x * position.x + 
