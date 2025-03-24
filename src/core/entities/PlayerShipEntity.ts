@@ -1,6 +1,7 @@
 // src/core/entities/PlayerShipEntity.ts
 import { World } from '../World';
 import { Position, Velocity, Renderable, InputReceiver, Rotation, MouseLook, LaserCooldown, Collider } from '../components';
+import { COLORS } from '../../constants/colors';
 
 export function createPlayerShip(world: World): number {
   const entity = world.createEntity();
@@ -17,7 +18,7 @@ export function createPlayerShip(world: World): number {
   world.addComponent(entity, 'Renderable', { 
     modelId: 'playerShip',
     scale: 2.0, // Increased size for better visibility
-    color: 0x00ff00
+    color: COLORS.PLAYER_BASE
   });
   world.addComponent(entity, 'InputReceiver', {});
   world.addComponent(entity, 'MouseLook', {

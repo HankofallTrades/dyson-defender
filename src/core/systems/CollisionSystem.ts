@@ -174,7 +174,34 @@ export class CollisionSystem implements System {
       this.handleProjectileCollision(entityB, entityA);
     }
     
-    // Add more collision handling cases as needed
+    // Handle enemy-dysonSphere collision
+    if (colliderA.layer === 'enemy' && colliderB.layer === 'dysonSphere') {
+      this.handleEnemyDysonSphereCollision(entityA, entityB);
+    } else if (colliderB.layer === 'enemy' && colliderA.layer === 'dysonSphere') {
+      this.handleEnemyDysonSphereCollision(entityB, entityA);
+    }
+  }
+  
+  private handleEnemyDysonSphereCollision(enemyEntity: number, dysonSphereEntity: number): void {
+    // Get enemy component
+    const enemy = this.world.getComponent<{ damage: number }>(enemyEntity, 'Enemy');
+    if (!enemy) return;
+    
+    // Get Dyson Sphere health
+    const health = this.world.getComponent<Health>(dysonSphereEntity, 'Health');
+    if (!health) return;
+    
+    // Apply damage
+    health.current -= enemy.damage;
+    
+    // Clamp health to minimum of 0
+    health.current = Math.max(0, health.current);
+    
+    // Remove the enemy
+    this.world.removeEntity(enemyEntity);
+    
+    // Game over logic can be handled by a separate GameStateSystem 
+    // that monitors the Dyson Sphere health
   }
   
   private handleProjectileCollision(projectileEntity: number, targetEntity: number): void {

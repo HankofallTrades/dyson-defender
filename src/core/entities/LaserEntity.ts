@@ -1,5 +1,6 @@
 import { World } from '../World';
 import * as THREE from 'three';
+import { COLORS } from '../../constants/colors';
 
 export function createLaser(
   world: World,
@@ -45,7 +46,7 @@ export function createLaser(
   world.addComponent(entity, 'Renderable', {
     modelId: 'laser',
     scale: 0.5,
-    color: 0x00ff00 // Green color for lasers
+    color: COLORS.LASER_GREEN // Green color for lasers
   });
   
   // Add projectile component
@@ -59,9 +60,9 @@ export function createLaser(
   // Add collider component for collision detection
   world.addComponent(entity, 'Collider', {
     type: 'box',
-    width: 0.5,
-    height: 0.5,
-    depth: 5.0, // Longer in the direction of travel
+    width: 0.25,
+    height: 0.25,
+    depth: 5,
     isTrigger: true,
     layer: 'projectile'
   });

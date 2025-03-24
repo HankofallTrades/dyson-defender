@@ -78,7 +78,6 @@ export class SceneManager {
     
     // Append to container
     this.container.appendChild(this.renderer.domElement);
-    console.log('SceneManager: Renderer initialized, domElement added to container');
     
     // Ensure renderer's domElement has the correct styling
     this.renderer.domElement.style.display = 'block';

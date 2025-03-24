@@ -12,6 +12,8 @@ import { AutoRotateSystem } from './systems/AutoRotateSystem';
 import { CameraSystem } from './systems/CameraSystem';
 import { WeaponSystem } from './systems/WeaponSystem';
 import { CollisionSystem } from './systems/CollisionSystem';
+import { WaveSystem } from './systems/WaveSystem';
+import { EnemySystem } from './systems/EnemySystem';
 
 /**
  * Main Game Controller
@@ -42,22 +44,21 @@ class Game {
   private lastFrameTime: number = 0;
 
   constructor(container: HTMLElement) {
-    console.log('Game: Initializing game');
     this.container = container;
     this.stateManager = new GameStateManager();
     this.stateManager.updateState({ lastUpdateTime: Date.now() });
     this.sceneManager = SceneManager.getInstance(container);
     this.world = new World();
 
-    console.log('Game: Initializing systems');
     this.initSystems();
-    
-    console.log('Game: Initializing entities');
     this.initEntities();
+    this.world.addSystem(new WaveSystem(this.world));
 
     this.render();
     window.addEventListener('resize', this.handleResize);
-    console.log('Game: Initialization complete');
+    
+    // Start the game automatically
+    this.start();
   }
 
   private initSystems(): void {
@@ -65,24 +66,19 @@ class Game {
     this.world.addSystem(new MovementSystem(this.sceneManager, this.world));
     this.world.addSystem(new CameraSystem(this.sceneManager, this.world));
     this.world.addSystem(new WeaponSystem(this.world, this.sceneManager));
+    this.world.addSystem(new EnemySystem(this.world));
     this.world.addSystem(new CollisionSystem(this.world));
     this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
   }
 
   private initEntities(): void {
-    console.log('Game: Creating Dyson Sphere');
     createDysonSphere(this.world);
-    
-    console.log('Game: Creating Player Ship');
     const playerShip = createPlayerShip(this.world);
-    
-    console.log('Game: Creating Camera Entity for player ship:', playerShip);
     createCamera(this.world, playerShip);
   }
 
   public start(): void {
     if (!this.isRunning) {
-      console.log('Game: Starting game loop');
       this.isRunning = true;
       this.lastFrameTime = performance.now();
       this.stateManager.updateState({ isPaused: false });

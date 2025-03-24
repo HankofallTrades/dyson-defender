@@ -84,3 +84,20 @@ export interface Collider {
   isTrigger: boolean; // Whether this is a trigger collider (doesn't cause physical response)
   layer: string;    // Collision layer (e.g., 'player', 'enemy', 'projectile')
 }
+
+export interface Enemy {
+  targetEntity: number; // Entity ID of the target (usually Dyson Sphere)
+  type: string;         // Type of enemy ('squidAlien', etc.)
+  speed: number;        // Movement speed
+  damage: number;       // Damage dealt on collision with target
+  attackCooldown: number; // Time between attacks in seconds
+  currentCooldown: number; // Current cooldown timer
+}
+
+export interface WaveInfo {
+  currentWave: number;
+  enemiesRemaining: number;
+  totalEnemies: number;
+  nextWaveTimer: number;
+  isActive: boolean;
+}

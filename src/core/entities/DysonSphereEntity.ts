@@ -1,17 +1,21 @@
 import { World } from '../World';
 import { Position, Renderable, Health, AutoRotate, Rotation, Collider } from '../components';
+import { COLORS } from '../../constants/colors';
 
 export function createDysonSphere(world: World): number {
   const entity = world.createEntity();
-  console.log('Creating Dyson Sphere entity:', entity);
 
+  // Add components
   world.addComponent(entity, 'Position', { x: 0, y: 0, z: 0 });
   world.addComponent(entity, 'Rotation', { x: 0, y: 0, z: 0 });
-  world.addComponent(entity, 'Renderable', { 
+  
+  const renderableComponent = { 
     modelId: 'dysonSphere',
     scale: 1.0,
-    color: 0x3388ff
-  });
+    color: COLORS.DYSON_PRIMARY
+  };
+  world.addComponent(entity, 'Renderable', renderableComponent);
+  
   world.addComponent(entity, 'Health', { current: 100, max: 100 });
   world.addComponent(entity, 'AutoRotate', { speedX: 0, speedY: 0.05, speedZ: 0 });
   
@@ -23,6 +27,5 @@ export function createDysonSphere(world: World): number {
     layer: 'dysonSphere'
   });
 
-  console.log('Dyson Sphere components added');
   return entity;
 } 
