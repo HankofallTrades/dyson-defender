@@ -1,6 +1,6 @@
 import React, { useEffect, useState, CSSProperties } from 'react';
 import { World } from '../core/World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus } from '../core/components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect } from '../core/components';
 import { COLORS } from '../constants/colors';
 import './styles/retro.css';
 
@@ -16,6 +16,7 @@ const HUD: React.FC<HUDProps> = ({ world }) => {
   const [dysonHealth, setDysonHealth] = useState(100);
   const [enemiesRemaining, setEnemiesRemaining] = useState({ current: 0, total: 0 });
   const [boostReady, setBoostReady] = useState(true);
+  const [damageEffect, setDamageEffect] = useState({ active: false, intensity: 0 });
   
   // Update UI data from ECS world
   useEffect(() => {
@@ -51,6 +52,15 @@ const HUD: React.FC<HUDProps> = ({ world }) => {
       const dysonStatus = world.getComponent<DysonSphereStatus>(hudEntity, 'DysonSphereStatus');
       if (dysonStatus) {
         setDysonHealth(dysonStatus.healthPercentage);
+      }
+      
+      // Update damage effect
+      const damageEffectComp = world.getComponent<DamageEffect>(hudEntity, 'DamageEffect');
+      if (damageEffectComp) {
+        setDamageEffect({
+          active: damageEffectComp.active,
+          intensity: damageEffectComp.intensity
+        });
       }
       
       // Update enemy count - in a real implementation this would come from the wave system
@@ -92,9 +102,37 @@ const HUD: React.FC<HUDProps> = ({ world }) => {
   };
   
   const hullStatus = getHullStatus();
+
+  // Generate random shake transform when damage effect is active
+  const getShakeTransform = (): string => {
+    if (damageEffect.active) {
+      const intensity = damageEffect.intensity * 10;
+      const xShake = (Math.random() - 0.5) * intensity;
+      const yShake = (Math.random() - 0.5) * intensity;
+      return `translate(${xShake}px, ${yShake}px)`;
+    }
+    return 'translate(0, 0)';
+  };
   
   return (
     <>
+      {/* Damage effect overlay */}
+      {damageEffect.active && (
+        <div className="damage-effect" style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 0, 0, 0.3)',
+          boxShadow: `inset 0 0 ${50 * damageEffect.intensity}px rgba(255, 0, 0, 0.8)`,
+          zIndex: 100,
+          pointerEvents: 'none',
+          animation: 'damage-pulse 0.4s ease-out',
+          transform: getShakeTransform()
+        }} />
+      )}
+      
       {/* Dyson Sphere HUD - Top Left */}
       <div className="retro-text pulse-border" style={{
         position: 'absolute',
@@ -111,7 +149,8 @@ const HUD: React.FC<HUDProps> = ({ world }) => {
         lineHeight: '1.8rem',
         textShadow: '2px 2px 0 #000, 0 0 10px #00ffff',
         zIndex: 10,
-        pointerEvents: 'none'
+        pointerEvents: 'none',
+        transform: damageEffect.active ? getShakeTransform() : 'none'
       }}>
         <div style={{ color: '#00ffff' }}>Score: {score}</div>
         <div style={{ color: '#ffff00' }}>Shield: {Math.round(dysonHealth)}%</div>
@@ -124,7 +163,7 @@ const HUD: React.FC<HUDProps> = ({ world }) => {
         position: 'absolute',
         bottom: '20px',
         left: '50%',
-        transform: 'translateX(-50%)',
+        transform: `translateX(-50%) ${damageEffect.active ? getShakeTransform() : ''}`,
         background: 'rgba(0, 0, 0, 0.7)',
         padding: '15px',
         borderRadius: '8px',
@@ -234,7 +273,8 @@ const HUD: React.FC<HUDProps> = ({ world }) => {
           color: '#ffff00',
           zIndex: 10,
           pointerEvents: 'none',
-          maxWidth: '250px'
+          maxWidth: '250px',
+          transform: damageEffect.active ? getShakeTransform() : 'none'
         }}>
           {message}
         </div>

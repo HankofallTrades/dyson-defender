@@ -1,5 +1,5 @@
 import { System, World } from '../World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, Renderable } from '../components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, Renderable, DamageEffect } from '../components';
 
 export class HUDSystem implements System {
   private world: World;
@@ -16,6 +16,7 @@ export class HUDSystem implements System {
       this.updateHealthDisplay(hudEntity);
       this.updateDysonSphereStatus(hudEntity);
       this.updateMessages(hudEntity, deltaTime);
+      this.updateDamageEffect(hudEntity, deltaTime);
     }
   }
   
@@ -68,6 +69,22 @@ export class HUDSystem implements System {
     }
   }
   
+  private updateDamageEffect(hudEntity: number, deltaTime: number): void {
+    const damageEffect = this.world.getComponent<DamageEffect>(hudEntity, 'DamageEffect');
+    if (!damageEffect) return;
+    
+    // If the damage effect is active, update its timer
+    if (damageEffect.active) {
+      damageEffect.timeRemaining -= deltaTime;
+      
+      // Deactivate when timer reaches zero
+      if (damageEffect.timeRemaining <= 0) {
+        damageEffect.active = false;
+        damageEffect.timeRemaining = 0;
+      }
+    }
+  }
+  
   // Method to display a message - can be called from other systems
   public displayMessage(message: string, duration: number = 3): void {
     const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'MessageDisplay']);
@@ -88,6 +105,20 @@ export class HUDSystem implements System {
     const scoreDisplay = this.world.getComponent<ScoreDisplay>(hudEntities[0], 'ScoreDisplay');
     if (scoreDisplay) {
       scoreDisplay.score += amount;
+    }
+  }
+  
+  // Method to activate damage effect with specified intensity
+  public activateDamageEffect(intensity: number = 0.8, duration: number = 0.5): void {
+    const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'DamageEffect']);
+    if (hudEntities.length === 0) return;
+    
+    const damageEffect = this.world.getComponent<DamageEffect>(hudEntities[0], 'DamageEffect');
+    if (damageEffect) {
+      damageEffect.active = true;
+      damageEffect.intensity = intensity;
+      damageEffect.duration = duration;
+      damageEffect.timeRemaining = duration;
     }
   }
 } 

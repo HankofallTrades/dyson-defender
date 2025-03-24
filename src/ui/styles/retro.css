@@ -362,4 +362,20 @@
   color: #ffff00;
   text-shadow: 0 0 10px #ffff00;
   box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+}
+
+/* Damage effect animation */
+@keyframes damage-pulse {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}
+
+.damage-effect {
+  pointer-events: none;
+  z-index: 1000;
+  animation: damage-pulse 0.3s ease-out;
 } 

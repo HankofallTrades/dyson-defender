@@ -24,9 +24,9 @@ export class CollisionSystem implements System {
     
     // Set up collision matrix - which layers can collide with which
     this.collisionMatrix = new Map();
-    this.collisionMatrix.set('projectile', ['enemy', 'dysonSphere']);
+    this.collisionMatrix.set('projectile', ['enemy', 'dysonSphere', 'player']);
     this.collisionMatrix.set('enemy', ['player', 'projectile', 'dysonSphere']);
-    this.collisionMatrix.set('player', ['enemy']);
+    this.collisionMatrix.set('player', ['enemy', 'projectile']);
     this.collisionMatrix.set('dysonSphere', ['enemy']);
   }
 
@@ -70,6 +70,27 @@ export class CollisionSystem implements System {
       for (const entityB of entitiesB) {
         // Don't check collision with self
         if (entityA === entityB) continue;
+        
+        // If this is a projectile, check if entityB is the owner
+        if (colliderA.layer === 'projectile') {
+          const projectile = this.world.getComponent<Projectile>(entityA, 'Projectile');
+          if (projectile && projectile.ownerEntity === entityB) {
+            // Skip collision check with owner
+            continue;
+          }
+        }
+        
+        // If entityB is a projectile, check if entityA is the owner
+        if (colliderA.layer === 'enemy' || colliderA.layer === 'player') {
+          const entityBCollider = this.world.getComponent<Collider>(entityB, 'Collider');
+          if (entityBCollider && entityBCollider.layer === 'projectile') {
+            const projectile = this.world.getComponent<Projectile>(entityB, 'Projectile');
+            if (projectile && projectile.ownerEntity === entityA) {
+              // Skip collision check with owner
+              continue;
+            }
+          }
+        }
         
         const positionB = this.world.getComponent<Position>(entityB, 'Position');
         const colliderB = this.world.getComponent<Collider>(entityB, 'Collider');
@@ -223,11 +244,19 @@ export class CollisionSystem implements System {
       // Apply damage
       health.current -= projectile.damage;
       
+      // Get HUD system for notifications
+      const hudSystem = this.getHUDSystem();
+      
+      // Check if this is a player being hit
+      if (this.world.hasComponent(targetEntity, 'InputReceiver')) {
+        if (hudSystem) {
+          // Activate damage effect instead of displaying a message
+          hudSystem.activateDamageEffect(0.8, 0.5);
+        }
+      }
+      
       // Check if entity is destroyed
       if (health.current <= 0) {
-        // Get HUD system to update score
-        const hudSystem = this.getHUDSystem();
-        
         // If this is an enemy, update the score
         if (this.world.hasComponent(targetEntity, 'Enemy')) {
           if (hudSystem) {
@@ -261,10 +290,11 @@ export class CollisionSystem implements System {
     // Clamp health to minimum of 0
     playerHealth.current = Math.max(0, playerHealth.current);
     
-    // Get HUD system to display message
+    // Get HUD system to activate damage effect
     const hudSystem = this.getHUDSystem();
     if (hudSystem) {
-      hudSystem.displayMessage("Ship damaged! Hull integrity compromised.", 2);
+      // Activate damage effect with higher intensity since this is direct collision
+      hudSystem.activateDamageEffect(1.0, 0.7);
     }
     
     // Remove the enemy

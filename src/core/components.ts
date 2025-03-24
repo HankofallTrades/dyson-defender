@@ -67,6 +67,7 @@ export interface Projectile {
   damage: number;
   lifetime: number;  // How long the projectile exists in seconds
   timeAlive: number; // Current time the projectile has been alive
+  ownerEntity: number; // ID of the entity that created this projectile
 }
 
 export interface LaserCooldown {
@@ -92,6 +93,9 @@ export interface Enemy {
   damage: number;       // Damage dealt on collision with target
   attackCooldown: number; // Time between attacks in seconds
   currentCooldown: number; // Current cooldown timer
+  inSiegeMode: boolean;   // Whether enemy is in siege mode (attacking Dyson Sphere)
+  laserCooldown: number;  // Cooldown for laser shots in seconds
+  currentLaserCooldown: number; // Current laser cooldown timer
 }
 
 export interface WaveInfo {
@@ -124,4 +128,11 @@ export interface MessageDisplay {
 export interface DysonSphereStatus {
   healthPercentage: number;
   criticalThreshold: number;  // Percentage at which to show warning
+}
+
+export interface DamageEffect {
+  active: boolean;       // Whether the effect is currently active
+  duration: number;      // How long the effect should last in seconds
+  intensity: number;     // Intensity of the effect (0-1)
+  timeRemaining: number; // Time left for the effect
 }

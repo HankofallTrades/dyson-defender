@@ -1,5 +1,5 @@
 import { World } from '../World';
-import { UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus } from '../components';
+import { UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect } from '../components';
 
 export function createHUD(world: World, playerEntity: number, dysonSphereEntity: number): number {
   const entity = world.createEntity();
@@ -26,6 +26,13 @@ export function createHUD(world: World, playerEntity: number, dysonSphereEntity:
   world.addComponent(entity, 'DysonSphereStatus', {
     healthPercentage: 100,
     criticalThreshold: 25  // Show warning when below 25%
+  });
+  
+  world.addComponent(entity, 'DamageEffect', {
+    active: false,
+    duration: 0.5,
+    intensity: 0.8,
+    timeRemaining: 0
   });
   
   return entity;
