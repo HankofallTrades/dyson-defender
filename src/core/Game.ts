@@ -1,9 +1,13 @@
 import * as THREE from 'three';
 import { GameState, GameStateManager } from './State';
 import { SceneManager } from '../rendering/SceneManager';
-import { EntityManager } from './EntityManager';
-import { DysonSphere } from './entities/DysonSphere';
-import { PlayerShip } from './entities/PlayerShipEntity';
+import { World } from './World';
+import { createDysonSphere } from './entities/DysonSphereEntity';
+import { createPlayerShip } from './entities/PlayerShipEntity';
+import { InputSystem } from './systems/InputSystem';
+import { MovementSystem } from './systems/MovementSystem';
+import { RenderingSystem } from './systems/RenderingSystem';
+import { AutoRotateSystem } from './systems/AutoRotateSystem';
 
 /**
  * Main Game Controller
@@ -22,189 +26,101 @@ import { PlayerShip } from './entities/PlayerShipEntity';
  * This class follows the independant-game-loop.mdc rule by keeping the game loop
  * independent of UI updates, ensuring consistent frame rate and smooth gameplay.
  */
+// src/core/Game.ts
+
 class Game {
-  // Container element where the game will be rendered
   private container: HTMLElement;
-  
-  // Scene and entity management
   private sceneManager: SceneManager;
-  private entityManager: EntityManager;
-  
-  // Game state management
+  private world: World;
   private stateManager: GameStateManager;
   private isRunning: boolean = false;
   private animationFrameId: number | null = null;
   private lastFrameTime: number = 0;
-  
-  // Player management
-  private playerShip: PlayerShip | null = null;
-  
-  /**
-   * Constructor for the Game class
-   * @param container The HTML element where the game will be rendered
-   */
+
   constructor(container: HTMLElement) {
     this.container = container;
-    
-    // Initialize game state
     this.stateManager = new GameStateManager();
     this.stateManager.updateState({ lastUpdateTime: Date.now() });
-    
-    // Initialize scene manager
     this.sceneManager = SceneManager.getInstance(container);
-    
-    // Initialize entity manager
-    this.entityManager = EntityManager.getInstance(this.sceneManager);
-    
-    // Initialize game entities
+    this.world = new World();
+
+    this.initSystems();
     this.initEntities();
-    
-    // Force an initial render
+
     this.render();
-    
-    // Handle window resize
     window.addEventListener('resize', this.handleResize);
   }
-  
-  /**
-   * Initialize game entities
-   */
-  private initEntities(): void {
-    // Create and add the Dyson Sphere entity
-    const dysonSphere = new DysonSphere(this.sceneManager);
-    this.entityManager.addEntity(dysonSphere);
-    
-    // Create and add the player ship entity
-    this.playerShip = new PlayerShip();
-    this.entityManager.addEntity(this.playerShip);
-    this.sceneManager.setPlayerShip(this.playerShip);
+
+  private initSystems(): void {
+    this.world.addSystem(new InputSystem(this.sceneManager, this.world));
+    this.world.addSystem(new MovementSystem(this.sceneManager, this.world));
+    this.world.addSystem(new AutoRotateSystem(this.world));
+    this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
   }
-  
-  /**
-   * Start the game loop
-   */
-  start(): void {
+
+  private initEntities(): void {
+    createDysonSphere(this.world);
+    createPlayerShip(this.world);
+  }
+
+  public start(): void {
     if (!this.isRunning) {
+      console.log('Game: Starting game loop');
       this.isRunning = true;
       this.lastFrameTime = performance.now();
       this.stateManager.updateState({ isPaused: false });
       this.animate();
-      console.log('Game started');
     }
   }
-  
-  /**
-   * Stop the game loop
-   */
-  stop(): void {
+
+  public pause(): void {
     if (this.isRunning && this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
       this.isRunning = false;
       this.stateManager.updateState({ isPaused: true });
-      console.log('Game stopped');
     }
   }
-  
-  /**
-   * Pause the game
-   */
-  pause(): void {
-    this.stop();
-  }
-  
-  /**
-   * Resume the game
-   */
-  resume(): void {
-    this.start();
-  }
-  
-  /**
-   * The main game loop
-   */
+
   private animate = (): void => {
-    // Store animation frame ID for potential cancellation
     this.animationFrameId = requestAnimationFrame(this.animate);
-    
-    // Calculate delta time for frame-independent movement
     const currentTime = performance.now();
-    const deltaTime = (currentTime - this.lastFrameTime) / 1000; // Convert to seconds
+    const deltaTime = (currentTime - this.lastFrameTime) / 1000;
     this.lastFrameTime = currentTime;
-    
-    // Don't update if game is over or paused
+
     const gameState = this.stateManager.getState();
     if (gameState.isGameOver || gameState.isPaused) {
+      console.log('Game: Game loop paused - isGameOver:', gameState.isGameOver, 'isPaused:', gameState.isPaused);
       return;
     }
-    
-    // Update game state with timing information
+
+    console.log('Game: Updating game state with deltaTime:', deltaTime);
     this.stateManager.updateState({ lastUpdateTime: Date.now() });
-    
-    // Update game state here
-    this.update(deltaTime);
-    
-    // Render the scene
+    this.world.update(deltaTime);
     this.render();
-  }
-  
-  /**
-   * Update the game state
-   * @param deltaTime Time elapsed since last frame in seconds
-   */
-  private update(deltaTime: number): void {
-    // Update player ship with input
-    if (this.playerShip) {
-      this.playerShip.updateShip(this.sceneManager.getInputState());
-    }
-    
-    // Update all entities through the entity manager
-    this.entityManager.updateEntities(deltaTime);
-  }
-  
-  /**
-   * Render the current scene
-   */
+  };
+
   private render(): void {
+    console.log('Game: Rendering frame');
     this.sceneManager.render();
   }
-  
-  /**
-   * Handle window resize events
-   */
-  private handleResize = (): void => {
-    // SceneManager handles resize internally
-  }
-  
-  /**
-   * Get the current game state
-   */
-  getGameState(): GameState {
+
+  private handleResize = (): void => {};
+
+  public getGameState(): GameState {
     return this.stateManager.getState();
   }
-  
-  /**
-   * Reset the game state
-   */
-  resetGame(): void {
+
+  public resetGame(): void {
     this.stateManager.resetState();
     this.start();
-    console.log('Game reset');
   }
-  
-  /**
-   * Clean up resources when the game is disposed
-   */
-  dispose(): void {
-    this.stop();
+
+  public dispose(): void {
+    this.pause();
     window.removeEventListener('resize', this.handleResize);
-    
-    // Clean up entities
-    this.entityManager.dispose();
-    
-    // Let SceneManager dispose of Three.js resources
     this.sceneManager.dispose();
   }
 }
 
-export default Game; 
+export default Game;

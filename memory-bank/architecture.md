@@ -50,6 +50,61 @@ The game state management system that:
 
 The GameStateManager follows the Observer Pattern, allowing React components to be notified of state changes without tightly coupling game logic to UI.
 
+### World Class (`src/core/World.ts`)
+
+The core ECS manager that handles entity and component management. It:
+
+- Manages entity creation and component assignment
+- Provides efficient entity querying through component types
+- Coordinates system updates during the game loop
+- Implements proper component lifecycle management
+- Uses TypeScript for type-safe component handling
+
+The World class follows the ECS pattern, providing a flexible and efficient way to manage game entities and their behaviors.
+
+### Systems
+
+Systems are responsible for processing entities with specific component combinations:
+
+#### AutoRotateSystem (`src/core/systems/AutoRotateSystem.ts`)
+- Handles rotation of entities with AutoRotate components
+- Updates entity rotation based on delta time
+- Applies rotation changes to the visual representation
+- Maintains proper separation between game logic and rendering
+
+#### InputSystem (`src/core/systems/InputSystem.ts`)
+- Processes keyboard input for player control
+- Updates input state for affected entities
+- Provides clean interface for input handling
+- Maintains input state consistency
+
+#### MovementSystem (`src/core/systems/MovementSystem.ts`)
+- Handles entity movement based on input state
+- Updates entity positions using delta time
+- Implements proper physics-based movement
+- Maintains movement state consistency
+
+### Components
+
+Components are pure data structures that define entity properties:
+
+#### Core Components
+- `Position`: Defines entity location in 3D space
+- `Rotation`: Manages entity rotation state
+- `Renderable`: Links entities to their visual representation
+- `Health`: Tracks entity health and damage state
+- `AutoRotate`: Defines automatic rotation behavior
+
+### Entities
+
+Entities are created through factory functions that ensure proper component setup:
+
+#### DysonSphereEntity
+- Created using `createDysonSphere` factory function
+- Includes all necessary components for visualization
+- Implements proper cleanup and disposal
+- Maintains separation between game logic and rendering
+
 ### React Integration
 
 React is used for UI components while Three.js handles the 3D rendering. This separation allows:
@@ -105,6 +160,32 @@ React is used for UI components while Three.js handles the 3D rendering. This se
 - Handling window resize events to maintain proper aspect ratio
 - Using container dimensions rather than window dimensions for more flexible embedding
 - Setting canvas to fill available space with appropriate CSS
+
+### Entity-Component-System (ECS)
+
+- Using a pure ECS architecture for flexible entity management
+- Implementing systems as independent processors of entity data
+- Keeping components as pure data structures
+- Using factory functions for entity creation
+- Maintaining proper separation between game logic and rendering
+- Implementing efficient entity querying through component types
+- Using TypeScript for type-safe component handling
+
+### Component Management
+
+- Components are stored in type-specific maps for efficient access
+- Entity IDs are used as keys for component storage
+- Components can be added and removed dynamically
+- Component queries are optimized for performance
+- Proper cleanup of components on entity removal
+
+### System Architecture
+
+- Systems are independent processors of entity data
+- Each system focuses on a specific aspect of entity behavior
+- Systems can be added and removed dynamically
+- System updates are coordinated by the World class
+- Systems maintain proper separation of concerns
 
 ## File Purposes
 

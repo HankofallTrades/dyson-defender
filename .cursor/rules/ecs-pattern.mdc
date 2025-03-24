@@ -1,0 +1,63 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+ Description: Implement and maintain a strict Entity-Component-System (ECS) pattern for all game entities and behaviors.
+
+Why: The ECS pattern provides a flexible, performant, and maintainable way to handle game entities and their behaviors. It allows for easy addition of new features and behaviors without modifying existing code.
+
+File Pattern: Applies to all files in src/core/entities/, src/core/systems/, and src/core/components.ts
+
+Rules:
+1. All game entities MUST be created through factory functions in src/core/entities/
+2. Each entity factory MUST:
+   - Create a new entity ID using world.createEntity()
+   - Add all required components using world.addComponent()
+   - Return the entity ID
+   - Handle cleanup in a dispose() method
+
+3. All systems MUST:
+   - Implement the System interface from World.ts
+   - Be added to the world using world.addSystem()
+   - Process only entities with required components
+   - Update entity state based on deltaTime
+   - Not directly modify Three.js objects (use components instead)
+
+4. Components MUST:
+   - Be pure data structures (no methods)
+   - Be defined in src/core/components.ts
+   - Have clear, single-purpose interfaces
+   - Be serializable for future networking
+
+5. The World class MUST:
+   - Be the only place where entities are created
+   - Manage all component storage and retrieval
+   - Coordinate system updates
+   - Handle entity lifecycle
+
+Example:
+```typescript
+// In src/core/components.ts
+export interface Position {
+  x: number;
+  y: number;
+  z: number;
+}
+
+// In src/core/systems/MovementSystem.ts
+export class MovementSystem implements System {
+  update(deltaTime: number): void {
+    const entities = this.world.getEntitiesWith(['Position', 'Velocity']);
+    // Process movement...
+  }
+}
+
+// In src/core/entities/PlayerShipEntity.ts
+export function createPlayerShip(world: World, scene: THREE.Scene): Entity {
+  const entity = world.createEntity();
+  world.addComponent(entity, 'Position', { x: 0, y: 0, z: 0 });
+  // Add other components...
+  return entity;
+}
+```

@@ -95,8 +95,10 @@ export class SceneManager {
       1000 // Far clipping plane
     );
     
-    // Position camera back a bit for a good view of the game
-    this.camera.position.z = 100;
+    // Position camera for a better view
+    this.camera.position.set(0, 30, 100); // Move up and back
+    this.camera.lookAt(0, 0, 0);
+    console.log('Camera initialized at position:', this.camera.position);
   }
   
   /**
@@ -129,13 +131,20 @@ export class SceneManager {
   private initLights(): void {
     console.log('Initializing lights');
     // Add ambient light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // Increased intensity
     this.scene.add(ambientLight);
     
     // Add directional light
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0); // Increased intensity
     directionalLight.position.set(5, 5, 5);
     this.scene.add(directionalLight);
+
+    // Add a second directional light from the opposite direction
+    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 1.0);
+    directionalLight2.position.set(-5, -5, -5);
+    this.scene.add(directionalLight2);
+    
+    console.log('Lights initialized');
   }
   
   /**

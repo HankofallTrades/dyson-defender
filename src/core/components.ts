@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 export interface Position {
   x: number;
   y: number;
@@ -13,7 +11,9 @@ export interface Velocity {
 }
 
 export interface Renderable {
-  mesh: THREE.Object3D; // Can be Mesh or Group
+  modelId: string;  // Identifier for the model to render
+  scale: number;    // Scale of the model
+  color: number;    // Color in hex format
 }
 
 export interface AutoRotate {
@@ -35,4 +35,10 @@ export interface Health {
 
 export interface InputReceiver {
   // Marker component; could add data like control scheme later
+}
+
+export interface Transform {
+  position: Position;
+  rotation: Rotation;
+  scale: number;
 }
