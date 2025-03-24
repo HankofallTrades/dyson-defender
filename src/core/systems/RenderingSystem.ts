@@ -9,25 +9,19 @@ export class RenderingSystem implements System {
   private scene: THREE.Scene;
 
   constructor(world: World, scene: THREE.Scene) {
-    console.log('RenderingSystem: Constructor called');
     this.world = world;
     this.scene = scene;
   }
 
   private createMesh(renderable: Renderable): THREE.Object3D {
-    console.log('RenderingSystem: Creating mesh for renderable:', renderable);
-    
     // Create different models based on modelId
     if (renderable.modelId === 'dysonSphere') {
-      console.log('RenderingSystem: Creating Dyson Sphere model');
       return this.createDysonSphereMesh(renderable);
     } else if (renderable.modelId === 'playerShip') {
-      console.log('RenderingSystem: Creating Player Ship model');
       return this.createPlayerShipMesh(renderable);
     }
     
     // Default to a simple cube if no matching modelId
-    console.log('RenderingSystem: Creating default cube model');
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshPhongMaterial({ color: renderable.color });
     const mesh = new THREE.Mesh(geometry, material);
@@ -36,7 +30,6 @@ export class RenderingSystem implements System {
   }
 
   private createPlayerShipMesh(renderable: Renderable): THREE.Object3D {
-    console.log('RenderingSystem: Building player ship mesh');
     // Create a simple ship model
     const group = new THREE.Group();
     
@@ -60,7 +53,6 @@ export class RenderingSystem implements System {
   }
 
   private createDysonSphereMesh(renderable: Renderable): THREE.Object3D {
-    console.log('RenderingSystem: Building Dyson Sphere mesh');
     const group = new THREE.Group();
     
     // Outer wireframe sphere
@@ -93,46 +85,23 @@ export class RenderingSystem implements System {
   }
 
   public update(deltaTime: number): void {
-    console.log('RenderingSystem: Update called with deltaTime:', deltaTime);
-    console.log('RenderingSystem: All active entities:', Array.from(this.world.getActiveEntities()));
-    
-    // Check for entities with Position
-    const entitiesWithPosition = this.world.getEntitiesWith(['Position']);
-    console.log('RenderingSystem: Entities with Position:', entitiesWithPosition);
-    
-    // Check for entities with Renderable
-    const entitiesWithRenderable = this.world.getEntitiesWith(['Renderable']);
-    console.log('RenderingSystem: Entities with Renderable:', entitiesWithRenderable);
-    
-    // Now check for both
     const entities = this.world.getEntitiesWith(['Position', 'Renderable']);
-    console.log('RenderingSystem: Found entities with Position and Renderable:', entities);
     
     for (const entity of entities) {
-      console.log('RenderingSystem: Processing entity:', entity);
       const position = this.world.getComponent<Position>(entity, 'Position');
       const renderable = this.world.getComponent<Renderable>(entity, 'Renderable');
       const rotation = this.world.getComponent<Rotation>(entity, 'Rotation');
 
-      console.log('RenderingSystem: Components for entity', entity, ':', {
-        position,
-        renderable,
-        rotation
-      });
-
       if (!position || !renderable) {
-        console.log('RenderingSystem: Skipping entity', entity, 'due to missing components');
         continue;
       }
 
       // Get or create mesh
       let mesh = this.meshes.get(entity);
       if (!mesh) {
-        console.log('RenderingSystem: Creating new mesh for entity:', entity);
         mesh = this.createMesh(renderable);
         this.meshes.set(entity, mesh);
         this.scene.add(mesh); // Add mesh to scene when created
-        console.log('RenderingSystem: Added mesh to scene for entity:', entity);
       }
 
       // Update transform
@@ -140,16 +109,11 @@ export class RenderingSystem implements System {
       if (rotation) {
         mesh.rotation.set(rotation.x, rotation.y, rotation.z);
       }
-      console.log('RenderingSystem: Updated transform for entity', entity, ':', {
-        position: mesh.position,
-        rotation: mesh.rotation
-      });
     }
 
     // Clean up meshes for entities that no longer exist
     for (const [entityId, mesh] of this.meshes.entries()) {
       if (!this.world.hasEntity(entityId)) {
-        console.log('RenderingSystem: Removing mesh for deleted entity:', entityId);
         mesh.parent?.remove(mesh);
         this.meshes.delete(entityId);
       }
@@ -157,7 +121,6 @@ export class RenderingSystem implements System {
   }
 
   public dispose(): void {
-    console.log('RenderingSystem: Disposing');
     // Clean up all meshes
     for (const mesh of this.meshes.values()) {
       mesh.parent?.remove(mesh);

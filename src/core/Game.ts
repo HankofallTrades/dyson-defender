@@ -90,18 +90,15 @@ class Game {
 
     const gameState = this.stateManager.getState();
     if (gameState.isGameOver || gameState.isPaused) {
-      console.log('Game: Game loop paused - isGameOver:', gameState.isGameOver, 'isPaused:', gameState.isPaused);
       return;
     }
 
-    console.log('Game: Updating game state with deltaTime:', deltaTime);
     this.stateManager.updateState({ lastUpdateTime: Date.now() });
     this.world.update(deltaTime);
     this.render();
   };
 
   private render(): void {
-    console.log('Game: Rendering frame');
     this.sceneManager.render();
   }
 

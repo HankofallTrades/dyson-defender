@@ -44,7 +44,6 @@ export class SceneManager {
    * @param container The HTML element where the scene will be rendered
    */
   private constructor(container: HTMLElement) {
-    console.log('Creating SceneManager instance');
     this.container = container;
     
     // Initialize in specific order
@@ -59,7 +58,6 @@ export class SceneManager {
     
     // Set up resize listener
     window.addEventListener('resize', this.handleResize);
-    console.log('SceneManager initialization complete');
   }
   
   /**
@@ -77,81 +75,58 @@ export class SceneManager {
    * Initialize the Three.js scene
    */
   private initScene(): void {
-    console.log('Initializing scene');
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x000020); // Dark blue background
+    this.scene.background = new THREE.Color(0x000011); // Deep blue background
   }
   
   /**
    * Initialize the camera
    */
   private initCamera(): void {
-    console.log('Initializing camera');
-    const aspect = this.container.clientWidth / this.container.clientHeight;
     this.camera = new THREE.PerspectiveCamera(
-      75, // Field of view
-      aspect, // Aspect ratio
-      0.1, // Near clipping plane
-      1000 // Far clipping plane
+      75, // FOV
+      window.innerWidth / window.innerHeight, // Aspect ratio
+      0.1, // Near clip
+      1000 // Far clip
     );
     
-    // Position camera for a better view
-    this.camera.position.set(0, 30, 100); // Move up and back
+    // Position the camera
+    this.camera.position.set(0, 30, 100);
     this.camera.lookAt(0, 0, 0);
-    console.log('Camera initialized at position:', this.camera.position);
   }
   
   /**
-   * Initialize the WebGL renderer
+   * Initialize the renderer
    */
   private initRenderer(): void {
-    console.log('Initializing renderer');
-    this.renderer = new THREE.WebGLRenderer({ 
-      antialias: true,
-      alpha: false 
-    });
-    
-    // Set up renderer
-    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.setClearColor(0x000020, 1); // Match scene background
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.shadowMap.enabled = true;
     
-    // Add renderer to DOM
+    // Append to container
     this.container.appendChild(this.renderer.domElement);
-    
-    // Set renderer element to fill container
-    this.renderer.domElement.style.display = 'block';
-    this.renderer.domElement.style.width = '100%';
-    this.renderer.domElement.style.height = '100%';
   }
   
   /**
-   * Add basic lighting to the scene
+   * Initialize lights
    */
   private initLights(): void {
-    console.log('Initializing lights');
     // Add ambient light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // Increased intensity
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
     this.scene.add(ambientLight);
     
     // Add directional light
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0); // Increased intensity
-    directionalLight.position.set(5, 5, 5);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(10, 20, 15);
+    directionalLight.castShadow = true;
     this.scene.add(directionalLight);
-
-    // Add a second directional light from the opposite direction
-    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 1.0);
-    directionalLight2.position.set(-5, -5, -5);
-    this.scene.add(directionalLight2);
-    
-    console.log('Lights initialized');
   }
   
   /**
    * Initialize input handling
    */
   private initInputHandling(): void {
-    console.log('Initializing input handling');
     window.addEventListener('keydown', (event) => {
       switch (event.key.toLowerCase()) {
         case 'w': this.inputState.forward = true; break;
@@ -179,7 +154,6 @@ export class SceneManager {
    * Handle window resize events
    */
   private handleResize = (): void => {
-    console.log('Handling resize');
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
     
@@ -243,7 +217,6 @@ export class SceneManager {
    * Clean up resources
    */
   public dispose(): void {
-    console.log('Disposing SceneManager');
     window.removeEventListener('resize', this.handleResize);
     
     // Remove input event listeners

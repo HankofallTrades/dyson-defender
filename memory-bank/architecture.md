@@ -2,219 +2,125 @@
 
 ## Project Structure
 
-The Dyson Sphere Defender game is built using a modular architecture that separates game logic, rendering, and UI into distinct components. This separation allows for better maintainability, testability, and scalability.
+The game follows a modular architecture separating core game logic, rendering, and UI:
 
-### Directory Structure
+- `src/core/`: Core game logic and state management
+  - `entities/`: Entity factory functions
+  - `systems/`: Entity processing systems
+  - `components.ts`: Component definitions
+  - `World.ts`: ECS manager
+  - `Game.ts`: Main game controller
+  - `State.ts`: Game state management
+- `src/rendering/`: Three.js rendering logic
+- `src/ui/`: React UI components
 
-- `src/core/`: Contains the core game logic and state management
-- `src/rendering/`: Houses Three.js rendering logic and scene management
-- `src/ui/`: React components for UI elements and HUD
+## Core Components
 
-## Core Architecture Components
+### Game Class
+- Coordinates game loop and integrates components
+- Manages game state and ECS world
+- Provides game control methods
+- Implements frame-rate independent updates
 
-### Game Class (`src/core/Game.ts`)
+### SceneManager
+- Singleton managing Three.js scene, camera, and renderer
+- Handles viewport resizing and input state
+- Manages scene objects and lighting
+- Implements resource cleanup
 
-The central class that coordinates the game loop and integrates all components. It:
+### World Class (ECS)
+- Manages entities and components
+- Coordinates system updates in order:
+  1. InputSystem: Processes player input
+  2. MovementSystem: Updates entity positions
+  3. AutoRotateSystem: Handles automatic rotation
+  4. RenderingSystem: Updates visual representations
+- Provides efficient entity querying
+- Implements component lifecycle management
 
-- Initializes the game state using GameStateManager
-- Connects to the SceneManager for rendering capabilities
-- Manages the game loop using requestAnimationFrame
-- Handles game state updates based on delta time
-- Provides game control methods (start, stop, pause, resume)
-- Implements frame-rate independent updates using delta time
+## Systems
 
-The Game class implements a clean separation between game state updates and rendering, ensuring a consistent frame rate independent of UI updates.
+### RenderingSystem
+- Creates and manages Three.js meshes
+- Updates visual representations based on components
+- Handles mesh cleanup
 
-### SceneManager Class (`src/rendering/SceneManager.ts`)
+### InputSystem
+- Processes keyboard input through SceneManager
+- Updates entity velocity based on input
+- Implements normalized movement vectors
 
-A dedicated class implementing the singleton pattern that manages all Three.js rendering aspects. It:
+### MovementSystem
+- Applies velocity to position
+- Implements physics-based movement
+- Enforces gameplay boundaries
+- Handles smooth acceleration/deceleration
 
-- Initializes and manages the Three.js scene, camera, and renderer
-- Handles viewport resizing and maintains proper aspect ratio
-- Sets up lighting and basic scene objects
-- Provides an interface for rendering and updating the scene
-- Manages scene object addition and removal
-- Implements proper resource disposal to prevent memory leaks
+### AutoRotateSystem
+- Manages automatic entity rotation
+- Updates rotation based on delta time
 
-The SceneManager follows the singleton pattern to ensure efficient resource management while providing a clear separation between game logic and rendering concerns.
+## Components
 
-### GameState and GameStateManager (`src/core/State.ts`)
+Components are pure data structures:
 
-The game state management system that:
+- `Position`: Location (x, y, z)
+- `Velocity`: Movement vector
+- `Rotation`: Orientation
+- `Renderable`: Visual properties
+- `Health`: Entity health state
+- `AutoRotate`: Rotation behavior
+- `InputReceiver`: Input handling flag
 
-- Defines a TypeScript interface for the game state
-- Provides a centralized state management approach
-- Implements serialization/deserialization for state persistence and future networking
-- Enables partial state updates for optimized performance
-- Keeps the state serializable (JSON-compatible) for easy networking
+## Entities
 
-The GameStateManager follows the Observer Pattern, allowing React components to be notified of state changes without tightly coupling game logic to UI.
+### DysonSphereEntity
+- Central game object
+- Components: Position, Rotation, Renderable, Health, AutoRotate
+- Wireframe sphere visualization
 
-### World Class (`src/core/World.ts`)
+### PlayerShipEntity
+- Player-controlled ship
+- Components: Position, Velocity, Rotation, Renderable, InputReceiver
+- Responds to keyboard input
 
-The core ECS manager that handles entity and component management. It:
-
-- Manages entity creation and component assignment
-- Provides efficient entity querying through component types
-- Coordinates system updates during the game loop
-- Implements proper component lifecycle management
-- Uses TypeScript for type-safe component handling
-
-The World class follows the ECS pattern, providing a flexible and efficient way to manage game entities and their behaviors.
-
-### Systems
-
-Systems are responsible for processing entities with specific component combinations:
-
-#### AutoRotateSystem (`src/core/systems/AutoRotateSystem.ts`)
-- Handles rotation of entities with AutoRotate components
-- Updates entity rotation based on delta time
-- Applies rotation changes to the visual representation
-- Maintains proper separation between game logic and rendering
-
-#### InputSystem (`src/core/systems/InputSystem.ts`)
-- Processes keyboard input for player control
-- Updates input state for affected entities
-- Provides clean interface for input handling
-- Maintains input state consistency
-
-#### MovementSystem (`src/core/systems/MovementSystem.ts`)
-- Handles entity movement based on input state
-- Updates entity positions using delta time
-- Implements proper physics-based movement
-- Maintains movement state consistency
-
-### Components
-
-Components are pure data structures that define entity properties:
-
-#### Core Components
-- `Position`: Defines entity location in 3D space
-- `Rotation`: Manages entity rotation state
-- `Renderable`: Links entities to their visual representation
-- `Health`: Tracks entity health and damage state
-- `AutoRotate`: Defines automatic rotation behavior
-
-### Entities
-
-Entities are created through factory functions that ensure proper component setup:
-
-#### DysonSphereEntity
-- Created using `createDysonSphere` factory function
-- Includes all necessary components for visualization
-- Implements proper cleanup and disposal
-- Maintains separation between game logic and rendering
-
-### React Integration
-
-React is used for UI components while Three.js handles the 3D rendering. This separation allows:
-
-- The game loop to run independently of React's rendering cycle
-- UI updates to occur in response to state changes without affecting game performance
-- Clean separation of concerns between game logic and UI presentation
-- State updates to flow from the Game class to React components via shared state
-
-## Technical Decisions
-
-### Separation of Concerns
-
-- Using a dedicated SceneManager for all rendering-related functionality
-- Keeping Game class focused on game state management and logic
-- Isolating UI components to React for better maintainability
-
-### Design Patterns
-
-- Implementing the singleton pattern for SceneManager to ensure efficient resource management
-- Using the observer pattern for game state updates
-- Following modular design principles for better scalability and maintainability
+## Technical Implementation
 
 ### State Management
+- GameStateManager for game state
+- React state for UI
+- Serializable state for future multiplayer
 
-- Using a dedicated GameStateManager instead of React state for game-specific state
-- Keeping state serializable to support future multiplayer functionality
-- Implementing a partial update pattern to minimize overhead
-- Separating UI state (in React) from game state (in GameStateManager)
-
-### Game Loop
-
-- Using requestAnimationFrame for efficient animation
-- Implementing delta time calculations for frame-rate independent movement
-- Separating update logic from rendering for better performance
-- Providing pause/resume capabilities without disrupting the rendering pipeline
-
-### Renderer Configuration
-
-- Using WebGLRenderer with antialiasing enabled for smoother graphics
-- Setting pixel ratio based on device capabilities for optimal clarity
-- Explicitly setting the clear color to ensure consistent background
-- Managing canvas size to properly fill the container element
+### Performance Optimization
+- Frame-rate independent movement
+- Efficient entity querying
+- Minimal debug output
+- Optimized input processing
+- Clean component lifecycle management
 
 ### Resource Management
-
-- Proper disposal of Three.js resources to prevent memory leaks
-- Clean event listener removal on component unmount
-- Object pooling (to be implemented) for frequently created/destroyed objects
+- Proper Three.js resource disposal
+- Event listener cleanup
+- Efficient mesh management
+- Memory leak prevention
 
 ### Responsive Design
+- Dynamic viewport resizing
+- Proper aspect ratio maintenance
+- Container-based dimensions
 
-- Handling window resize events to maintain proper aspect ratio
-- Using container dimensions rather than window dimensions for more flexible embedding
-- Setting canvas to fill available space with appropriate CSS
+## Development Guidelines
 
-### Entity-Component-System (ECS)
+### Code Organization
+- Keep components as pure data
+- Maintain system independence
+- Use factory functions for entities
+- Implement proper cleanup
+- Follow TypeScript best practices
 
-- Using a pure ECS architecture for flexible entity management
-- Implementing systems as independent processors of entity data
-- Keeping components as pure data structures
-- Using factory functions for entity creation
-- Maintaining proper separation between game logic and rendering
-- Implementing efficient entity querying through component types
-- Using TypeScript for type-safe component handling
-
-### Component Management
-
-- Components are stored in type-specific maps for efficient access
-- Entity IDs are used as keys for component storage
-- Components can be added and removed dynamically
-- Component queries are optimized for performance
-- Proper cleanup of components on entity removal
-
-### System Architecture
-
-- Systems are independent processors of entity data
-- Each system focuses on a specific aspect of entity behavior
-- Systems can be added and removed dynamically
-- System updates are coordinated by the World class
-- Systems maintain proper separation of concerns
-
-## File Purposes
-
-- `src/core/Game.ts`: Main game engine class managing the game loop and integrating components
-- `src/core/State.ts`: Defines the game state interface and provides state management
-- `src/rendering/SceneManager.ts`: Manages Three.js scene, camera, renderer, and lighting
-- `src/App.tsx`: React component that initializes the game and provides the container
-- `src/index.css` & `src/App.css`: Styling to ensure proper layout and full-screen rendering
-- Configuration files (tsconfig.json, vite.config.ts, etc.): Project setup for TypeScript and tooling
-
-## Debugging Insights
-
-### Rendering Issues
-When implementing Three.js in a React application, several common issues can arise:
-
-1. **Container Dimensions**: The Three.js renderer must have a properly sized container with explicitly set dimensions. Using container dimensions instead of window dimensions ensures proper sizing regardless of layout.
-
-2. **DOM Attachment**: The renderer's DOM element must be properly attached to the container element and styled to fill it completely.
-
-3. **React Component Lifecycle**: Initialize Three.js in useEffect hooks to ensure the DOM is ready, and provide cleanup functions to prevent memory leaks.
-
-4. **Debug Logging**: Adding console logs to track container dimensions and initialization helps diagnose rendering issues.
-
-### State Management Considerations
-
-1. **Game State vs. UI State**: Keeping game state separate from UI state ensures that game logic remains independent of the UI framework.
-
-2. **Serialization**: Avoiding non-serializable elements (functions, DOM elements, etc.) in the game state enables easy persistence and networking.
-
-3. **Performance**: Updating the DOM too frequently can impact performance. Using a lower frequency for UI updates than game logic updates helps maintain smooth gameplay.
-
-4. **State Synchronization**: When game state changes rapidly, throttling UI updates prevents React from re-rendering too often while still keeping the UI accurate.
+### Best Practices
+- Separate game logic from rendering
+- Maintain serializable state
+- Use efficient data structures
+- Implement proper error handling
+- Follow consistent naming conventions
