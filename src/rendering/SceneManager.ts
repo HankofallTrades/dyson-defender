@@ -1,8 +1,22 @@
 import * as THREE from 'three';
 
 /**
- * SceneManager class responsible for managing the Three.js scene, camera, and renderer
- * Follows the singleton pattern to ensure only one instance exists
+ * Three.js Scene Management System
+ * 
+ * Purpose:
+ * Abstracts all Three.js rendering concerns, providing a clean interface for managing
+ * the 3D scene, camera, and renderer while isolating rendering logic from game logic.
+ * 
+ * Responsibilities:
+ * - Manages the Three.js scene, camera, and renderer
+ * - Handles scene setup and lighting
+ * - Manages window resizing and viewport adjustments
+ * - Provides scene manipulation utilities
+ * - Handles resource cleanup and disposal
+ * 
+ * This class follows the separation-of-concerns.mdc rule by keeping all rendering
+ * logic isolated from game logic, making it possible to swap rendering engines
+ * or update Three.js without affecting other systems.
  */
 export class SceneManager {
   private static instance: SceneManager | null = null;
@@ -15,9 +29,6 @@ export class SceneManager {
   // Container element
   private container: HTMLElement;
   
-  // Test cube
-  private testCube!: THREE.Mesh;
-  
   /**
    * Private constructor to enforce singleton pattern
    * @param container The HTML element where the scene will be rendered
@@ -28,7 +39,6 @@ export class SceneManager {
     this.initCamera();
     this.initRenderer();
     this.initLights();
-    this.addTestCube();
     this.handleResize();
     
     // Set up resize listener
@@ -66,8 +76,8 @@ export class SceneManager {
       1000 // Far clipping plane
     );
     
-    // Position camera back a bit
-    this.camera.position.z = 5;
+    // Position camera back a bit for a good view of the game
+    this.camera.position.z = 100;
   }
   
   /**
@@ -108,20 +118,6 @@ export class SceneManager {
   }
   
   /**
-   * Add a test cube to verify rendering
-   */
-  private addTestCube(): void {
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-    this.testCube = new THREE.Mesh(geometry, material);
-    
-    // Make the cube larger for better visibility
-    this.testCube.scale.set(2, 2, 2);
-    
-    this.scene.add(this.testCube);
-  }
-  
-  /**
    * Handle window resize events
    */
   private handleResize = (): void => {
@@ -138,18 +134,6 @@ export class SceneManager {
    */
   public render(): void {
     this.renderer.render(this.scene, this.camera);
-  }
-  
-  /**
-   * Update method for animation
-   * @param deltaTime Time elapsed since last frame in seconds
-   */
-  public update(deltaTime: number): void {
-    // Rotate the test cube for visual feedback
-    if (this.testCube) {
-      this.testCube.rotation.x += 0.5 * deltaTime;
-      this.testCube.rotation.y += 0.5 * deltaTime;
-    }
   }
   
   /**

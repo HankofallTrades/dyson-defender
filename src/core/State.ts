@@ -1,6 +1,19 @@
 /**
- * Interfaces and implementation for game state management
- * Following the rule to make the game state easily serializable
+ * Game State Management System
+ * 
+ * Purpose:
+ * Manages all game data and state, providing a centralized, serializable state management
+ * system that can be easily saved, loaded, and synchronized for multiplayer.
+ * 
+ * Responsibilities:
+ * - Stores and manages game state (score, health, wave information)
+ * - Provides serialization for game saving/loading
+ * - Centralizes state updates
+ * - Ensures state consistency across the game
+ * - Manages game state transitions
+ * 
+ * This module follows the game-state-management.mdc rule by ensuring all game state
+ * is easily serializable and suitable for future multiplayer integration.
  */
 
 /**

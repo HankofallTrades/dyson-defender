@@ -1,17 +1,33 @@
 import * as THREE from 'three';
 import { GameState, GameStateManager } from './State';
+import { SceneManager } from '../rendering/SceneManager';
+import { EntityManager } from './EntityManager';
+import { DysonSphere } from './entities/DysonSphere';
 
 /**
- * Main Game class that handles the game loop and state management
+ * Main Game Controller
+ * 
+ * Purpose:
+ * Acts as the central controller/orchestrator for the entire game, managing the game loop
+ * and coordinating between different systems (state, entities, rendering).
+ * 
+ * Responsibilities:
+ * - Manages the game loop using requestAnimationFrame
+ * - Coordinates updates between different systems (state, entities, rendering)
+ * - Handles game lifecycle (start, stop, pause, resume)
+ * - Initializes and manages core game systems
+ * - Provides high-level game control interface
+ * 
+ * This class follows the independant-game-loop.mdc rule by keeping the game loop
+ * independent of UI updates, ensuring consistent frame rate and smooth gameplay.
  */
 class Game {
   // Container element where the game will be rendered
   private container: HTMLElement;
   
-  // Three.js essentials
-  private scene: THREE.Scene;
-  private camera: THREE.PerspectiveCamera;
-  private renderer: THREE.WebGLRenderer;
+  // Scene and entity management
+  private sceneManager: SceneManager;
+  private entityManager: EntityManager;
   
   // Game state management
   private stateManager: GameStateManager;
@@ -30,55 +46,31 @@ class Game {
     this.stateManager = new GameStateManager();
     this.stateManager.updateState({ lastUpdateTime: Date.now() });
     
-    // Initialize Three.js essentials
-    this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(
-      75, // Field of view
-      container.clientWidth / container.clientHeight, // Aspect ratio
-      0.1, // Near clipping plane
-      1000 // Far clipping plane
-    );
-    this.renderer = new THREE.WebGLRenderer({ 
-      antialias: true,
-      alpha: false 
-    });
+    // Initialize scene manager
+    this.sceneManager = SceneManager.getInstance(container);
     
-    // Set up renderer
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.setClearColor(0x000000, 1); // Set explicit background color
-    container.appendChild(this.renderer.domElement);
+    // Initialize entity manager
+    this.entityManager = EntityManager.getInstance(this.sceneManager);
     
-    // Set renderer element to fill container
-    this.renderer.domElement.style.display = 'block';
-    this.renderer.domElement.style.width = '100%';
-    this.renderer.domElement.style.height = '100%';
-    
-    // Position camera back a bit
-    this.camera.position.z = 5;
-    
-    // Add basic lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    this.scene.add(ambientLight);
-    
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(5, 5, 5);
-    this.scene.add(directionalLight);
-    
-    // Add a simple cube to test rendering
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-    const cube = new THREE.Mesh(geometry, material);
-    this.scene.add(cube);
-    
-    // Make the cube larger for better visibility
-    cube.scale.set(2, 2, 2);
-    
-    // Handle window resize
-    window.addEventListener('resize', this.handleResize);
+    // Initialize game entities
+    this.initEntities();
     
     // Force an initial render
     this.render();
+    
+    // Handle window resize
+    window.addEventListener('resize', this.handleResize);
+  }
+  
+  /**
+   * Initialize game entities
+   */
+  private initEntities(): void {
+    // Create and add the Dyson Sphere entity
+    const dysonSphere = new DysonSphere(this.sceneManager);
+    this.entityManager.addEntity(dysonSphere);
+    
+    // More entities will be added in future steps
   }
   
   /**
@@ -154,35 +146,22 @@ class Game {
    * @param deltaTime Time elapsed since last frame in seconds
    */
   private update(deltaTime: number): void {
-    // This will be expanded later to include game logic
-    // For now, just rotate the cube for visual feedback
-    const cube = this.scene.children.find(
-      child => child instanceof THREE.Mesh && child.geometry instanceof THREE.BoxGeometry
-    ) as THREE.Mesh;
-    
-    if (cube) {
-      cube.rotation.x += 0.5 * deltaTime;
-      cube.rotation.y += 0.5 * deltaTime;
-    }
+    // Update all entities through the entity manager
+    this.entityManager.updateEntities(deltaTime);
   }
   
   /**
    * Render the current scene
    */
   private render(): void {
-    this.renderer.render(this.scene, this.camera);
+    this.sceneManager.render();
   }
   
   /**
    * Handle window resize events
    */
   private handleResize = (): void => {
-    const width = this.container.clientWidth;
-    const height = this.container.clientHeight;
-    
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
+    // SceneManager handles resize internally
   }
   
   /**
@@ -207,23 +186,12 @@ class Game {
   dispose(): void {
     this.stop();
     window.removeEventListener('resize', this.handleResize);
-    this.container.removeChild(this.renderer.domElement);
     
-    // Dispose of Three.js resources
-    this.renderer.dispose();
+    // Clean up entities
+    this.entityManager.dispose();
     
-    // Dispose of geometries and materials
-    this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.geometry.dispose();
-        
-        if (object.material instanceof THREE.Material) {
-          object.material.dispose();
-        } else if (Array.isArray(object.material)) {
-          object.material.forEach(material => material.dispose());
-        }
-      }
-    });
+    // Let SceneManager dispose of Three.js resources
+    this.sceneManager.dispose();
   }
 }
 
