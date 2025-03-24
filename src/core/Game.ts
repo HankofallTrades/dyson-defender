@@ -11,6 +11,7 @@ import { RenderingSystem } from './systems/RenderingSystem';
 import { AutoRotateSystem } from './systems/AutoRotateSystem';
 import { CameraSystem } from './systems/CameraSystem';
 import { WeaponSystem } from './systems/WeaponSystem';
+import { CollisionSystem } from './systems/CollisionSystem';
 
 /**
  * Main Game Controller
@@ -63,8 +64,9 @@ class Game {
     this.world.addSystem(new InputSystem(this.world, this.sceneManager));
     this.world.addSystem(new MovementSystem(this.sceneManager, this.world));
     this.world.addSystem(new CameraSystem(this.sceneManager, this.world));
-    this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
     this.world.addSystem(new WeaponSystem(this.world, this.sceneManager));
+    this.world.addSystem(new CollisionSystem(this.world));
+    this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
   }
 
   private initEntities(): void {

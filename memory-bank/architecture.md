@@ -44,21 +44,37 @@ The game follows a modular architecture separating core game logic, rendering, a
 - Creates and manages Three.js meshes
 - Updates visual representations based on components
 - Handles mesh cleanup
+- Renders various entity types (player ship, Dyson sphere, lasers)
 
 ### InputSystem
-- Processes keyboard input through SceneManager
+- Processes keyboard and mouse input
 - Updates entity velocity based on input
+- Captures shooting input (space key and left mouse button)
 - Implements normalized movement vectors
 
 ### MovementSystem
 - Applies velocity to position
 - Implements physics-based movement
-- Enforces gameplay boundaries
+- Enforces gameplay boundaries (except for projectiles)
 - Handles smooth acceleration/deceleration
 
 ### AutoRotateSystem
 - Manages automatic entity rotation
 - Updates rotation based on delta time
+
+### WeaponSystem
+- Manages weapon firing mechanics
+- Handles cooldown timing
+- Creates projectile entities
+- Updates projectile lifetime
+- Removes expired projectiles
+
+### CollisionSystem
+- Detects collisions between entities with Collider components
+- Processes different collision types based on entity layers
+- Applies damage to entities when hit by projectiles
+- Uses efficient collision detection algorithms for different collider shapes
+- Maintains a collision matrix for filtering collision checks
 
 ## Components
 
@@ -71,6 +87,9 @@ Components are pure data structures:
 - `Health`: Entity health state
 - `AutoRotate`: Rotation behavior
 - `InputReceiver`: Input handling flag
+- `Projectile`: Projectile behavior and lifetime
+- `LaserCooldown`: Weapon cooldown management
+- `Collider`: Collision shape and properties for physics interactions
 
 ## Entities
 
@@ -81,8 +100,13 @@ Components are pure data structures:
 
 ### PlayerShipEntity
 - Player-controlled ship
-- Components: Position, Velocity, Rotation, Renderable, InputReceiver
+- Components: Position, Velocity, Rotation, Renderable, InputReceiver, LaserCooldown
 - Responds to keyboard input
+
+### LaserEntity
+- Player projectile
+- Components: Position, Velocity, Rotation, Renderable, Projectile
+- Travels in straight line with fixed lifetime
 
 ## Technical Implementation
 

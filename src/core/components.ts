@@ -74,3 +74,13 @@ export interface LaserCooldown {
   max: number;      // Maximum cooldown time in seconds
   canFire: boolean; // Whether the entity can fire
 }
+
+export interface Collider {
+  type: string;     // 'sphere' or 'box'
+  radius?: number;  // For sphere colliders
+  width?: number;   // For box colliders
+  height?: number;  // For box colliders
+  depth?: number;   // For box colliders
+  isTrigger: boolean; // Whether this is a trigger collider (doesn't cause physical response)
+  layer: string;    // Collision layer (e.g., 'player', 'enemy', 'projectile')
+}

@@ -1,6 +1,6 @@
 // src/core/entities/PlayerShipEntity.ts
 import { World } from '../World';
-import { Position, Velocity, Renderable, InputReceiver, Rotation, MouseLook, LaserCooldown } from '../components';
+import { Position, Velocity, Renderable, InputReceiver, Rotation, MouseLook, LaserCooldown, Collider } from '../components';
 
 export function createPlayerShip(world: World): number {
   const entity = world.createEntity();
@@ -33,6 +33,16 @@ export function createPlayerShip(world: World): number {
     current: 0,
     max: 0.25, // 4 shots per second
     canFire: true
+  });
+  
+  // Add collider for collision detection
+  world.addComponent(entity, 'Collider', {
+    type: 'box',
+    width: 6.0, // Match the ship's model dimensions
+    height: 1.5,
+    depth: 4.0,
+    isTrigger: false,
+    layer: 'player'
   });
 
   return entity;

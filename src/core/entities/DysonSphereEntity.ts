@@ -1,5 +1,5 @@
 import { World } from '../World';
-import { Position, Renderable, Health, AutoRotate, Rotation } from '../components';
+import { Position, Renderable, Health, AutoRotate, Rotation, Collider } from '../components';
 
 export function createDysonSphere(world: World): number {
   const entity = world.createEntity();
@@ -14,6 +14,14 @@ export function createDysonSphere(world: World): number {
   });
   world.addComponent(entity, 'Health', { current: 100, max: 100 });
   world.addComponent(entity, 'AutoRotate', { speedX: 0, speedY: 0.05, speedZ: 0 });
+  
+  // Add collider for collision detection
+  world.addComponent(entity, 'Collider', {
+    type: 'sphere',
+    radius: 50, // Match the radius of the Dyson Sphere model
+    isTrigger: false,
+    layer: 'dysonSphere'
+  });
 
   console.log('Dyson Sphere components added');
   return entity;

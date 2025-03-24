@@ -56,5 +56,15 @@ export function createLaser(
     timeAlive: 0
   });
   
+  // Add collider component for collision detection
+  world.addComponent(entity, 'Collider', {
+    type: 'box',
+    width: 0.5,
+    height: 0.5,
+    depth: 5.0, // Longer in the direction of travel
+    isTrigger: true,
+    layer: 'projectile'
+  });
+  
   return entity;
 } 
