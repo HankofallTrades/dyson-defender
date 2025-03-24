@@ -1,7 +1,8 @@
 // src/core/systems/MovementSystem.ts
 import { System, World } from '../World';
-import { Position, Velocity, InputReceiver } from '../components';
+import { Position, Velocity, InputReceiver, Rotation } from '../components';
 import { SceneManager } from '../../rendering/SceneManager';
+import * as THREE from 'three';
 
 export class MovementSystem implements System {
   private sceneManager: SceneManager;
@@ -24,7 +25,7 @@ export class MovementSystem implements System {
       deltaTime = 0.1; // Cap delta time to prevent huge jumps
     }
     
-    const entities = this.world.getEntitiesWith(['Position', 'Velocity']);
+    const entities = this.world.getEntitiesWith(['Position', 'Velocity', 'Rotation']);
     
     if (entities.length === 0) {
       return;
@@ -33,6 +34,7 @@ export class MovementSystem implements System {
     for (const entity of entities) {
       const position = this.world.getComponent<Position>(entity, 'Position');
       const velocity = this.world.getComponent<Velocity>(entity, 'Velocity');
+      const rotation = this.world.getComponent<Rotation>(entity, 'Rotation');
 
       if (!position || !velocity) {
         continue;
@@ -43,7 +45,7 @@ export class MovementSystem implements System {
       const hasVelocity = speed > this.MIN_VELOCITY;
       
       if (hasVelocity) {
-        // Calculate position change based on velocity and deltaTime
+        // The direction is already transformed in InputSystem, so we just apply it directly
         const dx = velocity.x * deltaTime;
         const dy = velocity.y * deltaTime;
         const dz = velocity.z * deltaTime;

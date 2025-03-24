@@ -1,56 +1,27 @@
 import { useEffect, useRef } from 'react'
 import './App.css'
-import { SceneManager } from './rendering/SceneManager'
-import { World } from './core/World'
-import { createDysonSphere } from './core/entities/DysonSphereEntity'
-import { createPlayerShip } from './core/entities/PlayerShipEntity'
-import { InputSystem } from './core/systems/InputSystem'
-import { MovementSystem } from './core/systems/MovementSystem'
-import { AutoRotateSystem } from './core/systems/AutoRotateSystem'
-import { RenderingSystem } from './core/systems/RenderingSystem'
+import Game from './core/Game'
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const gameRef = useRef<Game | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Initialize SceneManager
-    const sceneManager = SceneManager.getInstance(containerRef.current);
+    // Initialize game using Game class
+    const game = new Game(containerRef.current);
+    gameRef.current = game;
     
-    // Initialize World and Systems
-    const world = new World();
-    
-    // Add systems in the correct order
-    world.addSystem(new InputSystem(sceneManager, world));
-    world.addSystem(new MovementSystem(sceneManager, world));
-    world.addSystem(new AutoRotateSystem(world));
-    world.addSystem(new RenderingSystem(world, sceneManager.getScene()));
-    
-    // Create entities
-    createDysonSphere(world);
-    createPlayerShip(world);
-    
-    // Animation loop
-    let lastTime = performance.now();
-    let animationFrameId: number;
-    
-    const animate = (currentTime: number) => {
-      const deltaTime = (currentTime - lastTime) / 1000;
-      lastTime = currentTime;
-      
-      world.update(deltaTime);
-      sceneManager.render();
-      
-      animationFrameId = requestAnimationFrame(animate);
-    };
-    
-    animationFrameId = requestAnimationFrame(animate);
+    // Start the game
+    game.start();
     
     // Cleanup
     return () => {
-      cancelAnimationFrame(animationFrameId);
-      sceneManager.dispose();
+      if (gameRef.current) {
+        gameRef.current.dispose();
+        gameRef.current = null;
+      }
     };
   }, []);
 

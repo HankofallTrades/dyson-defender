@@ -23,21 +23,11 @@ export class SceneManager {
   
   // Three.js essentials
   private scene!: THREE.Scene;
-  private camera!: THREE.PerspectiveCamera;
+  private activeCamera: THREE.PerspectiveCamera | null = null;
   private renderer!: THREE.WebGLRenderer;
   
   // Container element
   private container: HTMLElement;
-  
-  // Input state
-  private inputState = {
-    forward: false,
-    backward: false,
-    left: false,
-    right: false,
-    up: false,
-    down: false
-  };
   
   /**
    * Private constructor to enforce singleton pattern
@@ -49,9 +39,7 @@ export class SceneManager {
     // Initialize in specific order
     this.initScene();
     this.initRenderer();
-    this.initCamera();
     this.initLights();
-    this.initInputHandling();
     
     // Handle initial resize
     this.handleResize();
@@ -80,22 +68,6 @@ export class SceneManager {
   }
   
   /**
-   * Initialize the camera
-   */
-  private initCamera(): void {
-    this.camera = new THREE.PerspectiveCamera(
-      75, // FOV
-      window.innerWidth / window.innerHeight, // Aspect ratio
-      0.1, // Near clip
-      1000 // Far clip
-    );
-    
-    // Position the camera
-    this.camera.position.set(0, 30, 100);
-    this.camera.lookAt(0, 0, 0);
-  }
-  
-  /**
    * Initialize the renderer
    */
   private initRenderer(): void {
@@ -106,11 +78,14 @@ export class SceneManager {
     
     // Append to container
     this.container.appendChild(this.renderer.domElement);
+    console.log('SceneManager: Renderer initialized, domElement added to container');
+    
+    // Ensure renderer's domElement has the correct styling
+    this.renderer.domElement.style.display = 'block';
+    this.renderer.domElement.style.width = '100%';
+    this.renderer.domElement.style.height = '100%';
   }
   
-  /**
-   * Initialize lights
-   */
   private initLights(): void {
     // Add ambient light
     const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
@@ -124,56 +99,37 @@ export class SceneManager {
   }
   
   /**
-   * Initialize input handling
-   */
-  private initInputHandling(): void {
-    window.addEventListener('keydown', (event) => {
-      switch (event.key.toLowerCase()) {
-        case 'w': this.inputState.forward = true; break;
-        case 's': this.inputState.backward = true; break;
-        case 'a': this.inputState.left = true; break;
-        case 'd': this.inputState.right = true; break;
-        case 'q': this.inputState.up = true; break;
-        case 'e': this.inputState.down = true; break;
-      }
-    });
-    
-    window.addEventListener('keyup', (event) => {
-      switch (event.key.toLowerCase()) {
-        case 'w': this.inputState.forward = false; break;
-        case 's': this.inputState.backward = false; break;
-        case 'a': this.inputState.left = false; break;
-        case 'd': this.inputState.right = false; break;
-        case 'q': this.inputState.up = false; break;
-        case 'e': this.inputState.down = false; break;
-      }
-    });
-  }
-  
-  /**
    * Handle window resize events
    */
   private handleResize = (): void => {
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
     
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
+    if (this.activeCamera) {
+      this.activeCamera.aspect = width / height;
+      this.activeCamera.updateProjectionMatrix();
+    }
     this.renderer.setSize(width, height);
   }
   
   /**
-   * Get the current input state
+   * Set the active camera for rendering
+   * @param camera The Three.js camera to use for rendering
    */
-  public getInputState(): typeof this.inputState {
-    return { ...this.inputState };
+  public setActiveCamera(camera: THREE.PerspectiveCamera): void {
+    this.activeCamera = camera;
+    this.handleResize(); // Update aspect ratio and projection matrix
   }
   
   /**
    * Render the scene
    */
   public render(): void {
-    this.renderer.render(this.scene, this.camera);
+    if (!this.activeCamera) {
+      console.warn('No active camera set in SceneManager');
+      return;
+    }
+    this.renderer.render(this.scene, this.activeCamera);
   }
   
   /**
@@ -186,8 +142,8 @@ export class SceneManager {
   /**
    * Get the Three.js camera
    */
-  public getCamera(): THREE.PerspectiveCamera {
-    return this.camera;
+  public getCamera(): THREE.PerspectiveCamera | null {
+    return this.activeCamera;
   }
   
   /**
@@ -195,6 +151,13 @@ export class SceneManager {
    */
   public getRenderer(): THREE.WebGLRenderer {
     return this.renderer;
+  }
+  
+  /**
+   * Get the Three.js renderer's DOM element
+   */
+  public getRendererDomElement(): HTMLCanvasElement {
+    return this.renderer.domElement;
   }
   
   /**
@@ -218,10 +181,6 @@ export class SceneManager {
    */
   public dispose(): void {
     window.removeEventListener('resize', this.handleResize);
-    
-    // Remove input event listeners
-    window.removeEventListener('keydown', () => {});
-    window.removeEventListener('keyup', () => {});
     
     // Dispose of renderer
     this.renderer.dispose();

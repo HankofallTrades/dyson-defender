@@ -85,7 +85,20 @@ export class RenderingSystem implements System {
   }
 
   public update(deltaTime: number): void {
-    const entities = this.world.getEntitiesWith(['Position', 'Renderable']);
+    // Find camera mount to determine player entity
+    const cameraEntities = this.world.getEntitiesWith(['Camera', 'CameraMount']);
+    let playerEntityId = -1;
+    
+    if (cameraEntities.length > 0) {
+      const cameraEntity = cameraEntities[0];
+      const cameraMount = this.world.getComponent<{parentEntity: number}>(cameraEntity, 'CameraMount');
+      if (cameraMount) {
+        playerEntityId = cameraMount.parentEntity;
+      }
+    }
+    
+    // Get all entities with Renderable and Position components
+    const entities = this.world.getEntitiesWith(['Renderable', 'Position']);
     
     for (const entity of entities) {
       const position = this.world.getComponent<Position>(entity, 'Position');
@@ -93,6 +106,11 @@ export class RenderingSystem implements System {
       const rotation = this.world.getComponent<Rotation>(entity, 'Rotation');
 
       if (!position || !renderable) {
+        continue;
+      }
+
+      // Skip rendering the player ship if it's the one with the camera mounted
+      if (entity === playerEntityId && renderable.modelId === 'playerShip') {
         continue;
       }
 
@@ -107,6 +125,7 @@ export class RenderingSystem implements System {
       // Update transform
       mesh.position.set(position.x, position.y, position.z);
       if (rotation) {
+        // Apply rotation in the correct order (pitch, yaw, roll)
         mesh.rotation.set(rotation.x, rotation.y, rotation.z);
       }
     }

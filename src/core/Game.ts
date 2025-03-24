@@ -4,10 +4,12 @@ import { SceneManager } from '../rendering/SceneManager';
 import { World } from './World';
 import { createDysonSphere } from './entities/DysonSphereEntity';
 import { createPlayerShip } from './entities/PlayerShipEntity';
+import { createCamera } from './entities/CameraEntity';
 import { InputSystem } from './systems/InputSystem';
 import { MovementSystem } from './systems/MovementSystem';
 import { RenderingSystem } from './systems/RenderingSystem';
 import { AutoRotateSystem } from './systems/AutoRotateSystem';
+import { CameraSystem } from './systems/CameraSystem';
 
 /**
  * Main Game Controller
@@ -38,29 +40,40 @@ class Game {
   private lastFrameTime: number = 0;
 
   constructor(container: HTMLElement) {
+    console.log('Game: Initializing game');
     this.container = container;
     this.stateManager = new GameStateManager();
     this.stateManager.updateState({ lastUpdateTime: Date.now() });
     this.sceneManager = SceneManager.getInstance(container);
     this.world = new World();
 
+    console.log('Game: Initializing systems');
     this.initSystems();
+    
+    console.log('Game: Initializing entities');
     this.initEntities();
 
     this.render();
     window.addEventListener('resize', this.handleResize);
+    console.log('Game: Initialization complete');
   }
 
   private initSystems(): void {
-    this.world.addSystem(new InputSystem(this.sceneManager, this.world));
+    this.world.addSystem(new InputSystem(this.world, this.sceneManager));
     this.world.addSystem(new MovementSystem(this.sceneManager, this.world));
-    this.world.addSystem(new AutoRotateSystem(this.world));
+    this.world.addSystem(new CameraSystem(this.sceneManager, this.world));
     this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
   }
 
   private initEntities(): void {
+    console.log('Game: Creating Dyson Sphere');
     createDysonSphere(this.world);
-    createPlayerShip(this.world);
+    
+    console.log('Game: Creating Player Ship');
+    const playerShip = createPlayerShip(this.world);
+    
+    console.log('Game: Creating Camera Entity for player ship:', playerShip);
+    createCamera(this.world, playerShip);
   }
 
   public start(): void {

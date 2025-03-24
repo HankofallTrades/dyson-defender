@@ -42,3 +42,22 @@ export interface Transform {
   rotation: Rotation;
   scale: number;
 }
+
+export interface Camera {
+  offset: Position;  // Offset from the parent entity (ship)
+  fov: number;      // Field of view
+  near: number;     // Near clipping plane
+  far: number;      // Far clipping plane
+}
+
+export interface MouseLook {
+  sensitivity: number;  // Mouse movement sensitivity
+  pitchMin: number;     // Minimum pitch angle (looking up)
+  pitchMax: number;     // Maximum pitch angle (looking down)
+  yaw: number;         // Current yaw angle (left/right)
+  pitch: number;       // Current pitch angle (up/down)
+}
+
+export interface CameraMount {
+  parentEntity: number;  // ID of the entity this camera is mounted to
+}

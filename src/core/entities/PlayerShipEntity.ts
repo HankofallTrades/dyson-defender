@@ -1,6 +1,6 @@
 // src/core/entities/PlayerShipEntity.ts
 import { World } from '../World';
-import { Position, Velocity, Renderable, InputReceiver, Rotation } from '../components';
+import { Position, Velocity, Renderable, InputReceiver, Rotation, MouseLook } from '../components';
 
 export function createPlayerShip(world: World): number {
   const entity = world.createEntity();
@@ -8,13 +8,25 @@ export function createPlayerShip(world: World): number {
   // Add components
   world.addComponent(entity, 'Position', { x: 80, y: 0, z: 0 }); // Position far to the side to be visible
   world.addComponent(entity, 'Velocity', { x: 0, y: 0, z: 0 });
-  world.addComponent(entity, 'Rotation', { x: 0, y: 0, z: 0 }); // No rotation initially
+  
+  // Set initial rotation to face the Dyson Sphere at origin
+  // Since we're at (80,0,0) and the Dyson Sphere is at (0,0,0),
+  // we need to rotate 90 degrees (PI/2) around the Y axis to face it
+  world.addComponent(entity, 'Rotation', { x: 0, y: Math.PI/2, z: 0 });
+  
   world.addComponent(entity, 'Renderable', { 
     modelId: 'playerShip',
     scale: 2.0, // Increased size for better visibility
     color: 0x00ff00
   });
   world.addComponent(entity, 'InputReceiver', {});
+  world.addComponent(entity, 'MouseLook', {
+    sensitivity: 0.005, // Reduced sensitivity for more precise control
+    pitchMin: -Math.PI / 2.5, // Limit looking up
+    pitchMax: Math.PI / 2.5,  // Limit looking down
+    yaw: Math.PI/2,    // Initial yaw should match the ship's rotation      
+    pitch: 0
+  });
 
   return entity;
 }
