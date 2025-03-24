@@ -3,6 +3,7 @@ import { GameState, GameStateManager } from './State';
 import { SceneManager } from '../rendering/SceneManager';
 import { EntityManager } from './EntityManager';
 import { DysonSphere } from './entities/DysonSphere';
+import { PlayerShip } from './entities/PlayerShip';
 
 /**
  * Main Game Controller
@@ -34,6 +35,9 @@ class Game {
   private isRunning: boolean = false;
   private animationFrameId: number | null = null;
   private lastFrameTime: number = 0;
+  
+  // Player management
+  private playerShip: PlayerShip | null = null;
   
   /**
    * Constructor for the Game class
@@ -70,7 +74,10 @@ class Game {
     const dysonSphere = new DysonSphere(this.sceneManager);
     this.entityManager.addEntity(dysonSphere);
     
-    // More entities will be added in future steps
+    // Create and add the player ship entity
+    this.playerShip = new PlayerShip();
+    this.entityManager.addEntity(this.playerShip);
+    this.sceneManager.setPlayerShip(this.playerShip);
   }
   
   /**
@@ -146,6 +153,11 @@ class Game {
    * @param deltaTime Time elapsed since last frame in seconds
    */
   private update(deltaTime: number): void {
+    // Update player ship with input
+    if (this.playerShip) {
+      this.playerShip.updateShip(this.sceneManager.getInputState());
+    }
+    
     // Update all entities through the entity manager
     this.entityManager.updateEntities(deltaTime);
   }

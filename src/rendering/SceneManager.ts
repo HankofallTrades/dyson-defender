@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { PlayerShipVisual } from './PlayerShipVisual';
+import { PlayerShip } from '../core/entities/PlayerShip';
 
 /**
  * Three.js Scene Management System
@@ -26,8 +28,21 @@ export class SceneManager {
   private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
   
+  // Game objects
+  private playerShipVisual: PlayerShipVisual | null = null;
+  
   // Container element
   private container: HTMLElement;
+  
+  // Input state
+  private inputState = {
+    forward: false,
+    backward: false,
+    left: false,
+    right: false,
+    up: false,
+    down: false
+  };
   
   /**
    * Private constructor to enforce singleton pattern
@@ -39,6 +54,7 @@ export class SceneManager {
     this.initCamera();
     this.initRenderer();
     this.initLights();
+    this.initInputHandling();
     this.handleResize();
     
     // Set up resize listener
@@ -118,6 +134,46 @@ export class SceneManager {
   }
   
   /**
+   * Set the player ship entity
+   * @param playerShip The player ship entity to visualize
+   */
+  public setPlayerShip(playerShip: PlayerShip): void {
+    if (this.playerShipVisual) {
+      this.removeFromScene(this.playerShipVisual.getMesh());
+      this.playerShipVisual.dispose();
+    }
+    this.playerShipVisual = new PlayerShipVisual(playerShip);
+    this.addToScene(this.playerShipVisual.getMesh());
+  }
+  
+  /**
+   * Initialize input handling
+   */
+  private initInputHandling(): void {
+    window.addEventListener('keydown', (event) => {
+      switch (event.key.toLowerCase()) {
+        case 'w': this.inputState.forward = true; break;
+        case 's': this.inputState.backward = true; break;
+        case 'a': this.inputState.left = true; break;
+        case 'd': this.inputState.right = true; break;
+        case 'q': this.inputState.up = true; break;
+        case 'e': this.inputState.down = true; break;
+      }
+    });
+    
+    window.addEventListener('keyup', (event) => {
+      switch (event.key.toLowerCase()) {
+        case 'w': this.inputState.forward = false; break;
+        case 's': this.inputState.backward = false; break;
+        case 'a': this.inputState.left = false; break;
+        case 'd': this.inputState.right = false; break;
+        case 'q': this.inputState.up = false; break;
+        case 'e': this.inputState.down = false; break;
+      }
+    });
+  }
+  
+  /**
    * Handle window resize events
    */
   private handleResize = (): void => {
@@ -130,9 +186,26 @@ export class SceneManager {
   }
   
   /**
+   * Get the current input state
+   */
+  public getInputState(): typeof this.inputState {
+    return { ...this.inputState };
+  }
+  
+  /**
+   * Update the scene
+   */
+  public update(): void {
+    if (this.playerShipVisual) {
+      this.playerShipVisual.update();
+    }
+  }
+  
+  /**
    * Render the scene
    */
   public render(): void {
+    this.update();
     this.renderer.render(this.scene, this.camera);
   }
   
@@ -178,6 +251,16 @@ export class SceneManager {
    */
   public dispose(): void {
     window.removeEventListener('resize', this.handleResize);
+    
+    // Remove input event listeners
+    window.removeEventListener('keydown', () => {});
+    window.removeEventListener('keyup', () => {});
+    
+    // Dispose of player ship visual
+    if (this.playerShipVisual) {
+      this.playerShipVisual.dispose();
+      this.playerShipVisual = null;
+    }
     
     // Dispose of renderer
     this.renderer.dispose();
