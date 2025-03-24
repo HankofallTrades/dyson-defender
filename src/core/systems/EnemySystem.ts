@@ -1,5 +1,5 @@
 import { World, System } from '../World';
-import { Enemy, Position, Velocity, Rotation, Collider, InputReceiver, Health, Renderable } from '../components';
+import { Enemy, Position, Velocity, Rotation, Collider, InputReceiver, Health, Renderable, Shield } from '../components';
 import { createLaser } from '../entities/LaserEntity';
 import * as THREE from 'three';
 import { COLORS } from '../../constants/colors';
@@ -88,9 +88,23 @@ export class EnemySystem implements System {
         if (enemy.currentCooldown <= 0) {
           enemy.currentCooldown = enemy.attackCooldown;
           
-          // Deal damage to the Dyson Sphere
+          // First check if target has a shield
+          const targetShield = this.world.getComponent<Shield>(targetEntity, 'Shield');
           const targetHealth = this.world.getComponent<Health>(targetEntity, 'Health');
-          if (targetHealth) {
+          
+          // Damage logic - first damage shield, then health
+          if (targetShield && targetShield.current > 0) {
+            // Damage shield first
+            targetShield.current -= enemy.damage;
+            if (targetShield.current < 0) {
+              // If shield is depleted, apply remaining damage to health
+              if (targetHealth) {
+                targetHealth.current += targetShield.current; // Add negative value
+                targetShield.current = 0; // Set shield to zero
+              }
+            }
+          } else if (targetHealth) {
+            // Shield already depleted, damage health directly
             targetHealth.current -= enemy.damage;
             if (targetHealth.current < 0) targetHealth.current = 0;
           }
@@ -177,33 +191,28 @@ export class EnemySystem implements System {
   
   // Helper method to make an entity face a target position
   private faceTarget(rotation: Rotation, position: Position, targetPosition: Position): void {
-    // Create vectors for calculations
-    const entityPos = new THREE.Vector3(position.x, position.y, position.z);
-    const targetPos = new THREE.Vector3(targetPosition.x, targetPosition.y, targetPosition.z);
+    // Calculate direction vector from position to target
+    const dx = targetPosition.x - position.x;
+    const dy = targetPosition.y - position.y;
+    const dz = targetPosition.z - position.z;
     
-    // Create a look direction - this is where we want the entity to face
-    const lookDir = new THREE.Vector3().subVectors(targetPos, entityPos).normalize();
+    // Calculate the angle for rotation
+    rotation.y = Math.atan2(dx, dz);
     
-    // Create a dummy object to use Three.js's lookAt functionality
-    const dummy = new THREE.Object3D();
-    dummy.position.copy(entityPos);
+    // Calculate pitch (vertical angle) - optional
+    const distance = Math.sqrt(dx * dx + dz * dz);
+    rotation.x = Math.atan2(dy, distance);
+  }
+  
+  /**
+   * Remove all enemy entities from the world
+   * Used when restarting the game
+   */
+  public clearAllEnemies(): void {
+    const enemies = this.world.getEntitiesWith(['Enemy']);
     
-    // Calculate a position in front of the entity to look at
-    const lookAtPos = new THREE.Vector3().addVectors(
-      entityPos,
-      lookDir.multiplyScalar(1) // Look 1 unit ahead in the look direction
-    );
-    
-    // Use Three.js lookAt which handles the matrix math for us
-    dummy.lookAt(lookAtPos);
-    
-    // Get the resulting rotation
-    dummy.updateMatrixWorld(true);
-    const resultEuler = new THREE.Euler().setFromRotationMatrix(dummy.matrixWorld);
-    
-    // Add PI to Y to flip it around 180 degrees (face toward target, not away)
-    rotation.x = resultEuler.x;
-    rotation.y = resultEuler.y + Math.PI;
-    rotation.z = resultEuler.z;
+    for (const entity of enemies) {
+      this.world.removeEntity(entity);
+    }
   }
 } 

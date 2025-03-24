@@ -1,5 +1,5 @@
 import { World } from '../World';
-import { Position, Renderable, Health, AutoRotate, Rotation, Collider } from '../components';
+import { Position, Renderable, Health, AutoRotate, Rotation, Collider, Shield } from '../components';
 import { COLORS } from '../../constants/colors';
 
 export function createDysonSphere(world: World): number {
@@ -16,7 +16,10 @@ export function createDysonSphere(world: World): number {
   };
   world.addComponent(entity, 'Renderable', renderableComponent);
   
-  world.addComponent(entity, 'Health', { current: 100, max: 100 });
+  // Add both shield and health components
+  world.addComponent(entity, 'Shield', { current: 100, max: 100 });
+  world.addComponent(entity, 'Health', { current: 500, max: 500 });
+  
   world.addComponent(entity, 'AutoRotate', { speedX: 0, speedY: 0.05, speedZ: 0 });
   
   // Add collider for collision detection

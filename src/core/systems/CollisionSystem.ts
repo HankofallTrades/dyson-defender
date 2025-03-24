@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { World, System } from '../World';
-import { Position, Collider, Projectile, Health } from '../components';
+import { Position, Collider, Projectile, Health, Enemy, InputReceiver, Shield } from '../components';
 import { HUDSystem } from './HUDSystem';
 
 /**
@@ -212,16 +212,30 @@ export class CollisionSystem implements System {
   }
   
   private handleEnemyDysonSphereCollision(enemyEntity: number, dysonSphereEntity: number): void {
-    // Get enemy component
-    const enemy = this.world.getComponent<{ damage: number }>(enemyEntity, 'Enemy');
+    // Get enemy properties
+    const enemy = this.world.getComponent<Enemy>(enemyEntity, 'Enemy');
     if (!enemy) return;
     
-    // Get Dyson Sphere health
+    // Check for shield first
+    const shield = this.world.getComponent<Shield>(dysonSphereEntity, 'Shield');
     const health = this.world.getComponent<Health>(dysonSphereEntity, 'Health');
+    
     if (!health) return;
     
-    // Apply damage
-    health.current -= enemy.damage;
+    // Damage logic - shield first, then health
+    if (shield && shield.current > 0) {
+      // Apply damage to shield
+      shield.current -= enemy.damage;
+      
+      // If shield is depleted, apply remaining damage to health
+      if (shield.current < 0) {
+        health.current += shield.current; // Add negative value
+        shield.current = 0;
+      }
+    } else {
+      // Shield already depleted or doesn't exist, damage health directly
+      health.current -= enemy.damage;
+    }
     
     // Clamp health to minimum of 0
     health.current = Math.max(0, health.current);
@@ -229,8 +243,7 @@ export class CollisionSystem implements System {
     // Remove the enemy
     this.world.removeEntity(enemyEntity);
     
-    // Game over logic can be handled by a separate GameStateSystem 
-    // that monitors the Dyson Sphere health
+    // Game over logic is handled by the HUDSystem that monitors the Dyson Sphere health
   }
   
   private handleProjectileCollision(projectileEntity: number, targetEntity: number): void {
@@ -238,41 +251,75 @@ export class CollisionSystem implements System {
     const projectile = this.world.getComponent<Projectile>(projectileEntity, 'Projectile');
     if (!projectile) return;
     
-    // Check if target has health
-    const health = this.world.getComponent<Health>(targetEntity, 'Health');
-    if (health) {
-      // Apply damage
-      health.current -= projectile.damage;
+    // Get HUD system for notifications
+    const hudSystem = this.getHUDSystem();
+    
+    // Check if this is the Dyson Sphere (which has both shield and health)
+    if (this.isDysonSphere(targetEntity)) {
+      const shield = this.world.getComponent<Shield>(targetEntity, 'Shield');
+      const health = this.world.getComponent<Health>(targetEntity, 'Health');
       
-      // Get HUD system for notifications
-      const hudSystem = this.getHUDSystem();
-      
-      // Check if this is a player being hit
-      if (this.world.hasComponent(targetEntity, 'InputReceiver')) {
-        if (hudSystem) {
-          // Activate damage effect instead of displaying a message
-          hudSystem.activateDamageEffect(0.8, 0.5);
+      if (health) {
+        // Damage logic - shield first, then health
+        if (shield && shield.current > 0) {
+          // Apply damage to shield
+          shield.current -= projectile.damage;
+          
+          // If shield is depleted, apply remaining damage to health
+          if (shield.current < 0) {
+            health.current += shield.current; // Add negative value
+            shield.current = 0;
+          }
+        } else {
+          // Shield already depleted or doesn't exist, damage health directly
+          health.current -= projectile.damage;
         }
+        
+        // Clamp health to minimum of 0
+        health.current = Math.max(0, health.current);
       }
-      
-      // Check if entity is destroyed
-      if (health.current <= 0) {
-        // If this is an enemy, update the score
-        if (this.world.hasComponent(targetEntity, 'Enemy')) {
+    } 
+    // Handle other entities with just health
+    else if (this.world.hasComponent(targetEntity, 'Health')) {
+      const health = this.world.getComponent<Health>(targetEntity, 'Health');
+      if (health) {
+        // Apply damage
+        health.current -= projectile.damage;
+        
+        // Check if this is a player being hit
+        if (this.world.hasComponent(targetEntity, 'InputReceiver')) {
           if (hudSystem) {
-            // Add score based on enemy type (10 points per enemy)
-            hudSystem.incrementScore(10);
-            hudSystem.displayMessage("Enemy destroyed! +10 points", 1.5);
+            // Activate damage effect
+            hudSystem.activateDamageEffect(0.8, 0.5);
           }
         }
         
-        // Remove the destroyed entity
-        this.world.removeEntity(targetEntity);
+        // Check if entity is destroyed
+        if (health.current <= 0) {
+          // If this is an enemy, update the score
+          if (this.world.hasComponent(targetEntity, 'Enemy')) {
+            if (hudSystem) {
+              // Add score based on enemy type (10 points per enemy)
+              hudSystem.incrementScore(10);
+              hudSystem.displayMessage("Enemy destroyed! +10 points", 1.5);
+            }
+          }
+          
+          // Remove the destroyed entity
+          this.world.removeEntity(targetEntity);
+        }
       }
     }
     
     // Remove the projectile
     this.world.removeEntity(projectileEntity);
+  }
+  
+  // Helper method to check if an entity is the Dyson Sphere
+  private isDysonSphere(entity: number): boolean {
+    // Get the renderable component
+    const renderable = this.world.getComponent<{ modelId: string }>(entity, 'Renderable');
+    return renderable ? renderable.modelId === 'dysonSphere' : false;
   }
   
   private handlePlayerEnemyCollision(playerEntity: number, enemyEntity: number): void {

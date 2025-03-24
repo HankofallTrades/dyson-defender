@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { COLORS } from '../constants/colors';
 import './styles/retro.css';
 
@@ -16,6 +16,13 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ stats, onRestart }) => 
   const minutes = Math.floor(stats.survivalTime / 60);
   const seconds = Math.floor(stats.survivalTime % 60);
   const timeString = `${minutes}m ${seconds}s`;
+
+  // Ensure pointer lock is released when this component mounts
+  useEffect(() => {
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+  }, []);
 
   return (
     <div className="retro-screen game-over-screen">

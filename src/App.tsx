@@ -42,6 +42,12 @@ function App() {
   const handleRestartGame = () => {
     if (gameRef.current) {
       gameRef.current.restart();
+      
+      // Update the world reference after restart
+      const gameWorld = gameRef.current.getWorld();
+      if (gameWorld) {
+        setWorld(gameWorld);
+      }
     }
   };
 

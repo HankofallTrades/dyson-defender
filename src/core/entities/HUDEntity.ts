@@ -24,6 +24,7 @@ export function createHUD(world: World, playerEntity: number, dysonSphereEntity:
   });
   
   world.addComponent(entity, 'DysonSphereStatus', {
+    shieldPercentage: 100,
     healthPercentage: 100,
     criticalThreshold: 25  // Show warning when below 25%
   });

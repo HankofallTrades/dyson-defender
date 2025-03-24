@@ -176,6 +176,35 @@ export class SceneManager {
   }
   
   /**
+   * Clear all objects from the scene
+   * This properly disposes of geometries and materials to prevent memory leaks
+   */
+  public clearScene(): void {
+    // Dispose of all geometries and materials
+    this.scene.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        if (object.geometry) {
+          object.geometry.dispose();
+        }
+        
+        if (object.material instanceof THREE.Material) {
+          object.material.dispose();
+        } else if (Array.isArray(object.material)) {
+          object.material.forEach(material => material.dispose());
+        }
+      }
+    });
+    
+    // Remove all objects from the scene
+    while(this.scene.children.length > 0) { 
+      this.scene.remove(this.scene.children[0]); 
+    }
+    
+    // Re-add the lights
+    this.initLights();
+  }
+  
+  /**
    * Clean up resources
    */
   public dispose(): void {

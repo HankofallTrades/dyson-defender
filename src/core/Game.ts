@@ -90,9 +90,9 @@ class Game {
     createCamera(this.world, playerShip);
     createHUD(this.world, playerShip, dysonSphere);
     
-    // Force the WaveSystem to find the Dyson Sphere again
-    // since it was likely looking for it before it was created
+    // Ensure the WaveSystem is properly set up
     this.waveSystem.findDysonSphereEntity();
+    this.waveSystem.resetWaves();
   }
 
   public startGame(): void {
@@ -113,6 +113,10 @@ class Game {
     // Stop the current game loop
     this.pause();
     
+    // Clean up any existing Three.js objects in the scene
+    // to prevent memory leaks and duplicate objects
+    this.sceneManager.clearScene();
+    
     // Clear all entities by creating a new World instance
     this.world = new World();
     
@@ -122,6 +126,10 @@ class Game {
     
     // Start the game
     this.startGame();
+    
+    // Reset the game state to running
+    this.isRunning = true;
+    this.lastFrameTime = performance.now();
   }
 
   public start(): void {
@@ -150,6 +158,14 @@ class Game {
       const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
       
       if (gameStateDisplay) {
+        // If game state changed to game_over, exit pointer lock
+        if (gameStateDisplay.currentState === 'game_over') {
+          // Exit pointer lock when game is over
+          if (document.pointerLockElement === this.container) {
+            document.exitPointerLock();
+          }
+        }
+        
         isPlaying = gameStateDisplay.currentState === 'playing';
       }
     }

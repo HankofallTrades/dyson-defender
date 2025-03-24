@@ -136,11 +136,18 @@ export class InputManager {
     return state;
   }
 
-  public dispose(): void {
-    // Exit pointer lock if active
+  /**
+   * Exits pointer lock if it's currently active
+   */
+  public exitPointerLock(): void {
     if (document.pointerLockElement === this.container) {
       document.exitPointerLock();
     }
+  }
+
+  public dispose(): void {
+    // Exit pointer lock if active
+    this.exitPointerLock();
     
     // Clear singleton instance
     InputManager.instance = null;

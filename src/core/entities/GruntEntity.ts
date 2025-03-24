@@ -39,8 +39,8 @@ export function createGrunt(
   
   // Add health component
   world.addComponent(entity, 'Health', { 
-    current: 30, 
-    max: 30 
+    current: 10, 
+    max: 10 
   });
   
   // Add renderable component

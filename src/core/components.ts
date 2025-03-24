@@ -33,6 +33,11 @@ export interface Health {
   max: number;
 }
 
+export interface Shield {
+  current: number;
+  max: number;
+}
+
 export interface InputReceiver {
   // Marker component; could add data like control scheme later
 }
@@ -126,6 +131,7 @@ export interface MessageDisplay {
 }
 
 export interface DysonSphereStatus {
+  shieldPercentage: number;
   healthPercentage: number;
   criticalThreshold: number;  // Percentage at which to show warning
 }

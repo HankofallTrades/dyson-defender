@@ -379,7 +379,7 @@
 .damage-effect {
   pointer-events: none;
   z-index: 1000;
-  animation: damage-pulse 0.3s ease-out;
+  animation: damage-pulse 0.3s ease-out forwards;
 }
 
 /* Retro Sci-fi UI Styles */
@@ -395,11 +395,6 @@
   0% { text-shadow: 0 0 5px #00ffff; }
   50% { text-shadow: 0 0 15px #00ffff; }
   100% { text-shadow: 0 0 5px #00ffff; }
-}
-
-@keyframes damage-pulse {
-  0% { opacity: 0.8; }
-  100% { opacity: 0; }
 }
 
 /* Full screen overlay styles */
@@ -538,12 +533,6 @@
   color: #00ffff;
   font-size: 16px;
   font-weight: bold;
-}
-
-/* Damage effect */
-.damage-effect {
-  pointer-events: none;
-  animation: damage-pulse 0.4s ease-out;
 }
 
 /* Add pulse border animation */

@@ -1,5 +1,6 @@
 import { System, World } from '../World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, Renderable, DamageEffect, GameStateDisplay, GameOverStats } from '../components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, Renderable, DamageEffect, GameStateDisplay, GameOverStats, Shield } from '../components';
+import { InputManager } from '../input/InputManager';
 
 export class HUDSystem implements System {
   private world: World;
@@ -53,7 +54,14 @@ export class HUDSystem implements System {
     
     if (dysonEntity === -1) return;
     
+    // Get shield and health from the Dyson Sphere entity
+    const shield = this.world.getComponent<Shield>(dysonEntity, 'Shield');
     const health = this.world.getComponent<Health>(dysonEntity, 'Health');
+    
+    // Update status with both shield and health information
+    if (shield) {
+      dysonStatus.shieldPercentage = (shield.current / shield.max) * 100;
+    }
     
     if (health) {
       dysonStatus.healthPercentage = (health.current / health.max) * 100;
@@ -101,6 +109,11 @@ export class HUDSystem implements System {
       if (renderable && renderable.modelId === 'dysonSphere') {
         const health = this.world.getComponent<Health>(entity, 'Health');
         if (health && health.current <= 0) {
+          // Trigger game over but don't remove the Dyson Sphere
+          // We'll just change its color to indicate it's destroyed
+          if (renderable) {
+            renderable.color = 0x444444; // Gray color to indicate destroyed state
+          }
           this.triggerGameOver(hudEntity, 'Dyson Sphere Destroyed');
           return;
         }
@@ -126,6 +139,13 @@ export class HUDSystem implements System {
     // Update game state to game over
     gameStateDisplay.currentState = 'game_over';
     
+    // Exit pointer lock so the cursor is available for the game over screen
+    const container = document.getElementById('game-container');
+    if (container) {
+      const inputManager = InputManager.getInstance(container);
+      inputManager.exitPointerLock();
+    }
+    
     // Update game over stats
     const gameOverStats = this.world.getComponent<GameOverStats>(hudEntity, 'GameOverStats');
     const scoreDisplay = this.world.getComponent<ScoreDisplay>(hudEntity, 'ScoreDisplay');
@@ -136,7 +156,7 @@ export class HUDSystem implements System {
       
       // Calculate enemies defeated based on score
       // This is a simplified example - you might have a dedicated counter in a real game
-      gameOverStats.enemiesDefeated = Math.floor(scoreDisplay.score / 100);
+      gameOverStats.enemiesDefeated = Math.floor(scoreDisplay.score / 10);
     }
     
     // Display game over message
@@ -189,6 +209,40 @@ export class HUDSystem implements System {
       gameStateDisplay.currentState = 'playing';
       this.gameStartTime = Date.now();
       this.displayMessage('Game Started! Protect the Dyson Sphere!', 3);
+      
+      // Reset all HUD components when starting a game
+      this.resetHUD(hudEntity);
+    }
+  }
+  
+  // Reset all HUD-related components to their initial values
+  public resetHUD(hudEntity: number): void {
+    // Reset score to 0
+    const scoreDisplay = this.world.getComponent<ScoreDisplay>(hudEntity, 'ScoreDisplay');
+    if (scoreDisplay) {
+      scoreDisplay.score = 0;
+    }
+    
+    // Reset game over stats
+    const gameOverStats = this.world.getComponent<GameOverStats>(hudEntity, 'GameOverStats');
+    if (gameOverStats) {
+      gameOverStats.finalScore = 0;
+      gameOverStats.survivalTime = 0;
+      gameOverStats.enemiesDefeated = 0;
+    }
+    
+    // Reset message display
+    const messageDisplay = this.world.getComponent<MessageDisplay>(hudEntity, 'MessageDisplay');
+    if (messageDisplay) {
+      messageDisplay.message = '';
+      messageDisplay.timeRemaining = 0;
+    }
+    
+    // Reset damage effect
+    const damageEffect = this.world.getComponent<DamageEffect>(hudEntity, 'DamageEffect');
+    if (damageEffect) {
+      damageEffect.active = false;
+      damageEffect.timeRemaining = 0;
     }
   }
 } 

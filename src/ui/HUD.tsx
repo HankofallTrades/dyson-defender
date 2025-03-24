@@ -17,7 +17,10 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame }) => {
   const [playerHealth, setPlayerHealth] = useState({ current: 100, max: 100 });
   const [score, setScore] = useState(0);
   const [message, setMessage] = useState('');
-  const [dysonHealth, setDysonHealth] = useState(100);
+  const [dysonHealth, setDysonHealth] = useState({ 
+    shieldPercentage: 100, 
+    healthPercentage: 100 
+  });
   const [enemiesRemaining, setEnemiesRemaining] = useState({ current: 0, total: 0 });
   const [boostReady, setBoostReady] = useState(true);
   const [damageEffect, setDamageEffect] = useState({ active: false, intensity: 0 });
@@ -57,7 +60,10 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame }) => {
       // Update Dyson Sphere status
       const dysonStatus = world.getComponent<DysonSphereStatus>(hudEntity, 'DysonSphereStatus');
       if (dysonStatus) {
-        setDysonHealth(dysonStatus.healthPercentage);
+        setDysonHealth({
+          shieldPercentage: dysonStatus.shieldPercentage,
+          healthPercentage: dysonStatus.healthPercentage
+        });
       }
       
       // Update damage effect
@@ -157,7 +163,6 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame }) => {
           boxShadow: `inset 0 0 ${50 * damageEffect.intensity}px rgba(255, 0, 0, 0.8)`,
           zIndex: 100,
           pointerEvents: 'none',
-          animation: 'damage-pulse 0.4s ease-out',
           transform: getShakeTransform()
         }} />
       )}
@@ -182,8 +187,8 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame }) => {
         transform: damageEffect.active ? getShakeTransform() : 'none'
       }}>
         <div style={{ color: '#00ffff' }}>Score: {score}</div>
-        <div style={{ color: '#ffff00' }}>Shield: {Math.round(dysonHealth)}%</div>
-        <div style={{ color: '#ff5722' }}>Health: {Math.round(dysonHealth * 5)}</div>
+        <div style={{ color: '#ffff00' }}>Shield: {Math.round(dysonHealth.shieldPercentage)}%</div>
+        <div style={{ color: '#ff5722' }}>Health: {Math.round(dysonHealth.healthPercentage * 5)}</div>
         <div style={{ color: '#ff00ff' }}>Enemies: {enemiesRemaining.current}/{enemiesRemaining.total}</div>
       </div>
       
