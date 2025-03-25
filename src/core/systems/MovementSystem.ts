@@ -11,7 +11,7 @@ export class MovementSystem implements System {
   private inputManager: InputManager;
   private readonly MIN_VELOCITY = 0.01; // Threshold for considering movement
   private readonly MIN_DISTANCE = 20; // Minimum distance from Dyson Sphere
-  private readonly MAX_DISTANCE = 300; // Maximum distance from Dyson Sphere (tripled from 100)
+  private readonly MAX_DISTANCE = 400; // Maximum distance from Dyson Sphere (increased to 400)
 
   constructor(sceneManager: SceneManager, world: World) {
     this.sceneManager = sceneManager;

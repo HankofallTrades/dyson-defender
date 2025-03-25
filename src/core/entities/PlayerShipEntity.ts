@@ -7,7 +7,7 @@ export function createPlayerShip(world: World): number {
   const entity = world.createEntity();
 
   // Add components
-  world.addComponent(entity, 'Position', { x: 80, y: 0, z: 0 }); // Position far to the side to be visible
+  world.addComponent(entity, 'Position', { x: 240, y: 0, z: 0 }); // Position far to the side to be visible (tripled from 80)
   world.addComponent(entity, 'Velocity', { x: 0, y: 0, z: 0 });
   
   // Set initial rotation to face the Dyson Sphere at origin

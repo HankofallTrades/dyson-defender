@@ -77,6 +77,18 @@ export class AnimationSystem implements System {
       switch (animation.type) {
         case 'wormhole':
           this.updateWormholeAnimation(entity, animation, position, deltaTime);
+          
+          // Check if the enemy just entered the stable phase (has emerged from wormhole)
+          // This happens at 30% of the way through the animation
+          if (animation.progress >= 0.3 && animation.progress < 0.3 + deltaTime / animation.duration) {
+            // Enemy has just emerged - start the shooting timer
+            const enemy = this.world.getComponent<any>(entity, 'Enemy');
+            if (enemy && !enemy.canShoot && !this.shootingTimers.has(entity)) {
+              // Start 0.5 second timer for shooting ability
+              this.shootingTimers.set(entity, 0.5);
+              console.log(`Enemy ${entity} has emerged and will be able to shoot in 0.5 seconds`);
+            }
+          }
           break;
         case 'explosion':
           // TODO: Implement explosion animation
@@ -91,16 +103,7 @@ export class AnimationSystem implements System {
         animation.isComplete = true;
         this.cleanupAnimation(entity);
         
-        // Set up a delay timer for enemy readiness when animation completes
-        if (animation.type === 'wormhole') {
-          const enemy = this.world.getComponent<any>(entity, 'Enemy');
-          if (enemy) {
-            // Set a 1 second delay before the enemy is ready for action
-            this.shootingTimers.set(entity, 1.0);
-            console.log(`Enemy ${entity} will be ready to shoot in 1 second`);
-          }
-        }
-        
+        // Remove animation component
         this.world.removeComponent(entity, 'Animation');
         console.log(`Animation completed for entity ${entity}`);
       }
