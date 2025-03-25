@@ -1,6 +1,6 @@
 import { World } from '../World';
 import * as THREE from 'three';
-import { Position, Renderable, Velocity, Rotation, Health, Collider } from '../components';
+import { Position, Renderable, Velocity, Rotation, Health, Collider, Animation, WormholeAnimationData } from '../components';
 import { COLORS } from '../../constants/colors';
 
 export function createGrunt(
@@ -10,7 +10,11 @@ export function createGrunt(
 ): number {
   const entity = world.createEntity();
   
-  // Add position component
+  // Get target (Dyson Sphere) position for reference
+  const dysonPosition = world.getComponent<Position>(targetEntity, 'Position');
+  if (!dysonPosition) return entity;
+  
+  // Add position component - start at the specified spawn position
   world.addComponent(entity, 'Position', { 
     x: position.x, 
     y: position.y, 
@@ -34,7 +38,9 @@ export function createGrunt(
     currentCooldown: 0,
     inSiegeMode: false, // Start in normal mode
     laserCooldown: 3.0, // Fire a laser every 3 seconds
-    currentLaserCooldown: 0
+    currentLaserCooldown: 0,
+    canMove: true, // Enemy can move right away
+    canShoot: false // Enemy can't shoot until animation completes
   });
   
   // Add health component
@@ -44,11 +50,14 @@ export function createGrunt(
   });
   
   // Add renderable component
-  world.addComponent(entity, 'Renderable', { 
+  const renderable = {
     modelId: 'grunt',
-    scale: 6.0, // Increased scale from 3.0 to 6.0 (2x bigger)
-    color: COLORS.GRUNT_BASE
-  });
+    scale: 0.1, // Start with a small but visible scale (will be animated by AnimationSystem)
+    color: COLORS.GRUNT_BASE,
+    isVisible: true // Explicitly set to true
+  };
+  world.addComponent(entity, 'Renderable', renderable);
+  console.log(`Created grunt entity ${entity} with renderable:`, renderable);
   
   // Add collider for collision detection
   world.addComponent(entity, 'Collider', {
@@ -63,6 +72,22 @@ export function createGrunt(
     x: 0, 
     y: 0, 
     z: 0 
+  });
+
+  // Add wormhole animation component
+  world.addComponent(entity, 'Animation', {
+    type: 'wormhole',
+    progress: 0,
+    duration: 5.0, // Increased to 5 seconds for better visibility
+    isComplete: false,
+    data: {
+      targetPosition: { ...dysonPosition },
+      spawnPosition: { ...position }, // Store the initial spawn position
+      scale: 0,
+      rotation: 0,
+      opacity: 0,
+      phase: 'growing'
+    } as WormholeAnimationData
   });
   
   return entity;

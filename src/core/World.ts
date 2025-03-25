@@ -86,6 +86,13 @@ export class World {
     }
   }
   
+  public removeComponent(entity: Entity, componentType: string): void {
+    const componentMap = this.components.get(componentType);
+    if (componentMap) {
+      componentMap.delete(entity);
+    }
+  }
+  
   public setGameState(gameState: GameState): void {
     this.gameState = gameState;
   }

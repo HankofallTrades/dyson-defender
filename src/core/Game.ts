@@ -19,6 +19,7 @@ import { HUDSystem } from './systems/HUDSystem';
 import { FloatingScoreSystem } from './systems/FloatingScoreSystem';
 import { GameStateDisplay } from './components';
 import { InputManager } from './input/InputManager';
+import { AnimationSystem } from './systems/AnimationSystem';
 
 /**
  * Main Game Controller
@@ -90,6 +91,9 @@ class Game {
     // Create and store reference to FloatingScore system
     this.floatingScoreSystem = new FloatingScoreSystem(this.world);
     this.world.addSystem(this.floatingScoreSystem);
+    
+    // Add the animation system before the rendering system
+    this.world.addSystem(new AnimationSystem(this.world, this.sceneManager.getScene()));
     
     // Set the camera reference for the floating score system
     // Need to do this after camera is created

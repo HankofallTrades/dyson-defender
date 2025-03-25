@@ -28,5 +28,10 @@ export const COLORS = {
   // UI colors
   UI_TEXT: 0xffffff,
   UI_HEALTH: 0x00ff00,
-  UI_WARNING: 0xff0000
+  UI_WARNING: 0xff0000,
+  
+  // Wormhole colors
+  WORMHOLE_RING: 0x9900ff,    // Bright purple for the outer ring
+  WORMHOLE_SPIRAL: 0x6600cc,  // Deep purple for the spiral effect
+  WORMHOLE_GLOW: 0xaa00ff     // Medium purple for the glow effect
 }; 

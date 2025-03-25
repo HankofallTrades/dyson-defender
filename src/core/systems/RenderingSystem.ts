@@ -69,8 +69,17 @@ export class RenderingSystem implements System {
         this.scene.add(mesh); // Add mesh to scene when created
       }
 
+      // Update visibility based on renderable.isVisible property
+      mesh.visible = renderable.isVisible !== false; // True if isVisible is undefined or true
+      
       // Update transform
       mesh.position.set(position.x, position.y, position.z);
+      
+      // Apply scale from renderable.scale if available
+      if (renderable.scale) {
+        mesh.scale.set(renderable.scale, renderable.scale, renderable.scale);
+      }
+      
       if (rotation) {
         // Apply rotation in the correct order (pitch, yaw, roll)
         mesh.rotation.set(rotation.x, rotation.y, rotation.z);

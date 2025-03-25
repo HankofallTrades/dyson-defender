@@ -38,6 +38,15 @@ export class EnemySystem implements System {
       
       if (!enemy || !position || !velocity || !rotation || !renderable) continue;
       
+      // Skip movement processing if the enemy can't move
+      if (!enemy.canMove) {
+        // Ensure velocity is zero
+        velocity.x = 0;
+        velocity.y = 0;
+        velocity.z = 0;
+        continue;
+      }
+      
       // Get target (Dyson Sphere) position and size
       const targetEntity = enemy.targetEntity;
       const targetPosition = this.world.getComponent<Position>(targetEntity, 'Position');
@@ -86,8 +95,8 @@ export class EnemySystem implements System {
           }
         }
         
-        // Start attack cooldown if not already attacking
-        if (enemy.currentCooldown <= 0) {
+        // Start attack cooldown if not already attacking and can shoot
+        if (enemy.canShoot && enemy.currentCooldown <= 0) {
           enemy.currentCooldown = enemy.attackCooldown;
           
           // First check if target has a shield
@@ -141,8 +150,8 @@ export class EnemySystem implements System {
           if (playerPosition) {
             this.faceTarget(rotation, position, playerPosition);
             
-            // Try to shoot at player
-            if (enemy.currentLaserCooldown <= 0 && playerEntity !== -1) {
+            // Try to shoot at player ONLY if allowed to shoot
+            if (enemy.canShoot && enemy.currentLaserCooldown <= 0 && playerEntity !== -1) {
               // Calculate direction to player
               const directionToPlayer = new THREE.Vector3(
                 playerPosition.x - position.x,

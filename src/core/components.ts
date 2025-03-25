@@ -14,6 +14,7 @@ export interface Renderable {
   modelId: string;  // Identifier for the model to render
   scale: number;    // Scale of the model
   color: number;    // Color in hex format
+  isVisible?: boolean; // Whether the model is visible (optional, defaults to true)
 }
 
 export interface AutoRotate {
@@ -101,6 +102,8 @@ export interface Enemy {
   inSiegeMode: boolean;   // Whether enemy is in siege mode (attacking Dyson Sphere)
   laserCooldown: number;  // Cooldown for laser shots in seconds
   currentLaserCooldown: number; // Current laser cooldown timer
+  canMove: boolean;     // Whether the enemy can move
+  canShoot: boolean;    // Whether the enemy can shoot
 }
 
 export interface WaveInfo {
@@ -183,3 +186,38 @@ export interface Boost {
   cooldown: number;      // Cooldown time remaining (5 seconds when depleted)
   speedMultiplier: number; // Speed multiplier when boost is active (1.75)
 }
+
+// Animation components
+export interface Animation {
+  type: 'wormhole' | 'explosion' | 'lightning';
+  progress: number;      // 0 to 1
+  duration: number;      // Total duration in seconds
+  isComplete: boolean;   // Whether the animation has completed
+  data: AnimationData;   // Type-specific animation data
+}
+
+// Type-specific animation data
+export interface WormholeAnimationData {
+  targetPosition: Position;  // Position the wormhole is targeting (usually Dyson sphere)
+  spawnPosition: Position;   // Fixed position where the wormhole was spawned
+  scale: number;            // Current scale of the wormhole effect
+  rotation: number;         // Current rotation angle
+  opacity: number;          // Current opacity
+  phase: 'growing' | 'stable' | 'shrinking';  // Current animation phase
+}
+
+export interface ExplosionAnimationData {
+  radius: number;           // Current explosion radius
+  intensity: number;        // Current explosion intensity
+  particleCount: number;    // Number of particles to emit
+}
+
+export interface LightningAnimationData {
+  startPosition: Position;  // Start point of lightning
+  endPosition: Position;    // End point of lightning
+  arcCount: number;        // Number of lightning arcs
+  intensity: number;       // Current lightning intensity
+}
+
+// Union type for animation data
+export type AnimationData = WormholeAnimationData | ExplosionAnimationData | LightningAnimationData;
