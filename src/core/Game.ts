@@ -57,6 +57,9 @@ class Game {
     this.stateManager.updateState({ lastUpdateTime: Date.now() });
     this.sceneManager = SceneManager.getInstance(container);
     this.world = new World();
+    
+    // Set the game state in the world
+    this.world.setGameState(this.stateManager.getState());
 
     this.initSystems();
     this.initEntities();
@@ -201,6 +204,10 @@ class Game {
       this.lastFrameTime = currentTime;
       
       this.stateManager.updateState({ lastUpdateTime: Date.now() });
+      
+      // Update the game state in the world
+      this.world.setGameState(this.stateManager.getState());
+      
       this.world.update(deltaTime);
     }
     

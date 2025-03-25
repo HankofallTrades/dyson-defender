@@ -37,6 +37,11 @@ export interface GameState {
   
   // Timing information
   lastUpdateTime: number;
+  
+  // Boost system properties
+  boostActive: boolean;
+  boostRemaining: number;
+  boostCooldown: number;
 }
 
 /**
@@ -54,7 +59,12 @@ export const initialGameState: GameState = {
   currentWave: 1,
   enemiesRemaining: 0,
   
-  lastUpdateTime: 0
+  lastUpdateTime: 0,
+  
+  // Boost system initial values
+  boostActive: false,
+  boostRemaining: 1.0, // 1 second of boost
+  boostCooldown: 0
 };
 
 /**

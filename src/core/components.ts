@@ -174,3 +174,12 @@ export interface FloatingScore {
   };
   opacity: number;       // Current opacity for fade-out effect
 }
+
+// Boost component for player ship
+export interface Boost {
+  active: boolean;       // Whether boost is currently active
+  remaining: number;     // Remaining boost time in seconds (max 3 seconds)
+  maxTime: number;       // Maximum boost time (3 seconds)
+  cooldown: number;      // Cooldown time remaining (5 seconds when depleted)
+  speedMultiplier: number; // Speed multiplier when boost is active (1.75)
+}

@@ -39,6 +39,11 @@ export class RenderingSystem implements System {
       }
     }
     
+    // Check for boost effect on player
+    if (playerEntityId !== -1) {
+      this.updateBoostVisuals(playerEntityId);
+    }
+    
     // Get all entities with Renderable and Position components
     const entities = this.world.getEntitiesWith(['Renderable', 'Position']);
     
@@ -87,5 +92,49 @@ export class RenderingSystem implements System {
       mesh.parent?.remove(mesh);
     }
     this.meshes.clear();
+  }
+
+  /**
+   * Updates visual effects for the player ship's boost
+   * @param playerEntityId The entity ID of the player ship
+   */
+  private updateBoostVisuals(playerEntityId: number): void {
+    // Get the boost component
+    const boost = this.world.getComponent<any>(playerEntityId, 'Boost');
+    if (!boost) return;
+    
+    // Get the player ship mesh
+    const mesh = this.meshes.get(playerEntityId);
+    if (!mesh) return;
+    
+    // Update mesh emissive properties based on boost state
+    if (boost.active) {
+      // Apply pulsing emissive effect when boost is active
+      const pulseValue = (Math.sin(performance.now() * 0.01) + 1) * 0.5;  // Value between 0 and 1
+      const intensity = 0.5 + pulseValue * 0.5;  // Pulsate between 0.5 and 1.0
+      
+      // Apply to all child meshes (body and wings)
+      mesh.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshPhongMaterial) {
+          child.material.emissiveIntensity = intensity;
+          // Slightly scale up for visual feedback
+          child.scale.set(1.1, 1.1, 1.1);
+        }
+      });
+      
+      // Add optional trail effect here if desired
+    } else {
+      // Reset visual effect when not boosting
+      mesh.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshPhongMaterial) {
+          // Gradually fade out emissive effect
+          if (child.material.emissiveIntensity > 0) {
+            child.material.emissiveIntensity = Math.max(0, child.material.emissiveIntensity - 0.1);
+          }
+          // Reset scale
+          child.scale.set(1.0, 1.0, 1.0);
+        }
+      });
+    }
   }
 }

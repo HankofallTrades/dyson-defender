@@ -28,7 +28,8 @@ export class InputManager {
     right: false,
     up: false,
     down: false,
-    shoot: false
+    shoot: false,
+    boost: false  // Added boost state for shift key
   };
   
   private mouseState = {
@@ -64,6 +65,7 @@ export class InputManager {
         case 'e': this.inputState.up = true; break;
         case 'q': this.inputState.down = true; break;
         case ' ': this.inputState.shoot = true; break; // Space bar for shooting
+        case 'shift': this.inputState.boost = true; break; // Shift for boost
       }
     };
 
@@ -76,6 +78,7 @@ export class InputManager {
         case 'e': this.inputState.up = false; break;
         case 'q': this.inputState.down = false; break;
         case ' ': this.inputState.shoot = false; break; // Space bar for shooting
+        case 'shift': this.inputState.boost = false; break; // Shift for boost
       }
     };
 

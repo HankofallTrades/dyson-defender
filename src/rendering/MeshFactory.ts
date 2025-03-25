@@ -44,7 +44,9 @@ export class MeshFactory {
     // Body
     const bodyGeometry = new THREE.ConeGeometry(1, 4, 8);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
-      color: renderable.color || COLORS.PLAYER_BASE 
+      color: renderable.color || COLORS.PLAYER_BASE,
+      emissive: 0x00ffff,  // Cyan emissive color for boost effect
+      emissiveIntensity: 0.0  // Start with no emission, will be controlled by boost
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     group.add(body);
@@ -52,7 +54,9 @@ export class MeshFactory {
     // Wing
     const wingGeometry = new THREE.BoxGeometry(6, 0.5, 2);
     const wingMaterial = new THREE.MeshPhongMaterial({ 
-      color: renderable.color || COLORS.PLAYER_BASE 
+      color: renderable.color || COLORS.PLAYER_BASE,
+      emissive: 0x00ffff,  // Cyan emissive color for boost effect
+      emissiveIntensity: 0.0  // Start with no emission, will be controlled by boost
     });
     const wing = new THREE.Mesh(wingGeometry, wingMaterial);
     wing.position.y = -1;

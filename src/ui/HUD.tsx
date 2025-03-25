@@ -39,7 +39,14 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
     healthPercentage: 100 
   });
   const [enemiesRemaining, setEnemiesRemaining] = useState({ current: 0, total: 0 });
+  const [currentWave, setCurrentWave] = useState(1);
   const [boostReady, setBoostReady] = useState(true);
+  const [boostData, setBoostData] = useState({
+    active: false,
+    remaining: 1.0,
+    cooldown: 0,
+    maxTime: 1.0
+  });
   const [damageEffect, setDamageEffect] = useState({ active: false, intensity: 0 });
   const [gameState, setGameState] = useState<'not_started' | 'playing' | 'paused' | 'game_over'>('not_started');
   const [gameOverStats, setGameOverStats] = useState({ finalScore: 0, survivalTime: 0, enemiesDefeated: 0 });
@@ -60,8 +67,14 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
   
   // Update UI data from ECS world
   useEffect(() => {
+    let lastRender = performance.now();
+    
     // This is our "render" function that runs on each animation frame
-    const updateHUD = () => {
+    const updateHUD = (timestamp: number) => {
+      // Calculate time since last update (for smooth animations)
+      const deltaTime = timestamp - lastRender;
+      lastRender = timestamp;
+      
       const hudEntities = world.getEntitiesWith(['UIDisplay']);
       if (hudEntities.length === 0) return;
       
@@ -118,16 +131,42 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
         setReticle(reticleComponent);
       }
       
+      // Update boost state from game state - priority update for smoothness
+      const gameState = world.getGameState();
+      if (gameState) {
+        // Boost is ready if cooldown is 0 and there's some boost remaining
+        setBoostReady(gameState.boostCooldown <= 0 && gameState.boostRemaining > 0);
+        
+        // Update the boost data with exact values from game state
+        setBoostData({
+          active: gameState.boostActive,
+          remaining: gameState.boostRemaining,
+          cooldown: gameState.boostCooldown,
+          maxTime: 1.0
+        });
+      }
+      
       // Update game over stats if in game over state
-      if (gameState === 'game_over') {
+      if (gameStateDisplay && gameStateDisplay.currentState === 'game_over') {
         const stats = world.getComponent<GameOverStats>(hudEntity, 'GameOverStats');
         if (stats) {
           setGameOverStats(stats);
         }
       }
       
-      // Update enemy count
-      setEnemiesRemaining({ current: 3, total: 8 }); // Placeholder
+      // Update enemy count from WaveInfo
+      const waveEntities = world.getEntitiesWith(['WaveInfo']);
+      if (waveEntities.length > 0) {
+        const waveEntity = waveEntities[0];
+        const waveInfo = world.getComponent<any>(waveEntity, 'WaveInfo');
+        if (waveInfo) {
+          setEnemiesRemaining({ 
+            current: waveInfo.enemiesRemaining,
+            total: waveInfo.enemiesRemaining + waveInfo.totalEnemies
+          });
+          setCurrentWave(waveInfo.currentWave);
+        }
+      }
       
       // Update floating scores if camera is available
       if (camera) {
@@ -161,7 +200,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
         setFloatingScores(newFloatingScores);
       }
       
-      // Request next frame update
+      // Request next frame update - use the timestamp
       requestAnimationFrame(updateHUD);
     };
     
@@ -172,7 +211,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [world, gameState, camera]);
+  }, [world, camera]);
   
   // Convert hex color to CSS color format
   const hexToCSS = (hexColor: number): string => {
@@ -431,6 +470,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
         <div style={{ color: '#ffff00' }}>Shield: {Math.round(dysonHealth.shieldPercentage)}%</div>
         <div style={{ color: '#ff5722' }}>Health: {Math.round(dysonHealth.healthPercentage * 5)}</div>
         <div style={{ color: '#ff00ff' }}>Enemies: {enemiesRemaining.current}/{enemiesRemaining.total}</div>
+        <div style={{ color: '#44ff44' }}>Wave: {currentWave}</div>
       </div>
       
       {/* Player HUD - Bottom */}
@@ -444,7 +484,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
         borderRadius: '8px',
         border: '2px solid #ff00ff',
         boxShadow: '0 0 15px rgba(255, 0, 255, 0.5)',
-        minWidth: '300px',
+        width: '350px', // Fixed width to prevent resizing
         fontFamily: "'Press Start 2P', monospace",
         fontSize: '0.8rem',
         lineHeight: '1.8rem',
@@ -456,11 +496,12 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
           marginBottom: '5px',
-          color: hullStatus.color
+          color: hullStatus.color,
+          whiteSpace: 'nowrap' // Prevent text wrapping
         }}>
-          <span>HULL STATUS: <span>{hullStatus.text}</span></span>
+          <span style={{ marginRight: '5px' }}>HULL STATUS:</span>
+          <span>{hullStatus.text}</span>
         </div>
         {/* Health Bar with Gradient and Percentage */}
         <div style={{
@@ -497,7 +538,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
         </div>
         
         <div style={{ color: '#00ffff', textAlign: 'center', marginTop: '10px' }}>
-          BOOST SYSTEM: {boostReady ? 'READY' : 'CHARGING'}
+          BOOST SYSTEM:
         </div>
         {/* Thicker Boost Bar */}
         <div style={{
@@ -511,10 +552,24 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
           position: 'relative'
         }}>
           <div style={{ 
-            width: boostReady ? '100%' : '60%',
+            width: boostData.cooldown > 0 
+              ? `${(1 - boostData.cooldown / 3.0) * 100}%` 
+              : `${Math.max(0, (boostData.remaining / boostData.maxTime) * 100)}%`,
             height: '100%',
-            background: 'linear-gradient(90deg, #00ffff, #ff00ff)',
-            transition: 'width 0.3s ease'
+            background: boostData.cooldown > 0
+              ? 'linear-gradient(90deg, #330066, #660066)'
+              : (boostData.active 
+                  ? 'linear-gradient(90deg, #ff00ff, #00ffff)' 
+                  : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
+            boxShadow: boostData.active 
+              ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' 
+              : 'none',
+            // Animation style based on state for smoother appearance
+            transitionProperty: 'box-shadow, background',
+            transitionDuration: '0.2s',
+            // No transition for width - direct updates
+            transform: 'translateZ(0)', // Hardware acceleration hint
+            willChange: 'width' // Hint for browser optimization
           }}></div>
           <div style={{
             position: 'absolute',
@@ -526,7 +581,12 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
             fontSize: '0.65rem',
             fontWeight: 'bold'
           }}>
-            {boostReady ? 'READY' : '60%'}
+            {boostData.cooldown > 0 
+              ? "CHARGING" 
+              : boostData.active 
+                ? "ACTIVE" 
+                : "READY"
+            }
           </div>
         </div>
       </div>

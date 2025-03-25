@@ -1,4 +1,6 @@
 // src/core/World.ts
+import { GameState } from './State';
+
 type Entity = number;
 
 export interface System {
@@ -10,6 +12,7 @@ export class World {
   private components: Map<string, Map<Entity, any>> = new Map();
   private systems: System[] = [];
   private activeEntities: Set<Entity> = new Set();
+  private gameState: GameState | null = null;
 
   public createEntity(): Entity {
     const entity = this.nextEntityId++;
@@ -81,5 +84,13 @@ export class World {
         componentMap.delete(entity);
       }
     }
+  }
+  
+  public setGameState(gameState: GameState): void {
+    this.gameState = gameState;
+  }
+  
+  public getGameState(): GameState | null {
+    return this.gameState;
   }
 }
