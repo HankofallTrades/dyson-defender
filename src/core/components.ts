@@ -153,3 +153,24 @@ export interface GameOverStats {
   survivalTime: number;
   enemiesDefeated: number;
 }
+
+export interface Reticle {
+  visible: boolean;     // Whether the reticle is currently visible
+  style: string;        // Style of reticle (e.g., 'default', 'sniper', 'lock-on')
+  size: number;         // Size of the reticle (1 is default)
+  color: string;        // Color of the reticle (hex or CSS color)
+  pulsating: boolean;   // Whether the reticle should pulsate
+}
+
+export interface FloatingScore {
+  value: number;         // Score value to display
+  lifetime: number;      // How long it should live in seconds
+  timeRemaining: number; // Time left before it disappears
+  color: string;         // Color of the text
+  initialPosition: {     // Initial world position where the enemy was destroyed
+    x: number;
+    y: number;
+    z: number;
+  };
+  opacity: number;       // Current opacity for fade-out effect
+}

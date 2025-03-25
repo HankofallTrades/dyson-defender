@@ -1,20 +1,37 @@
 import React, { useEffect, useState, CSSProperties } from 'react';
 import { World } from '../core/World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats } from '../core/components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position } from '../core/components';
 import { COLORS } from '../constants/colors';
 import StartScreen from './StartScreen';
 import GameOverScreen from './GameOverScreen';
 import './styles/retro.css';
+import { Vector3, Camera } from 'three';
+
+// Helper function to convert world position to screen coordinates
+function worldToScreen(position: Position, camera: Camera): { x: number, y: number } | null {
+  // Create a Three.js Vector3 from the position
+  const vec = new Vector3(position.x, position.y, position.z);
+  
+  // Project the 3D point to 2D screen coordinates
+  vec.project(camera);
+  
+  // Convert to screen coordinates
+  return {
+    x: (vec.x * 0.5 + 0.5) * window.innerWidth,
+    y: (-vec.y * 0.5 + 0.5) * window.innerHeight
+  };
+}
 
 interface HUDProps {
   world: World;
   onStartGame: () => void;
   onRestartGame: () => void;
+  camera?: Camera; // Add camera as an optional prop
 }
 
-const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame }) => {
+const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) => {
   // State to hold UI data
-  const [playerHealth, setPlayerHealth] = useState({ current: 100, max: 100 });
+  const [playerHealth, setPlayerHealth] = useState<Health>({ current: 100, max: 100 });
   const [score, setScore] = useState(0);
   const [message, setMessage] = useState('');
   const [dysonHealth, setDysonHealth] = useState({ 
@@ -26,6 +43,20 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame }) => {
   const [damageEffect, setDamageEffect] = useState({ active: false, intensity: 0 });
   const [gameState, setGameState] = useState<'not_started' | 'playing' | 'paused' | 'game_over'>('not_started');
   const [gameOverStats, setGameOverStats] = useState({ finalScore: 0, survivalTime: 0, enemiesDefeated: 0 });
+  const [reticle, setReticle] = useState<Reticle>({
+    visible: true,
+    style: 'default',
+    size: 1,
+    color: '#00ffff',
+    pulsating: true
+  });
+  const [floatingScores, setFloatingScores] = useState<Array<{
+    id: number;
+    value: number;
+    position: { x: number, y: number };
+    color: string;
+    opacity: number;
+  }>>([]);
   
   // Update UI data from ECS world
   useEffect(() => {
@@ -81,6 +112,12 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame }) => {
         setGameState(gameStateDisplay.currentState);
       }
       
+      // Update reticle
+      const reticleComponent = world.getComponent<Reticle>(hudEntity, 'Reticle');
+      if (reticleComponent) {
+        setReticle(reticleComponent);
+      }
+      
       // Update game over stats if in game over state
       if (gameState === 'game_over') {
         const stats = world.getComponent<GameOverStats>(hudEntity, 'GameOverStats');
@@ -91,6 +128,38 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame }) => {
       
       // Update enemy count
       setEnemiesRemaining({ current: 3, total: 8 }); // Placeholder
+      
+      // Update floating scores if camera is available
+      if (camera) {
+        const scoreEntities = world.getEntitiesWith(['FloatingScore', 'Position']);
+        const newFloatingScores = scoreEntities.map(entity => {
+          const scoreComp = world.getComponent<FloatingScore>(entity, 'FloatingScore');
+          const positionComp = world.getComponent<Position>(entity, 'Position');
+          
+          if (!scoreComp || !positionComp) return null;
+          
+          // Convert world position to screen coordinates
+          const screenPos = worldToScreen(positionComp, camera);
+          
+          if (!screenPos) return null;
+          
+          return {
+            id: entity,
+            value: scoreComp.value,
+            position: screenPos,
+            color: scoreComp.color,
+            opacity: scoreComp.opacity
+          };
+        }).filter(score => score !== null) as Array<{
+          id: number;
+          value: number;
+          position: { x: number, y: number };
+          color: string;
+          opacity: number;
+        }>;
+        
+        setFloatingScores(newFloatingScores);
+      }
       
       // Request next frame update
       requestAnimationFrame(updateHUD);
@@ -103,7 +172,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame }) => {
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [world, gameState]);
+  }, [world, gameState, camera]);
   
   // Convert hex color to CSS color format
   const hexToCSS = (hexColor: number): string => {
@@ -165,6 +234,178 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame }) => {
           pointerEvents: 'none',
           transform: getShakeTransform()
         }} />
+      )}
+      
+      {/* Floating Score Indicators */}
+      {floatingScores.map(score => (
+        <div
+          key={score.id}
+          className="floating-score"
+          style={{
+            position: 'absolute',
+            top: score.position.y,
+            left: score.position.x,
+            transform: 'translate(-50%, -50%)',
+            color: score.color,
+            opacity: score.opacity,
+            fontFamily: "'Press Start 2P', monospace",
+            fontSize: '1.2rem',
+            fontWeight: 'bold',
+            textShadow: `0 0 8px ${score.color}`,
+            zIndex: 20,
+            pointerEvents: 'none'
+          }}
+        >
+          +{score.value}
+        </div>
+      ))}
+      
+      {/* Retro Futuristic Reticle */}
+      {reticle.visible && gameState === 'playing' && (
+        <div
+          className={`retro-reticle ${reticle.pulsating ? 'pulsating' : ''}`}
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: `translate(-50%, -50%) ${damageEffect.active ? getShakeTransform() : ''}`,
+            width: `${30 * reticle.size}px`,
+            height: `${30 * reticle.size}px`,
+            zIndex: 5,
+            pointerEvents: 'none',
+            opacity: reticle.pulsating ? 0.8 : 1
+          }}
+        >
+          {/* Inner Circle */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: `${4 * reticle.size}px`,
+            height: `${4 * reticle.size}px`,
+            borderRadius: '50%',
+            border: `1px solid ${reticle.color}`,
+            boxShadow: `0 0 5px ${reticle.color}`,
+            opacity: 0.25
+          }}></div>
+          
+          {/* Outer Circle */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: `${20 * reticle.size}px`,
+            height: `${20 * reticle.size}px`,
+            borderRadius: '50%',
+            border: `1px solid ${reticle.color}`,
+            boxShadow: `0 0 8px ${reticle.color}`,
+            opacity: 0.35
+          }}></div>
+          
+          {/* Crosshair lines */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '0',
+            transform: 'translateY(-50%)',
+            width: '100%',
+            height: `${1 * reticle.size}px`,
+            background: reticle.color,
+            boxShadow: `0 0 5px ${reticle.color}`,
+            opacity: 0.4
+          }}></div>
+          
+          <div style={{
+            position: 'absolute',
+            top: '0',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            height: '100%',
+            width: `${1 * reticle.size}px`,
+            background: reticle.color,
+            boxShadow: `0 0 5px ${reticle.color}`,
+            opacity: 0.4
+          }}></div>
+          
+          {/* Corner brackets */}
+          <div style={{
+            position: 'absolute',
+            top: '0',
+            left: '0',
+            width: `${8 * reticle.size}px`,
+            height: `${1 * reticle.size}px`,
+            background: reticle.color,
+            boxShadow: `0 0 5px ${reticle.color}`,
+          }}></div>
+          <div style={{
+            position: 'absolute',
+            top: '0',
+            left: '0',
+            width: `${1 * reticle.size}px`,
+            height: `${8 * reticle.size}px`,
+            background: reticle.color,
+            boxShadow: `0 0 5px ${reticle.color}`,
+          }}></div>
+          
+          <div style={{
+            position: 'absolute',
+            top: '0',
+            right: '0',
+            width: `${8 * reticle.size}px`,
+            height: `${1 * reticle.size}px`,
+            background: reticle.color,
+            boxShadow: `0 0 5px ${reticle.color}`,
+          }}></div>
+          <div style={{
+            position: 'absolute',
+            top: '0',
+            right: '0',
+            width: `${1 * reticle.size}px`,
+            height: `${8 * reticle.size}px`,
+            background: reticle.color,
+            boxShadow: `0 0 5px ${reticle.color}`,
+          }}></div>
+          
+          <div style={{
+            position: 'absolute',
+            bottom: '0',
+            left: '0',
+            width: `${8 * reticle.size}px`,
+            height: `${1 * reticle.size}px`,
+            background: reticle.color,
+            boxShadow: `0 0 5px ${reticle.color}`,
+          }}></div>
+          <div style={{
+            position: 'absolute',
+            bottom: '0',
+            left: '0',
+            width: `${1 * reticle.size}px`,
+            height: `${8 * reticle.size}px`,
+            background: reticle.color,
+            boxShadow: `0 0 5px ${reticle.color}`,
+          }}></div>
+          
+          <div style={{
+            position: 'absolute',
+            bottom: '0',
+            right: '0',
+            width: `${8 * reticle.size}px`,
+            height: `${1 * reticle.size}px`,
+            background: reticle.color,
+            boxShadow: `0 0 5px ${reticle.color}`,
+          }}></div>
+          <div style={{
+            position: 'absolute',
+            bottom: '0',
+            right: '0',
+            width: `${1 * reticle.size}px`,
+            height: `${8 * reticle.size}px`,
+            background: reticle.color,
+            boxShadow: `0 0 5px ${reticle.color}`,
+          }}></div>
+        </div>
       )}
       
       {/* Dyson Sphere HUD - Top Left */}

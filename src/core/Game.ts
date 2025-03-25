@@ -16,6 +16,7 @@ import { CollisionSystem } from './systems/CollisionSystem';
 import { WaveSystem } from './systems/WaveSystem';
 import { EnemySystem } from './systems/EnemySystem';
 import { HUDSystem } from './systems/HUDSystem';
+import { FloatingScoreSystem } from './systems/FloatingScoreSystem';
 import { GameStateDisplay } from './components';
 import { InputManager } from './input/InputManager';
 
@@ -48,6 +49,7 @@ class Game {
   private lastFrameTime: number = 0;
   private hudSystem!: HUDSystem; // Use definite assignment assertion
   private waveSystem!: WaveSystem; // Use definite assignment assertion
+  private floatingScoreSystem!: FloatingScoreSystem; // Use definite assignment assertion
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -82,14 +84,27 @@ class Game {
     this.waveSystem = new WaveSystem(this.world);
     this.world.addSystem(this.waveSystem);
     
+    // Create and store reference to FloatingScore system
+    this.floatingScoreSystem = new FloatingScoreSystem(this.world);
+    this.world.addSystem(this.floatingScoreSystem);
+    
+    // Set the camera reference for the floating score system
+    // Need to do this after camera is created
     this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
   }
 
   private initEntities(): void {
     const dysonSphere = createDysonSphere(this.world);
     const playerShip = createPlayerShip(this.world);
-    createCamera(this.world, playerShip);
+    const cameraEntity = createCamera(this.world, playerShip);
     createHUD(this.world, playerShip, dysonSphere);
+    
+    // Set camera for the floating score system after entities are created
+    // Need to get the actual camera from the scene manager
+    const camera = this.sceneManager.getCamera();
+    if (camera) {
+      this.floatingScoreSystem.setCamera(camera);
+    }
     
     // Ensure the WaveSystem is properly set up
     this.waveSystem.findDysonSphereEntity();
@@ -204,6 +219,10 @@ class Game {
 
   public getWorld(): World {
     return this.world;
+  }
+
+  public getCamera(): THREE.Camera | null {
+    return this.sceneManager.getCamera();
   }
 
   public dispose(): void {

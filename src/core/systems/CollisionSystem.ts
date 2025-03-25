@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { World, System } from '../World';
 import { Position, Collider, Projectile, Health, Enemy, InputReceiver, Shield } from '../components';
 import { HUDSystem } from './HUDSystem';
+import { createFloatingScore } from '../entities/FloatingScoreEntity';
 
 /**
  * Collision System
@@ -313,9 +314,23 @@ export class CollisionSystem implements System {
           // If this is an enemy, update the score
           if (this.world.hasComponent(targetEntity, 'Enemy')) {
             if (hudSystem) {
-              // Add score based on enemy type (10 points per enemy)
-              hudSystem.incrementScore(10);
-              hudSystem.displayMessage("Enemy destroyed! +10 points", 1.5);
+              // Get the enemy position for the floating score
+              const enemyPosition = this.world.getComponent<Position>(targetEntity, 'Position');
+              const enemy = this.world.getComponent<Enemy>(targetEntity, 'Enemy');
+              
+              if (enemyPosition && enemy) {
+                // Add score based on enemy type (10 points per enemy)
+                const scoreValue = 10; // Default for 'grunt' enemies
+                
+                // Create floating score at enemy position
+                createFloatingScore(this.world, enemyPosition, scoreValue);
+                
+                // Still update the score in HUD
+                hudSystem.incrementScore(scoreValue);
+                
+                // We don't need to display message anymore since we have floating indicators
+                // hudSystem.displayMessage("Enemy destroyed! +10 points", 1.5);
+              }
             }
           }
           

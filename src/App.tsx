@@ -3,11 +3,13 @@ import './App.css'
 import Game from './core/Game'
 import HUD from './ui/HUD'
 import { World } from './core/World'
+import { Camera } from 'three'
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
   const [world, setWorld] = useState<World | null>(null);
+  const [camera, setCamera] = useState<Camera | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -22,6 +24,12 @@ function App() {
     const gameWorld = game.getWorld();
     if (gameWorld) {
       setWorld(gameWorld);
+    }
+    
+    // Get the camera
+    const gameCamera = game.getCamera();
+    if (gameCamera) {
+      setCamera(gameCamera);
     }
     
     // Cleanup
@@ -48,6 +56,12 @@ function App() {
       if (gameWorld) {
         setWorld(gameWorld);
       }
+      
+      // Update the camera reference after restart
+      const gameCamera = gameRef.current.getCamera();
+      if (gameCamera) {
+        setCamera(gameCamera);
+      }
     }
   };
 
@@ -57,6 +71,7 @@ function App() {
       {world && (
         <HUD 
           world={world} 
+          camera={camera as Camera | undefined}
           onStartGame={handleStartGame}
           onRestartGame={handleRestartGame}
         />

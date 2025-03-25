@@ -1,54 +1,127 @@
-# React + TypeScript + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# Dyson Defender
 
-Currently, two official plugins are available:
+**Dyson Defender** is a retro-futuristic 3D space shooter built with React, TypeScript, Three.js, and Vite. Take control of a spaceship, defend the Dyson Sphere from waves of alien enemies, and blast your way through space with lasers and boosts. With a modular design and an Entity-Component-System (ECS) architecture, this game is both fun to play and easy to extend.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## Expanding the ESLint configuration
+- **Gameplay Mechanics**:
+  - Fly your spaceship using mouse and keyboard controls.
+  - Fire lasers to eliminate enemies and protect the Dyson Sphere.
+  - Battle waves of enemies with unique patterns and behaviors.
+  - Activate a boost for temporary speed bursts.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Visuals**:
+  - Retro-futuristic style with neon colors and glitchy effects.
+  - 3D models for the Dyson Sphere, spaceship, and enemies.
+  - Dynamic lighting and particle effects for an immersive feel.
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+- **Architecture**:
+  - Entity-Component-System (ECS) pattern for scalable game logic.
+  - Three.js for stunning 3D rendering.
+  - React-powered user interface (HUD).
+  - Modular codebase for easy updates and additions.
+
+- **Performance**:
+  - Optimized with Three.js best practices.
+  - Smooth gameplay with a frame-rate-independent loop.
+
+## Getting Started
+
+### Prerequisites
+
+- **Node.js**: Version 14 or higher.
+- **npm** or **yarn**: Package manager of your choice.
+
+### Installation
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/your-username/dyson-sphere-defender.git
+   cd dyson-sphere-defender
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+   or
+   ```bash
+   yarn install
+   ```
+
+3. **Start the development server**:
+   ```bash
+   npm run dev
+   ```
+   or
+   ```bash
+   yarn dev
+   ```
+
+4. **Play the game**:
+   Open your browser and go to `http://localhost:5173`.
+
+### Building for Production
+
+To generate a production-ready build, run:
+```bash
+npm run build
+```
+or
+```bash
+yarn build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The output will be saved in the `dist/` folder.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Usage
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+- **Controls**:
+  - **Move**: `W`, `A`, `S`, `D` or arrow keys.
+  - **Aim**: Move the mouse.
+  - **Shoot**: `Space` or left mouse button.
+  - **Boost**: Hold `Shift` for a speed boost.
+
+- **Objective**:
+  - Protect the Dyson Sphere from enemy waves.
+  - Destroy enemies to score points and advance.
+  - Keep the Dyson Sphere's health above zero to win.
+
+## Project Structure
+
+Here’s how the codebase is organized:
+
+- **`src/core/`**: Game logic (entities, systems, components, and ECS manager `World.ts`).
+- **`src/rendering/`**: Three.js scene setup and 3D mesh creation.
+- **`src/ui/`**: React components for the HUD, start screen, and more.
+- **`src/constants/`**: Game settings and constants.
+- **`src/types/`**: TypeScript type definitions.
+
+This separation keeps the logic, rendering, and UI distinct, making the project easier to work on.
+
+## Contributing
+
+We’d love your help improving Dyson Sphere Defender! Here’s how to contribute:
+
+1. **Fork the repository**.
+2. **Create a branch** for your changes.
+3. **Implement your feature or fix**, testing it thoroughly.
+4. **Submit a pull request** with a detailed explanation of your work.
+
+Check the project documentation for coding guidelines.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
+
+## Acknowledgments
+
+- **Three.js**: For powerful 3D rendering capabilities.
+- **React**: For a slick and responsive UI.
+- **Vite**: For lightning-fast development and builds.
+- **TypeScript**: For safer, more reliable code.
+
+---
+
+This `README.md` gives you everything you need to dive into "Dyson Sphere Defender"—whether you’re here to play, develop, or contribute. Enjoy defending the sphere!

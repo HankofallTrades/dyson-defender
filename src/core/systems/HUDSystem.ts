@@ -1,5 +1,5 @@
 import { System, World } from '../World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, Renderable, DamageEffect, GameStateDisplay, GameOverStats, Shield } from '../components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, Renderable, DamageEffect, GameStateDisplay, GameOverStats, Shield, Reticle } from '../components';
 import { InputManager } from '../input/InputManager';
 
 export class HUDSystem implements System {
@@ -212,6 +212,29 @@ export class HUDSystem implements System {
       
       // Reset all HUD components when starting a game
       this.resetHUD(hudEntity);
+    }
+  }
+  
+  public setReticleStyle(style: string, color: string = '#00ffff', size: number = 1, pulsating: boolean = true): void {
+    const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'Reticle']);
+    if (hudEntities.length === 0) return;
+    
+    const reticle = this.world.getComponent<Reticle>(hudEntities[0], 'Reticle');
+    if (reticle) {
+      reticle.style = style;
+      reticle.color = color;
+      reticle.size = size;
+      reticle.pulsating = pulsating;
+    }
+  }
+  
+  public toggleReticleVisibility(visible?: boolean): void {
+    const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'Reticle']);
+    if (hudEntities.length === 0) return;
+    
+    const reticle = this.world.getComponent<Reticle>(hudEntities[0], 'Reticle');
+    if (reticle) {
+      reticle.visible = visible !== undefined ? visible : !reticle.visible;
     }
   }
   
