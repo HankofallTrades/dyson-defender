@@ -17,6 +17,7 @@ import { WaveSystem } from './systems/WaveSystem';
 import { EnemySystem } from './systems/EnemySystem';
 import { HUDSystem } from './systems/HUDSystem';
 import { GameStateDisplay } from './components';
+import { InputManager } from './input/InputManager';
 
 /**
  * Main Game Controller
@@ -107,6 +108,10 @@ class Game {
       this.isRunning = true;
       this.lastFrameTime = performance.now();
     }
+    
+    // Request pointer lock when starting the game
+    const inputManager = InputManager.getInstance(this.container);
+    inputManager.requestPointerLock();
   }
 
   public restart(): void {
@@ -130,6 +135,10 @@ class Game {
     // Reset the game state to running
     this.isRunning = true;
     this.lastFrameTime = performance.now();
+    
+    // Request pointer lock when restarting the game
+    const inputManager = InputManager.getInstance(this.container);
+    inputManager.requestPointerLock();
   }
 
   public start(): void {

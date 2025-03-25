@@ -291,6 +291,20 @@ export class CollisionSystem implements System {
           if (hudSystem) {
             // Activate damage effect
             hudSystem.activateDamageEffect(0.8, 0.5);
+            
+            // Display hit message
+            hudSystem.displayMessage(`Hit by projectile! -${projectile.damage} health`, 1.5);
+            
+            // Check if player is destroyed
+            if (health.current <= 0) {
+              // Find the HUD entity to pass to triggerGameOver
+              const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
+              if (hudEntities.length > 0) {
+                // Directly trigger game over
+                hudSystem.triggerGameOver(hudEntities[0], 'Player Ship Destroyed');
+                return; // Exit early to prevent entity removal
+              }
+            }
           }
         }
         
@@ -342,17 +356,21 @@ export class CollisionSystem implements System {
     if (hudSystem) {
       // Activate damage effect with higher intensity since this is direct collision
       hudSystem.activateDamageEffect(1.0, 0.7);
+      
+      // Display hit message
+      hudSystem.displayMessage(`Hit by enemy! -${enemy.damage} health`, 1.5);
     }
     
     // Remove the enemy
     this.world.removeEntity(enemyEntity);
     
     // Check if player is destroyed
-    if (playerHealth.current <= 0) {
-      // For now, just display a game over message
-      // In a full implementation, this would trigger a game over state
-      if (hudSystem) {
-        hudSystem.displayMessage("GAME OVER - Ship destroyed", 5);
+    if (playerHealth.current <= 0 && hudSystem) {
+      // Find the HUD entity to pass to triggerGameOver
+      const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
+      if (hudEntities.length > 0) {
+        // Directly trigger game over now that the method is public
+        hudSystem.triggerGameOver(hudEntities[0], 'Player Ship Destroyed');
       }
     }
   }

@@ -145,6 +145,19 @@ export class InputManager {
     }
   }
 
+  /**
+   * Explicitly requests pointer lock on the container element
+   */
+  public requestPointerLock(): void {
+    if (!this.mouseState.isPointerLocked) {
+      try {
+        this.container.requestPointerLock();
+      } catch (e) {
+        console.warn('Failed to request pointer lock:', e);
+      }
+    }
+  }
+
   public dispose(): void {
     // Exit pointer lock if active
     this.exitPointerLock();

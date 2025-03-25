@@ -132,7 +132,7 @@ export class HUDSystem implements System {
     }
   }
   
-  private triggerGameOver(hudEntity: number, reason: string): void {
+  public triggerGameOver(hudEntity: number, reason: string): void {
     const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
     if (!gameStateDisplay) return;
     

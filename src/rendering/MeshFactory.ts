@@ -171,12 +171,12 @@ export class MeshFactory {
     });
     
     const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    leftEye.position.set(0.2, 0.1, -0.4);
+    leftEye.position.set(0.2, 0.1, 0.4);
     group.add(leftEye);
     meshes.push(leftEye);
     
     const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    rightEye.position.set(-0.2, 0.1, -0.4);
+    rightEye.position.set(-0.2, 0.1, 0.4);
     group.add(rightEye);
     meshes.push(rightEye);
     

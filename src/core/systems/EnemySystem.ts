@@ -107,6 +107,12 @@ export class EnemySystem implements System {
             // Shield already depleted, damage health directly
             targetHealth.current -= enemy.damage;
             if (targetHealth.current < 0) targetHealth.current = 0;
+            
+            // Check if this is the player and if they've been destroyed
+            if (this.world.hasComponent(targetEntity, 'InputReceiver') && targetHealth.current <= 0) {
+              // Trigger game over
+              this.triggerPlayerGameOver(targetEntity);
+            }
           }
         }
         
@@ -213,6 +219,30 @@ export class EnemySystem implements System {
     
     for (const entity of enemies) {
       this.world.removeEntity(entity);
+    }
+  }
+  
+  // New method to trigger game over when player is destroyed
+  private triggerPlayerGameOver(playerEntity: number): void {
+    // Get HUD system
+    const systems = (this.world as any).systems;
+    if (!systems) return;
+    
+    let hudSystem = null;
+    for (const system of systems) {
+      if (system.constructor.name === 'HUDSystem') {
+        hudSystem = system;
+        break;
+      }
+    }
+    
+    if (!hudSystem) return;
+    
+    // Find the HUD entity to pass to triggerGameOver
+    const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
+    if (hudEntities.length > 0) {
+      // Directly trigger game over
+      hudSystem.triggerGameOver(hudEntities[0], 'Player Ship Destroyed');
     }
   }
 } 
