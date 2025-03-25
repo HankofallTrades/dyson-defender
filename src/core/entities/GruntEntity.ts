@@ -46,14 +46,14 @@ export function createGrunt(
   // Add renderable component
   world.addComponent(entity, 'Renderable', { 
     modelId: 'grunt',
-    scale: 3.0, // Increased scale for better visibility
+    scale: 6.0, // Increased scale from 3.0 to 6.0 (2x bigger)
     color: COLORS.GRUNT_BASE
   });
   
   // Add collider for collision detection
   world.addComponent(entity, 'Collider', {
     type: 'sphere',
-    radius: 3.0, // Increased radius to match scale
+    radius: 6.0, // Increased radius from 3.0 to 6.0 (2x bigger)
     isTrigger: false,
     layer: 'enemy'
   });

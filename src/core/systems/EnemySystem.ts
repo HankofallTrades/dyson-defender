@@ -6,7 +6,9 @@ import { COLORS } from '../../constants/colors';
 
 export class EnemySystem implements System {
   // The minimum distance grunts should maintain from the Dyson Sphere surface
-  private readonly ATTACK_DISTANCE = 5;
+  private readonly ATTACK_DISTANCE = 20;
+  // Rotation speed in radians per second for smooth turning
+  private readonly ROTATION_SPEED = 2.0;
   private scene: THREE.Scene;
   
   constructor(private world: World, scene: THREE.Scene) {
@@ -116,8 +118,8 @@ export class EnemySystem implements System {
           }
         }
         
-        // When at attack position, face the Dyson Sphere
-        this.faceTarget(rotation, position, targetPosition);
+        // When at attack position, smoothly turn to face the Dyson Sphere directly
+        this.smoothFaceTarget(rotation, position, targetPosition, deltaTime);
       } else {
         // Still moving toward the target - normal mode
         if (enemy.inSiegeMode) {
@@ -208,6 +210,60 @@ export class EnemySystem implements System {
     // Calculate pitch (vertical angle) - optional
     const distance = Math.sqrt(dx * dx + dz * dz);
     rotation.x = Math.atan2(dy, distance);
+  }
+  
+  // Helper method to make an entity smoothly face a target position
+  private smoothFaceTarget(rotation: Rotation, position: Position, targetPosition: Position, deltaTime: number): void {
+    // Calculate direction vector from position to target center (Dyson Sphere)
+    const directionToDyson = new THREE.Vector3(
+      targetPosition.x - position.x,
+      targetPosition.y - position.y,
+      targetPosition.z - position.z
+    );
+    
+    // Normalize to get direction
+    directionToDyson.normalize();
+    
+    // This normalized vector points directly from the enemy to the center
+    // When the enemy's front surface is parallel to the Dyson Sphere surface,
+    // its forward direction should be pointing along this vector
+    
+    // Calculate target yaw (horizontal rotation around Y axis)
+    // atan2 gives angle in XZ plane
+    const targetYaw = Math.atan2(directionToDyson.x, directionToDyson.z);
+    
+    // Calculate target pitch (vertical rotation around X axis)
+    // We want to fully align with the direction to the center
+    // This ensures the enemy's front is parallel to the sphere's surface
+    const targetPitch = Math.atan2(directionToDyson.y, 
+                                 Math.sqrt(directionToDyson.x * directionToDyson.x + 
+                                          directionToDyson.z * directionToDyson.z));
+    
+    // Smoothly interpolate current rotation to target rotation
+    this.smoothRotateToAngle(rotation, 'y', targetYaw, deltaTime);
+    this.smoothRotateToAngle(rotation, 'x', targetPitch, deltaTime);
+  }
+  
+  // Helper method to smoothly rotate a value toward a target angle
+  private smoothRotateToAngle(rotation: Rotation, axis: 'x' | 'y' | 'z', targetAngle: number, deltaTime: number): void {
+    // Normalize both angles to the range [-π, π]
+    let currentAngle = rotation[axis];
+    
+    // Handle the shortest path around the circle
+    let diff = targetAngle - currentAngle;
+    if (diff > Math.PI) diff -= Math.PI * 2;
+    if (diff < -Math.PI) diff += Math.PI * 2;
+    
+    // Calculate how much to rotate this frame (capped by rotation speed)
+    const maxRotation = this.ROTATION_SPEED * deltaTime;
+    const rotationAmount = Math.sign(diff) * Math.min(Math.abs(diff), maxRotation);
+    
+    // Apply the rotation
+    rotation[axis] += rotationAmount;
+    
+    // Normalize the result to [-π, π]
+    if (rotation[axis] > Math.PI) rotation[axis] -= Math.PI * 2;
+    if (rotation[axis] < -Math.PI) rotation[axis] += Math.PI * 2;
   }
   
   /**
