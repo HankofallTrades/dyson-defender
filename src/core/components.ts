@@ -169,6 +169,24 @@ export interface Reticle {
   pulsating: boolean;   // Whether the reticle should pulsate
 }
 
+export interface Radar {
+  active: boolean;             // Whether the radar is currently active
+  range: number;               // Maximum detection range
+  refreshRate: number;         // How often to update in seconds
+  timeUntilRefresh: number;    // Time remaining until next refresh
+  trackedEntities: Array<{     // Array of entities currently being tracked
+    entityId: number;          // The entity ID
+    entityType: string;        // Type of entity ('grunt', 'bomber', etc.)
+    distance: number;          // Distance from player to entity
+    direction: {               // Direction vector from player to entity (normalized)
+      x: number;               // Used for calculating radar blip position
+      y: number;
+      z: number;
+    };
+    threatLevel: number;       // Threat level (0-1) - for color intensity
+  }>;
+}
+
 export interface FloatingScore {
   value: number;         // Score value to display
   lifetime: number;      // How long it should live in seconds

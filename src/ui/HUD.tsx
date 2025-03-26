@@ -1,6 +1,6 @@
 import React, { useEffect, useState, CSSProperties } from 'react';
 import { World } from '../core/World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position, WaveInfo } from '../core/components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position, WaveInfo, Radar } from '../core/components';
 import { COLORS } from '../constants/colors';
 import StartScreen from './StartScreen';
 import GameOverScreen from './GameOverScreen';
@@ -91,6 +91,23 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
     color: string;
     opacity: number;
   }>>([]);
+  const [radarData, setRadarData] = useState<{
+    active: boolean;
+    trackedEntities: Array<{
+      entityId: number;
+      entityType: string;
+      distance: number;
+      direction: {
+        x: number;
+        y: number;
+        z: number;
+      };
+      threatLevel: number;
+    }>;
+  }>({
+    active: true,
+    trackedEntities: []
+  });
   
   // Update UI data from ECS world
   useEffect(() => {
@@ -240,6 +257,15 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
         }>;
         
         setFloatingScores(newFloatingScores);
+      }
+      
+      // Update radar data
+      const radarComponent = world.getComponent<Radar>(hudEntity, 'Radar');
+      if (radarComponent) {
+        setRadarData({
+          active: radarComponent.active,
+          trackedEntities: radarComponent.trackedEntities
+        });
       }
       
       // Request next frame update - use the timestamp
@@ -911,10 +937,12 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
           }}>
             <span style={{ color: '#ff00ff', fontSize: '0.7rem' }}>RADAR</span>
             <span style={{ 
-              color: '#00ffff', 
+              color: radarData.trackedEntities.length > 0 ? '#ff5555' : '#00ffff', 
               fontSize: '0.6rem',
               animation: 'pulse-opacity 1s infinite alternate'
-            }}>SCANNING</span>
+            }}>
+              {radarData.trackedEntities.length > 0 ? 'HOSTILES DETECTED' : 'SCANNING'}
+            </span>
           </div>
           
           {/* Radar Display */}
@@ -947,6 +975,20 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
                 boxShadow: '0 0 5px #00ffff',
               }}></div>
               
+              {/* Direction indicator - points up to show player's forward direction */}
+              <div style={{
+                position: 'absolute',
+                top: '40%',
+                left: '50%',
+                width: '0',
+                height: '0',
+                borderLeft: '5px solid transparent',
+                borderRight: '5px solid transparent',
+                borderBottom: '10px solid #00ffff',
+                transform: 'translateX(-50%)',
+                opacity: 0.8,
+              }}></div>
+              
               {/* Radar grid lines */}
               <div style={{
                 position: 'absolute',
@@ -976,52 +1018,104 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
                 border: '1px solid rgba(0, 255, 255, 0.2)'
               }}></div>
               
-              {/* Radar sweep animation */}
+              {/* Improved classic radar sweep line */}
               <div style={{
                 position: 'absolute',
-                top: '0',
-                bottom: '0',
+                top: '50%',
                 left: '50%',
-                width: '50%',
-                transformOrigin: 'left center',
-                animation: 'radar-scan 4s linear infinite',
-                overflow: 'hidden'
+                width: '0',
+                height: '0',
+                zIndex: 5,
+                animation: 'radar-scan 2s linear infinite',
+                transformOrigin: 'center center',
               }}>
                 <div style={{
-                  width: '100%',
-                  height: '100%',
-                  background: 'linear-gradient(90deg, rgba(0, 255, 255, 0.1), rgba(0, 255, 255, 0.4))',
-                  borderTopRightRadius: '100%',
-                  borderBottomRightRadius: '100%'
+                  position: 'absolute',
+                  left: '0',
+                  top: '0',
+                  width: '60px', // Radius length
+                  height: '1.5px',
+                  background: 'linear-gradient(90deg, rgba(0, 255, 255, 0.6), rgba(0, 255, 255, 0.05))',
+                  transform: 'rotate(90deg)',
+                  transformOrigin: 'left center',
+                  boxShadow: '0 0 3px rgba(0, 255, 255, 0.5)',
                 }}></div>
               </div>
               
-              {/* Enemy blips */}
-              {Array.from({length: enemiesRemaining.current}).map((_, index) => {
-                // Generate pseudo-random positions that change slowly
-                const angle = (index * (360 / Math.max(enemiesRemaining.current, 1)) + Date.now() / 50) % 360;
-                const distance = 30 + (index % 3) * 15;
-                const radian = angle * Math.PI / 180;
-                const x = Math.cos(radian) * distance;
-                const y = Math.sin(radian) * distance;
+              {/* Enemy blips - use actual enemy positions from radar data */}
+              {radarData.trackedEntities.map((entity, index) => {
+                // Calculate blip position based on direction vector and normalized distance
+                // Forward (z) maps to y-axis (up/down) on radar
+                // Right (x) maps to x-axis (left/right) on radar
+                const normalizedDistance = Math.min(entity.distance / 500, 1); // Normalize to 0-1
                 
-                return (
-                  <div 
-                    key={index}
-                    style={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      width: '4px',
-                      height: '4px',
-                      borderRadius: '50%',
-                      background: '#ff0000',
-                      transform: `translate(${x}px, ${y}px)`,
-                      boxShadow: '0 0 3px #ff0000',
-                      animation: 'pulse-opacity 0.8s infinite alternate'
-                    }}
-                  ></div>
-                );
+                // Use square root to spread out dots more (clusters less in the center)
+                const scaleFactor = Math.sqrt(normalizedDistance);
+                const scaledDistance = scaleFactor * 55; // Scale to slightly smaller than radar size
+                
+                // Map the direction to the radar
+                // x component: right/left of player (stays the same)
+                // z component: forward/backward of player (maps to y coordinate on radar)
+                // Forward is positive Z, so it goes up on the radar
+                // Backward is negative Z, so it goes down on the radar
+                const x = entity.direction.x * scaledDistance;
+                const y = -entity.direction.z * scaledDistance; // Negative because screen Y is inverted
+                
+                // Fixed red color for all enemies
+                const color = '#ff0000';
+                
+                // Size based on distance - closer = larger, with minimum size
+                const size = Math.max(2, 4 - (normalizedDistance * 2));
+                
+                // Fixed pulse speed
+                const pulseSpeed = 0.8;
+                
+                // Check vertical position (y-coordinate in 3D space)
+                // If significantly above or below player, show triangle instead of dot
+                const verticalThreshold = 10; // Units difference to show elevation indicator
+                const isAbove = entity.direction.y > verticalThreshold;
+                const isBelow = entity.direction.y < -verticalThreshold;
+                
+                // If above or below, render triangle, otherwise render dot
+                if (isAbove || isBelow) {
+                  return (
+                    <div 
+                      key={entity.entityId}
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        width: '0',
+                        height: '0',
+                        borderLeft: `${size}px solid transparent`,
+                        borderRight: `${size}px solid transparent`,
+                        borderBottom: isAbove ? `${size * 2}px solid ${color}` : 'none',
+                        borderTop: isBelow ? `${size * 2}px solid ${color}` : 'none',
+                        transform: `translate(${x - size}px, ${y - (isAbove ? size : 0)}px)`,
+                        animation: `pulse-opacity ${pulseSpeed}s infinite alternate`
+                      }}
+                    ></div>
+                  );
+                } else {
+                  // Standard dot for enemies at similar elevation
+                  return (
+                    <div 
+                      key={entity.entityId}
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        width: `${size}px`,
+                        height: `${size}px`,
+                        borderRadius: '50%',
+                        background: color,
+                        transform: `translate(${x}px, ${y}px)`,
+                        boxShadow: `0 0 3px ${color}`,
+                        animation: `pulse-opacity ${pulseSpeed}s infinite alternate`
+                      }}
+                    ></div>
+                  );
+                }
               })}
             </div>
             
@@ -1031,9 +1125,9 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
               bottom: '10px',
               right: '15px',
               fontSize: '0.6rem',
-              color: enemiesRemaining.current > 0 ? '#ff5555' : '#44ff44'
+              color: radarData.trackedEntities.length > 0 ? '#ff5555' : '#44ff44'
             }}>
-              HOSTILES: {enemiesRemaining.current}
+              HOSTILES: {radarData.trackedEntities.length}
             </div>
             <div style={{
               position: 'absolute',

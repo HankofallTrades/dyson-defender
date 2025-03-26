@@ -1,5 +1,5 @@
 import { World } from '../World';
-import { UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle } from '../components';
+import { UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, Radar } from '../components';
 
 export function createHUD(world: World, playerEntity: number, dysonSphereEntity: number): number {
   const entity = world.createEntity();
@@ -55,6 +55,15 @@ export function createHUD(world: World, playerEntity: number, dysonSphereEntity:
     size: 1.5,
     color: '#00ffff',
     pulsating: false
+  });
+  
+  // Add radar component
+  world.addComponent(entity, 'Radar', {
+    active: true,
+    range: 500,  // Detection range in game units
+    refreshRate: 0.5,  // Refresh every 0.5 seconds
+    timeUntilRefresh: 0,
+    trackedEntities: []
   });
   
   return entity;

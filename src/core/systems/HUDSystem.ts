@@ -1,6 +1,7 @@
 import { System, World } from '../World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, Renderable, DamageEffect, GameStateDisplay, GameOverStats, Shield, Reticle } from '../components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, Renderable, DamageEffect, GameStateDisplay, GameOverStats, Shield, Reticle, Radar, Enemy, Position, Rotation } from '../components';
 import { InputManager } from '../input/InputManager';
+import * as THREE from 'three';
 
 export class HUDSystem implements System {
   private world: World;
@@ -20,6 +21,7 @@ export class HUDSystem implements System {
       this.updateMessages(hudEntity, deltaTime);
       this.updateDamageEffect(hudEntity, deltaTime);
       this.updateGameState(hudEntity);
+      this.updateRadar(hudEntity, deltaTime);
     }
   }
   
@@ -266,6 +268,112 @@ export class HUDSystem implements System {
     if (damageEffect) {
       damageEffect.active = false;
       damageEffect.timeRemaining = 0;
+    }
+  }
+  
+  private updateRadar(hudEntity: number, deltaTime: number): void {
+    const radar = this.world.getComponent<Radar>(hudEntity, 'Radar');
+    if (!radar || !radar.active) return;
+    
+    // Update refresh timer
+    radar.timeUntilRefresh -= deltaTime;
+    if (radar.timeUntilRefresh > 0) return; // Not time to refresh yet
+    
+    // Reset timer
+    radar.timeUntilRefresh = radar.refreshRate;
+    
+    // Get player position and rotation as reference point
+    const playerEntities = this.world.getEntitiesWith(['InputReceiver', 'Position', 'Rotation']);
+    if (playerEntities.length === 0) return;
+    
+    const playerEntity = playerEntities[0];
+    const playerPos = this.world.getComponent<Position>(playerEntity, 'Position');
+    const playerRot = this.world.getComponent<Rotation>(playerEntity, 'Rotation');
+    if (!playerPos || !playerRot) return;
+    
+    // Create a forward vector based on player's rotation
+    const playerForward = new THREE.Vector3(0, 0, -1); // Default forward in THREE.js
+    const playerQuat = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(playerRot.x, playerRot.y, playerRot.z, 'YXZ')
+    );
+    playerForward.applyQuaternion(playerQuat);
+    
+    // Create right vector (perpendicular to forward)
+    const playerRight = new THREE.Vector3(1, 0, 0);
+    playerRight.applyQuaternion(playerQuat);
+    
+    // Find all enemy entities within range
+    const enemyEntities = this.world.getEntitiesWith(['Enemy', 'Position']);
+    
+    // Clear tracked entities
+    radar.trackedEntities = [];
+    
+    // Process each enemy
+    for (const enemyEntity of enemyEntities) {
+      const enemy = this.world.getComponent<Enemy>(enemyEntity, 'Enemy');
+      const position = this.world.getComponent<Position>(enemyEntity, 'Position');
+      
+      if (!enemy || !position) continue;
+      
+      // Calculate distance vector from player to enemy
+      const distanceVector = new THREE.Vector3(
+        position.x - playerPos.x,
+        position.y - playerPos.y,
+        position.z - playerPos.z
+      );
+      
+      const distance = distanceVector.length();
+      
+      // Check if within radar range
+      if (distance <= radar.range) {
+        // Calculate normalized direction vector for the radar
+        const rawDirection = distanceVector.clone().normalize();
+        
+        // Project the enemy position onto the player's local space
+        // Forward (z) will be mapped to y-axis on radar (up/down)
+        // Right (x) will be mapped to x-axis on radar (left/right)
+        const forwardProjection = playerForward.dot(rawDirection);
+        const rightProjection = playerRight.dot(rawDirection);
+        
+        // Calculate relative vertical position (how much higher/lower the enemy is)
+        const verticalDifference = position.y - playerPos.y;
+        
+        // Calculate threat level based on enemy type or siege mode
+        let threatLevel = 0.5; // Default threat level
+        
+        // Higher threat level for enemies in siege mode
+        if (enemy.inSiegeMode) {
+          threatLevel = 0.9;
+        } else {
+          // Threat level based on enemy type
+          switch (enemy.type) {
+            case 'grunt':
+              threatLevel = 0.6;
+              break;
+            case 'bomber':
+              threatLevel = 0.8;
+              break;
+            default:
+              threatLevel = 0.5;
+          }
+        }
+        
+        // Add to tracked entities - with directions relative to player's orientation
+        radar.trackedEntities.push({
+          entityId: enemyEntity,
+          entityType: enemy.type,
+          distance: distance,
+          direction: {
+            // X is left/right relative to player
+            x: rightProjection,
+            // Original Y (vertical axis in 3D) preserved for elevation indicators
+            y: verticalDifference,
+            // Z becomes Y in radar (up/down) - forward is positive, backward is negative
+            z: forwardProjection
+          },
+          threatLevel: threatLevel
+        });
+      }
     }
   }
 } 
