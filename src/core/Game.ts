@@ -99,8 +99,9 @@ class Game {
     this.animationSystem = new AnimationSystem(this.world, this.sceneManager.getScene());
     this.world.addSystem(this.animationSystem);
     
-    // Connect the WaveSystem with the AnimationSystem
+    // Connect the WaveSystem with the AnimationSystem and HUDSystem
     this.waveSystem.setAnimationSystem(this.animationSystem);
+    this.waveSystem.setHUDSystem(this.hudSystem);
     
     // Add the rendering system last
     this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));

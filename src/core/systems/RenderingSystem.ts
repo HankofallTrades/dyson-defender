@@ -82,6 +82,7 @@ export class RenderingSystem implements System {
       
       if (rotation) {
         // Apply rotation in the correct order (pitch, yaw, roll)
+        mesh.rotation.order = 'YXZ'; // Set rotation order to match our ECS calculations
         mesh.rotation.set(rotation.x, rotation.y, rotation.z);
       }
     }

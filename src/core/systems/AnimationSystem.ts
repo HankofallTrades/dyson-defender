@@ -52,7 +52,6 @@ export class AnimationSystem implements System {
         const enemy = this.world.getComponent<any>(entity, 'Enemy');
         if (enemy) {
           enemy.canShoot = true;
-          console.log(`Enemy ${entity} can now shoot after delay`);
         }
         this.shootingTimers.delete(entity);
       } else {
@@ -62,19 +61,6 @@ export class AnimationSystem implements System {
     
     const entities = this.world.getEntitiesWith(['Animation', 'Position']);
     
-    if (entities.length > 0) {
-      // Log active animations for debugging
-      if (performance.now() % 3000 < 50) { // Log every ~3 seconds
-        console.log(`Active animations: ${entities.length}`);
-        for (const entity of entities) {
-          const animation = this.world.getComponent<Animation>(entity, 'Animation');
-          if (animation) {
-            console.log(`Entity ${entity}: ${animation.type} animation at progress ${animation.progress.toFixed(2)}`);
-          }
-        }
-      }
-    }
-
     for (const entity of entities) {
       const animation = this.world.getComponent<Animation>(entity, 'Animation');
       const position = this.world.getComponent<Position>(entity, 'Position');
@@ -99,8 +85,6 @@ export class AnimationSystem implements System {
           // Check for phase change to stable
           const data = animation.data as WormholeAnimationData;
           if (prevPhase !== 'stable' && data.phase === 'stable') {
-            console.log(`Wormhole ${entity} has reached stable phase`);
-            
             // Execute the registered callback for this wormhole if it exists
             const callback = this.wormholeStableCallbacks.get(entity);
             if (callback) {
@@ -128,7 +112,6 @@ export class AnimationSystem implements System {
         
         // Remove animation component
         this.world.removeComponent(entity, 'Animation');
-        console.log(`Animation completed for entity ${entity}`);
       }
     }
   }
@@ -167,8 +150,6 @@ export class AnimationSystem implements System {
       
       // Apply the rotation to the effect group
       effectGroup.quaternion.copy(lookAtQuaternion);
-      
-      console.log('Created wormhole effect for entity', entity, 'facing away from Dyson sphere');
     }
 
     // Update wormhole phase based on progress
@@ -200,18 +181,14 @@ export class AnimationSystem implements System {
         const scaleProgress = this.easeOutBack(emergenceProgress);
         renderable.scale = minScale + (maxScale - minScale) * scaleProgress;
         
-        // Log scale for debugging
-        if (animation.progress % 0.1 < 0.01) {
-          console.log(`Entity ${entity} scale: ${renderable.scale.toFixed(2)}, progress: ${animation.progress.toFixed(2)}`);
-        }
-        
         // REMOVED position lerping to allow enemy to move independently
       } else {
         // During shrinking phase, maintain final scale
         renderable.scale = maxScale;
       }
     } else {
-      console.warn('No Renderable component found for entity', entity);
+      // Renderable component is optional for wormhole animations
+      // Visual effects are still shown via the effectGroup
     }
 
     // Update visual effects based on phase
@@ -415,7 +392,6 @@ export class AnimationSystem implements System {
       });
       
       this.effectMeshes.delete(entity);
-      console.log('Cleaned up wormhole effect for entity', entity);
     }
   }
 
@@ -456,20 +432,13 @@ export class AnimationSystem implements System {
       const startScale = 0.1;
       renderable.scale = startScale + (data.finalScale - startScale) * progress;
       
-      // Occasionally log scale for debugging
-      if (animation.progress % 0.25 < 0.01) {
-        console.log(`Entity ${entity} growth scale: ${renderable.scale.toFixed(2)}, progress: ${animation.progress.toFixed(2)}`);
-      }
-      
       // Start shooting timer when the wormhole enters stable phase (30% of animation)
-      // This is when enemy is at minimal visible size but still growing
       if (animation.progress >= 0.3 && animation.progress < 0.3 + animation.duration / 60) {
         // Check if this entity has an Enemy component and if we need to start a shooting timer
         const enemy = this.world.getComponent<any>(entity, 'Enemy');
         if (enemy && !enemy.canShoot && !this.shootingTimers.has(entity)) {
           // Add a 0.5 second timer before the enemy can shoot
           this.shootingTimers.set(entity, 0.5);
-          console.log(`Enemy ${entity} has emerged and will be able to shoot in 0.5 seconds`);
         }
       }
     }

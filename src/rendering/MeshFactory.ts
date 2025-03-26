@@ -104,8 +104,7 @@ export class MeshFactory {
     // Create a laser cylinder that's long and thin
     const geometry = new THREE.CylinderGeometry(0.25, 0.25, 5, 16);
     
-    // Rotate the cylinder to point forward along the z-axis (90 degrees around X axis)
-    // We need to use a group to handle the rotation correctly
+    // Create a group to handle the rotation correctly
     const group = new THREE.Group();
     const mesh = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({ 
       color: renderable.color || COLORS.LASER_GREEN,
@@ -114,7 +113,8 @@ export class MeshFactory {
       shininess: 100
     }));
     
-    // Rotate the mesh to point along z-axis (cylinders are normally aligned with y-axis)
+    // Rotate the cylinder geometry to point along the z-axis 
+    // (cylinders are created along the y-axis by default)
     mesh.rotation.x = Math.PI / 2;
     
     group.add(mesh);

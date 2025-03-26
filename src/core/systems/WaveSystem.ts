@@ -3,6 +3,7 @@ import { WaveInfo, Enemy, Renderable, GameStateDisplay, Position } from '../comp
 import { createGrunt } from '../entities/GruntEntity';
 import { createWormhole } from '../entities/WormholeEntity';
 import { AnimationSystem } from './AnimationSystem';
+import { HUDSystem } from './HUDSystem';
 import * as THREE from 'three';
 
 export class WaveSystem implements System {
@@ -12,6 +13,9 @@ export class WaveSystem implements System {
   private spawnInterval: number = 1.5; // Time between spawns within a wave
   private gameStateEntity: number = -1; // Track game state entity
   private animationSystem: AnimationSystem | null = null;
+  private hudSystem: HUDSystem | null = null;
+  private hasAnnouncedWave: boolean = false;
+  private hasAnnouncedCompletion: boolean = false;
   
   constructor(private world: World) {
     // Create a special entity just to hold the wave information
@@ -37,6 +41,11 @@ export class WaveSystem implements System {
   // Set the reference to the animation system
   public setAnimationSystem(animationSystem: AnimationSystem): void {
     this.animationSystem = animationSystem;
+  }
+  
+  // Set the reference to the HUD system for displaying messages
+  public setHUDSystem(hudSystem: HUDSystem): void {
+    this.hudSystem = hudSystem;
   }
   
   // Method to find the Dyson Sphere entity
@@ -87,13 +96,15 @@ export class WaveSystem implements System {
       // If no wave is active, count down to the next wave
       waveInfo.nextWaveTimer -= deltaTime;
       
+      // Announce wave countdown at specific intervals
+      this.handleWaveCountdown(waveInfo);
+      
       if (waveInfo.nextWaveTimer <= 0) {
         this.startNextWave(waveInfo);
       }
     } else if (waveInfo.enemiesRemaining === 0 && waveInfo.totalEnemies === 0) {
       // Wave complete, prepare for the next one
-      waveInfo.isActive = false;
-      waveInfo.nextWaveTimer = 5; // 5 seconds until next wave
+      this.completeWave(waveInfo);
     } else if (waveInfo.totalEnemies > 0) {
       // Still have enemies to spawn in the current wave
       this.timeSinceLastSpawn += deltaTime;
@@ -106,6 +117,39 @@ export class WaveSystem implements System {
     }
   }
   
+  private handleWaveCountdown(waveInfo: WaveInfo): void {
+    // Reset announcement flags when a new countdown starts
+    if (waveInfo.nextWaveTimer > 4.8 && waveInfo.currentWave > 0) {
+      this.hasAnnouncedCompletion = false;
+    }
+    
+    // Announce wave completion once when the countdown starts
+    if (!this.hasAnnouncedCompletion && waveInfo.currentWave > 0) {
+      if (this.hudSystem) {
+        this.hudSystem.displayMessage(`WAVE ${waveInfo.currentWave} COMPLETE!`, 3);
+      }
+      this.hasAnnouncedCompletion = true;
+    }
+    
+    // For first wave or when countdown is near the end
+    if (waveInfo.nextWaveTimer <= 3 && !this.hasAnnouncedWave) {
+      const message = waveInfo.currentWave === 0 
+        ? "FIRST WAVE INCOMING!" 
+        : `PREPARE FOR WAVE ${waveInfo.currentWave + 1}!`;
+      
+      if (this.hudSystem) {
+        this.hudSystem.displayMessage(message, 3);
+      }
+      this.hasAnnouncedWave = true;
+    }
+  }
+  
+  private completeWave(waveInfo: WaveInfo): void {
+    waveInfo.isActive = false;
+    waveInfo.nextWaveTimer = 5; // 5 seconds until next wave
+    this.hasAnnouncedWave = false; // Reset for next wave
+  }
+  
   private startNextWave(waveInfo: WaveInfo): void {
     waveInfo.currentWave++;
     waveInfo.isActive = true;
@@ -113,6 +157,11 @@ export class WaveSystem implements System {
     // Calculate number of enemies for this wave
     // Base of 5 enemies for wave 1, then +3 per wave
     waveInfo.totalEnemies = 5 + (waveInfo.currentWave - 1) * 3;
+    
+    // Announce the start of the wave
+    if (this.hudSystem) {
+      this.hudSystem.displayMessage(`WAVE ${waveInfo.currentWave} STARTED!`, 3);
+    }
     
     // Spawn the first enemy immediately
     this.spawnEnemy();
@@ -148,7 +197,6 @@ export class WaveSystem implements System {
     
     // Create the enemy at the offset position
     const enemyEntity = createGrunt(this.world, enemyPosition, this.dysonSphereEntity);
-    console.log(`Enemy ${enemyEntity} spawned inside wormhole ${wormholeEntity}`);
     
     return wormholeEntity;
   }
@@ -182,5 +230,7 @@ export class WaveSystem implements System {
       waveInfo.isActive = false;
     }
     this.timeSinceLastSpawn = 0;
+    this.hasAnnouncedWave = false;
+    this.hasAnnouncedCompletion = false;
   }
 } 

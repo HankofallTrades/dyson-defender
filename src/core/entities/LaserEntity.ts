@@ -20,7 +20,7 @@ export function createLaser(
   });
   
   // Add velocity component (based on direction)
-  const laserSpeed = 200; // Units per second - doubled for faster projectiles
+  const laserSpeed = 400; // Units per second - doubled for faster projectiles
   const normalizedDir = new THREE.Vector3(direction.x, direction.y, direction.z).normalize();
   
   world.addComponent(entity, 'Velocity', { 
@@ -29,14 +29,23 @@ export function createLaser(
     z: normalizedDir.z * laserSpeed 
   });
   
-  // Add rotation component (aligned with direction)
-  // Calculate rotation to face direction
-  const euler = new THREE.Euler();
-  const quaternion = new THREE.Quaternion().setFromUnitVectors(
-    new THREE.Vector3(0, 0, 1), // Default forward
-    normalizedDir // Target direction
+  // Add rotation component (aligned with direction of travel)
+  // Create a temporary object and use lookAt to get the proper rotation
+  const tempObj = new THREE.Object3D();
+  tempObj.position.set(position.x, position.y, position.z);
+  
+  // Calculate a point in front of the starting position, along the direction vector
+  const targetPoint = new THREE.Vector3(
+    position.x + normalizedDir.x,
+    position.y + normalizedDir.y,
+    position.z + normalizedDir.z
   );
-  euler.setFromQuaternion(quaternion);
+  
+  // Look at the target point
+  tempObj.lookAt(targetPoint);
+  
+  // Extract the resulting rotation (yaw, pitch, roll)
+  const euler = new THREE.Euler().setFromQuaternion(tempObj.quaternion, 'YXZ');
   
   world.addComponent(entity, 'Rotation', { 
     x: euler.x, 

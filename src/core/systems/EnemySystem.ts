@@ -129,6 +129,26 @@ export class EnemySystem implements System {
         
         // When at attack position, smoothly turn to face the Dyson Sphere directly
         this.smoothFaceTarget(rotation, position, targetPosition, deltaTime);
+        
+        // Try to shoot laser at Dyson sphere when in siege mode
+        if (enemy.canShoot && enemy.currentLaserCooldown <= 0) {
+          // Get direction to Dyson sphere center for laser targeting
+          const directionToDysonSphere = new THREE.Vector3(
+            targetPosition.x - position.x,
+            targetPosition.y - position.y,
+            targetPosition.z - position.z
+          ).normalize();
+          
+          // Fire laser toward Dyson sphere
+          this.fireEnemyLaser(entity, position, { 
+            x: directionToDysonSphere.x, 
+            y: directionToDysonSphere.y, 
+            z: directionToDysonSphere.z 
+          });
+          
+          // Reset laser cooldown
+          enemy.currentLaserCooldown = enemy.laserCooldown;
+        }
       } else {
         // Still moving toward the target - normal mode
         if (enemy.inSiegeMode) {
@@ -152,7 +172,7 @@ export class EnemySystem implements System {
             
             // Try to shoot at player ONLY if allowed to shoot
             if (enemy.canShoot && enemy.currentLaserCooldown <= 0 && playerEntity !== -1) {
-              // Calculate direction to player
+              // Calculate direction to player for laser targeting
               const directionToPlayer = new THREE.Vector3(
                 playerPosition.x - position.x,
                 playerPosition.y - position.y,
@@ -160,26 +180,32 @@ export class EnemySystem implements System {
               ).normalize();
               
               // Fire laser toward player
-              this.fireEnemyLaser(entity, position, { x: directionToPlayer.x, y: directionToPlayer.y, z: directionToPlayer.z });
+              this.fireEnemyLaser(entity, position, { 
+                x: directionToPlayer.x, 
+                y: directionToPlayer.y, 
+                z: directionToPlayer.z 
+              });
               
               // Reset cooldown
               enemy.currentLaserCooldown = enemy.laserCooldown;
             }
           } else {
             // No player found, face the direction of movement
-            this.faceTarget(rotation, position, {
+            const moveTarget = {
               x: position.x + velocity.x,
               y: position.y + velocity.y,
               z: position.z + velocity.z
-            });
+            };
+            this.faceTarget(rotation, position, moveTarget);
           }
         } else {
           // Default behavior for other enemy types - face where they're going
-          this.faceTarget(rotation, position, {
+          const moveTarget = {
             x: position.x + velocity.x,
             y: position.y + velocity.y,
             z: position.z + velocity.z
-          });
+          };
+          this.faceTarget(rotation, position, moveTarget);
         }
       }
       
@@ -208,45 +234,37 @@ export class EnemySystem implements System {
   
   // Helper method to make an entity face a target position
   private faceTarget(rotation: Rotation, position: Position, targetPosition: Position): void {
-    // Calculate direction vector from position to target
-    const dx = targetPosition.x - position.x;
-    const dy = targetPosition.y - position.y;
-    const dz = targetPosition.z - position.z;
+    // Create vectors for current position and target position
+    const currentPos = new THREE.Vector3(position.x, position.y, position.z);
+    const targetPos = new THREE.Vector3(targetPosition.x, targetPosition.y, targetPosition.z);
     
-    // Calculate the angle for rotation
-    rotation.y = Math.atan2(dx, dz);
+    // Create a temporary object to use lookAt
+    const tempObj = new THREE.Object3D();
+    tempObj.position.copy(currentPos);
+    tempObj.lookAt(targetPos);
     
-    // Calculate pitch (vertical angle) - optional
-    const distance = Math.sqrt(dx * dx + dz * dz);
-    rotation.x = Math.atan2(dy, distance);
+    // Extract the resulting rotation from the object
+    const euler = new THREE.Euler().setFromQuaternion(tempObj.quaternion, 'YXZ');
+    rotation.x = euler.x; // Pitch
+    rotation.y = euler.y; // Yaw
+    rotation.z = euler.z; // Roll
   }
   
   // Helper method to make an entity smoothly face a target position
   private smoothFaceTarget(rotation: Rotation, position: Position, targetPosition: Position, deltaTime: number): void {
-    // Calculate direction vector from position to target center (Dyson Sphere)
-    const directionToDyson = new THREE.Vector3(
-      targetPosition.x - position.x,
-      targetPosition.y - position.y,
-      targetPosition.z - position.z
-    );
+    // Create vectors for current position and target position
+    const currentPos = new THREE.Vector3(position.x, position.y, position.z);
+    const targetPos = new THREE.Vector3(targetPosition.x, targetPosition.y, targetPosition.z);
     
-    // Normalize to get direction
-    directionToDyson.normalize();
+    // Create a temporary object to use lookAt
+    const tempObj = new THREE.Object3D();
+    tempObj.position.copy(currentPos);
+    tempObj.lookAt(targetPos);
     
-    // This normalized vector points directly from the enemy to the center
-    // When the enemy's front surface is parallel to the Dyson Sphere surface,
-    // its forward direction should be pointing along this vector
-    
-    // Calculate target yaw (horizontal rotation around Y axis)
-    // atan2 gives angle in XZ plane
-    const targetYaw = Math.atan2(directionToDyson.x, directionToDyson.z);
-    
-    // Calculate target pitch (vertical rotation around X axis)
-    // We want to fully align with the direction to the center
-    // This ensures the enemy's front is parallel to the sphere's surface
-    const targetPitch = Math.atan2(directionToDyson.y, 
-                                 Math.sqrt(directionToDyson.x * directionToDyson.x + 
-                                          directionToDyson.z * directionToDyson.z));
+    // Extract the target rotation from the object
+    const euler = new THREE.Euler().setFromQuaternion(tempObj.quaternion, 'YXZ');
+    const targetYaw = euler.y;
+    const targetPitch = euler.x;
     
     // Smoothly interpolate current rotation to target rotation
     this.smoothRotateToAngle(rotation, 'y', targetYaw, deltaTime);

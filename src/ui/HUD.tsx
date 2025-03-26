@@ -1,6 +1,6 @@
 import React, { useEffect, useState, CSSProperties } from 'react';
 import { World } from '../core/World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position } from '../core/components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position, WaveInfo } from '../core/components';
 import { COLORS } from '../constants/colors';
 import StartScreen from './StartScreen';
 import GameOverScreen from './GameOverScreen';
@@ -22,6 +22,27 @@ function worldToScreen(position: Position, camera: Camera): { x: number, y: numb
   };
 }
 
+// Hook for responsive design
+function useScreenSize() {
+  const [width, setWidth] = useState(window.innerWidth);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setWidth(window.innerWidth);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  return {
+    width,
+    isMobile: width < 768,
+    isTablet: width >= 768 && width < 1024,
+    isDesktop: width >= 1024
+  };
+}
+
 interface HUDProps {
   world: World;
   onStartGame: () => void;
@@ -30,6 +51,9 @@ interface HUDProps {
 }
 
 const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) => {
+  // Screen size for responsive layout
+  const screen = useScreenSize();
+  
   // State to hold UI data
   const [playerHealth, setPlayerHealth] = useState<Health>({ current: 100, max: 100 });
   const [score, setScore] = useState(0);
@@ -50,6 +74,9 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
   const [damageEffect, setDamageEffect] = useState({ active: false, intensity: 0 });
   const [gameState, setGameState] = useState<'not_started' | 'playing' | 'paused' | 'game_over'>('not_started');
   const [gameOverStats, setGameOverStats] = useState({ finalScore: 0, survivalTime: 0, enemiesDefeated: 0 });
+  const [waveCountdown, setWaveCountdown] = useState<number | null>(null);
+  const [waveComplete, setWaveComplete] = useState(false);
+  const [alertMessages, setAlertMessages] = useState<string[]>([]);
   const [reticle, setReticle] = useState<Reticle>({
     visible: true,
     style: 'default',
@@ -98,6 +125,12 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
       // Update message
       const messageDisplay = world.getComponent<MessageDisplay>(hudEntity, 'MessageDisplay');
       if (messageDisplay) {
+        if (messageDisplay.message && messageDisplay.message !== message) {
+          // When a new message arrives, add it to the alerts array
+          if (messageDisplay.message.trim() !== '') {
+            setAlertMessages(prev => [...prev.slice(-4), messageDisplay.message]);
+          }
+        }
         setMessage(messageDisplay.message);
       }
       
@@ -154,17 +187,26 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
         }
       }
       
-      // Update enemy count from WaveInfo
+      // Update wave information
       const waveEntities = world.getEntitiesWith(['WaveInfo']);
       if (waveEntities.length > 0) {
-        const waveEntity = waveEntities[0];
-        const waveInfo = world.getComponent<any>(waveEntity, 'WaveInfo');
+        const waveInfo = world.getComponent<WaveInfo>(waveEntities[0], 'WaveInfo');
         if (waveInfo) {
-          setEnemiesRemaining({ 
-            current: waveInfo.enemiesRemaining,
-            total: waveInfo.enemiesRemaining + waveInfo.totalEnemies
-          });
           setCurrentWave(waveInfo.currentWave);
+          setEnemiesRemaining({
+            current: waveInfo.enemiesRemaining,
+            total: waveInfo.totalEnemies + waveInfo.enemiesRemaining
+          });
+          
+          // Update wave countdown and completion state
+          if (!waveInfo.isActive && waveInfo.nextWaveTimer > 0) {
+            // Round to nearest integer for clean display
+            setWaveCountdown(Math.ceil(waveInfo.nextWaveTimer));
+            setWaveComplete(waveInfo.currentWave > 0);
+          } else {
+            setWaveCountdown(null);
+            setWaveComplete(false);
+          }
         }
       }
       
@@ -447,173 +489,564 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
         </div>
       )}
       
-      {/* Dyson Sphere HUD - Top Left */}
-      <div className="retro-text pulse-border" style={{
+      {/* Top-Left Status Panel (Updated to match the console style) */}
+      <div className="console-panel retro-text" style={{
         position: 'absolute',
         top: '20px',
         left: '20px',
+        width: screen.isMobile ? '180px' : '250px',
         background: 'rgba(0, 0, 0, 0.7)',
-        padding: '15px',
-        borderRadius: '8px',
-        border: '2px solid #ff00ff',
-        boxShadow: '0 0 15px rgba(255, 0, 255, 0.5)',
-        minWidth: '250px',
-        fontFamily: "'Press Start 2P', monospace",
-        fontSize: '0.8rem',
-        lineHeight: '1.8rem',
-        textShadow: '2px 2px 0 #000, 0 0 10px #00ffff',
+        borderBottom: '2px solid #ff00ff',
+        borderLeft: '2px solid #ff00ff',
+        borderRight: '2px solid #ff00ff',
+        borderBottomLeftRadius: '15px',
+        borderBottomRightRadius: '15px',
+        boxShadow: '0 0 15px rgba(255, 0, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2)',
+        padding: '12px',
         zIndex: 10,
         pointerEvents: 'none',
         transform: damageEffect.active ? getShakeTransform() : 'none'
       }}>
-        <div style={{ color: '#00ffff' }}>Score: {score}</div>
-        <div style={{ color: '#ffff00' }}>Shield: {Math.round(dysonHealth.shieldPercentage)}%</div>
-        <div style={{ color: '#ff5722' }}>Health: {Math.round(dysonHealth.healthPercentage * 5)}</div>
-        <div style={{ color: '#ff00ff' }}>Enemies: {enemiesRemaining.current}/{enemiesRemaining.total}</div>
-        <div style={{ color: '#44ff44' }}>Wave: {currentWave}</div>
+        <div style={{
+          borderBottom: '1px solid #ff00ff',
+          paddingBottom: '8px',
+          marginBottom: '8px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span style={{ color: '#ff00ff', fontSize: '0.7rem' }}>STATUS</span>
+          <span style={{ 
+            color: '#00ffff', 
+            fontSize: '0.6rem',
+            animation: 'pulse-opacity 1s infinite alternate'
+          }}>ACTIVE</span>
+        </div>
+        
+        <div style={{ color: '#00ffff', fontSize: '0.7rem', marginBottom: '5px' }}>
+          SCORE: <span style={{ color: '#ffff00' }}>{score}</span>
+        </div>
+        <div style={{ color: '#00ffff', fontSize: '0.7rem', marginBottom: '5px' }}>
+          SHIELD: <span style={{ color: '#21a9f3' }}>{Math.round(dysonHealth.shieldPercentage)}%</span>
+        </div>
+        <div style={{ color: '#00ffff', fontSize: '0.7rem', marginBottom: '5px' }}>
+          HEALTH: <span style={{ color: '#ff5722' }}>{Math.round(dysonHealth.healthPercentage * 5)}</span>
+        </div>
+        <div style={{ color: '#00ffff', fontSize: '0.7rem' }}>
+          DYSON CORE: <span style={{ 
+            color: dysonHealth.healthPercentage < 20 ? '#ff0000' : '#44ff44',
+            animation: dysonHealth.healthPercentage < 20 ? 'alertBlink 0.5s infinite alternate' : 'none'
+          }}>
+            {dysonHealth.healthPercentage < 20 ? 'CRITICAL' : 'STABLE'}
+          </span>
+        </div>
       </div>
       
       {/* Player HUD - Bottom */}
-      <div className="retro-text pulse-border" style={{
+      <div className="ship-console" style={{
         position: 'absolute',
         bottom: '20px',
         left: '50%',
         transform: `translateX(-50%) ${damageEffect.active ? getShakeTransform() : ''}`,
-        background: 'rgba(0, 0, 0, 0.7)',
-        padding: '15px',
-        borderRadius: '8px',
-        border: '2px solid #ff00ff',
-        boxShadow: '0 0 15px rgba(255, 0, 255, 0.5)',
-        width: '350px', // Fixed width to prevent resizing
-        fontFamily: "'Press Start 2P', monospace",
-        fontSize: '0.8rem',
-        lineHeight: '1.8rem',
-        textShadow: '2px 2px 0 #000, 0 0 10px #00ffff',
+        display: 'flex',
+        width: '90%',
+        maxWidth: '1200px',
+        height: screen.isMobile ? '120px' : '180px',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
         zIndex: 10,
-        pointerEvents: 'none'
+        pointerEvents: 'none',
+        flexDirection: screen.isMobile ? 'column' : 'row'
       }}>
-        {/* Pilot Health Section with Dynamic Color */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          marginBottom: '5px',
-          color: hullStatus.color,
-          whiteSpace: 'nowrap' // Prevent text wrapping
-        }}>
-          <span style={{ marginRight: '5px' }}>HULL STATUS:</span>
-          <span>{hullStatus.text}</span>
-        </div>
-        {/* Health Bar with Gradient and Percentage */}
-        <div style={{
-          width: '100%',
-          height: '20px',
-          background: 'rgba(0, 0, 0, 0.5)',
-          border: '2px solid #555555',
-          borderRadius: '10px',
+        {/* Left Panel - Messages Console */}
+        <div className="console-panel retro-text" style={{
+          width: screen.isMobile ? '100%' : '32%',
+          height: screen.isMobile ? '120px' : '100%',
+          marginBottom: screen.isMobile ? '10px' : '0',
+          display: screen.isMobile && !waveCountdown ? 'none' : 'flex', // Hide on mobile when no wave activity
+          background: 'rgba(0, 0, 0, 0.7)',
+          borderTop: '2px solid #ff00ff',
+          borderLeft: '2px solid #ff00ff',
+          borderRight: '2px solid #ff00ff',
+          borderTopLeftRadius: '15px',
+          borderTopRightRadius: '15px',
+          boxShadow: '0 0 15px rgba(255, 0, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2)',
+          padding: '12px',
           overflow: 'hidden',
-          boxShadow: '0 0 10px rgba(0, 0, 0, 0.3), inset 0 0 5px rgba(0, 0, 0, 0.5)',
-          position: 'relative'
+          flexDirection: 'column'
         }}>
-          <div style={{ 
-            width: `${playerHealthPercentage}%`,
-            height: '100%',
-            background: `linear-gradient(90deg, 
-              #F44336, 
-              ${playerHealthPercentage > 60 ? '#4CAF50' : 
-                playerHealthPercentage > 30 ? '#FFC107' : '#F44336'})`,
-            transition: 'width 0.3s ease'
-          }}></div>
           <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            color: '#ffffff',
-            textShadow: '1px 1px 2px #000000',
-            fontSize: '0.65rem',
-            fontWeight: 'bold'
+            borderBottom: '1px solid #ff00ff',
+            paddingBottom: '8px',
+            marginBottom: '8px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}>
-            {Math.round(playerHealthPercentage)}%
+            <span style={{ color: '#ff00ff', fontSize: '0.7rem', display: 'flex', alignItems: 'center' }}>
+              {waveCountdown !== null ? 'ALERT' : 'COMMS'}
+              {(alertMessages.length > 0 || waveCountdown !== null) && <span className="notification-indicator"></span>}
+            </span>
+            <span style={{ 
+              color: waveCountdown !== null ? '#ff5555' : '#00ffff', 
+              fontSize: '0.6rem',
+              animation: waveCountdown !== null ? 'alert-text-blink 1s infinite' : 'pulse-opacity 1s infinite alternate'
+            }}>
+              {waveCountdown !== null ? 'WARNING' : 'ONLINE'}
+            </span>
+          </div>
+          
+          <div className="console-content" style={{
+            flex: '1',
+            overflowY: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            position: 'relative'
+          }}>
+            {/* Console scanline effect */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'linear-gradient(to bottom, transparent, transparent 50%, rgba(0, 255, 255, 0.05) 50%, transparent)',
+              backgroundSize: '100% 4px',
+              pointerEvents: 'none',
+              zIndex: 1
+            }}></div>
+            
+            {/* Add scanning effect - enhanced when wave countdown is active */}
+            <div className="console-scanner" style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              overflow: 'hidden',
+              pointerEvents: 'none',
+              zIndex: 1
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-100%',
+                left: 0,
+                right: 0,
+                height: waveCountdown !== null ? '8px' : '4px',
+                background: `linear-gradient(0deg, transparent 0%, rgba(0, 255, 255, ${waveCountdown !== null ? '0.6' : '0.3'}) 50%, transparent 100%)`,
+                animation: waveCountdown !== null ? 'urgent-vertical-scan 1.5s linear infinite' : 'console-vertical-scan 2s linear infinite'
+              }}></div>
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: '-100%',
+                bottom: 0,
+                width: waveCountdown !== null ? '8px' : '4px',
+                background: `linear-gradient(90deg, transparent 0%, rgba(255, 0, 255, ${waveCountdown !== null ? '0.6' : '0.3'}) 50%, transparent 100%)`,
+                animation: waveCountdown !== null ? 'urgent-horizontal-scan 2s linear infinite' : 'console-horizontal-scan 3s linear infinite'
+              }}></div>
+            </div>
+            
+            {/* Add glitchy overlay when wave notifications are active */}
+            {waveCountdown && (
+              <div 
+                className="wave-alert-overlay"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  padding: '1rem',
+                  zIndex: 2,
+                  animation: waveComplete ? 'wave-alert-flicker 0.5s infinite' : 'none'
+                }}
+              >
+                {waveComplete ? (
+                  <div 
+                    style={{
+                      color: '#ff0000', 
+                      fontSize: '1.5rem',
+                      textAlign: 'center',
+                      textShadow: '0 0 10px #ff0000',
+                      animation: 'alert-text-blink 1s infinite',
+                      fontFamily: 'monospace'
+                    }}
+                  >
+                    <div style={{letterSpacing: '0.2rem'}}>WAVE COMPLETE</div>
+                    <div style={{fontSize: '1.1rem', marginTop: '0.5rem'}}>
+                      NEXT WAVE IN {waveCountdown}
+                    </div>
+                  </div>
+                ) : (
+                  <div 
+                    style={{
+                      color: '#ff9900', 
+                      fontSize: '1.5rem',
+                      textAlign: 'center',
+                      textShadow: '0 0 10px #ff9900',
+                      animation: 'alert-text-blink 1s infinite',
+                      fontFamily: 'monospace'
+                    }}
+                  >
+                    <div style={{letterSpacing: '0.2rem'}}>INCOMING WAVE</div>
+                    <div style={{fontSize: '1.1rem', marginTop: '0.5rem'}}>
+                      {waveCountdown}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Normal console content when no wave notification */}
+            {waveCountdown === null && (
+              <div style={{ position: 'relative', zIndex: 2 }}>
+                {/* Show alert messages */}
+                {alertMessages.map((alert, index) => (
+                  <div 
+                    key={`alert-${index}`} 
+                    style={{ 
+                      color: '#ff5555', 
+                      fontSize: '0.7rem', 
+                      marginBottom: '8px',
+                      animation: index === alertMessages.length - 1 ? 'alert-text-blink 1s infinite' : 'none'
+                    }}
+                  >
+                    &gt; ALERT: {alert}
+                  </div>
+                ))}
+                
+                {/* Show regular wave status */}
+                <div style={{ color: '#ff5555', fontSize: '0.7rem', marginBottom: '8px' }}>
+                  &gt; WAVE {currentWave} ACTIVE
+                </div>
+                <div style={{ color: '#ffff00', fontSize: '0.7rem', marginBottom: '8px' }}>
+                  &gt; HOSTILES: {enemiesRemaining.current}/{enemiesRemaining.total}
+                </div>
+                <div style={{ color: '#00ffff', fontSize: '0.7rem' }}>
+                  &gt; DEFEND DYSON SPHERE
+                </div>
+              </div>
+            )}
           </div>
         </div>
         
-        <div style={{ color: '#00ffff', textAlign: 'center', marginTop: '10px' }}>
-          BOOST SYSTEM:
-        </div>
-        {/* Thicker Boost Bar */}
-        <div style={{
-          width: '100%',
-          height: '20px',
-          background: 'rgba(0, 0, 0, 0.5)',
-          border: '2px solid #555555',
-          borderRadius: '10px',
-          overflow: 'hidden',
-          boxShadow: '0 0 10px rgba(0, 0, 0, 0.3), inset 0 0 5px rgba(0, 0, 0, 0.5)',
-          position: 'relative'
+        {/* Center Panel - Ship Status */}
+        <div className="console-panel retro-text" style={{
+          width: screen.isMobile ? '100%' : '32%',
+          height: screen.isMobile ? '120px' : '100%',
+          marginBottom: screen.isMobile ? '10px' : '0',
+          background: 'rgba(0, 0, 0, 0.7)',
+          borderTop: '2px solid #ff00ff',
+          borderLeft: '2px solid #ff00ff',
+          borderRight: '2px solid #ff00ff',
+          borderTopLeftRadius: '15px',
+          borderTopRightRadius: '15px',
+          boxShadow: '0 0 15px rgba(255, 0, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2)',
+          padding: '12px',
+          display: 'flex',
+          flexDirection: 'column'
         }}>
-          <div style={{ 
-            width: boostData.cooldown > 0 
-              ? `${(1 - boostData.cooldown / 3.0) * 100}%` 
-              : `${Math.max(0, (boostData.remaining / boostData.maxTime) * 100)}%`,
-            height: '100%',
-            background: boostData.cooldown > 0
-              ? 'linear-gradient(90deg, #330066, #660066)'
-              : (boostData.active 
-                  ? 'linear-gradient(90deg, #ff00ff, #00ffff)' 
-                  : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
-            boxShadow: boostData.active 
-              ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' 
-              : 'none',
-            // Animation style based on state for smoother appearance
-            transitionProperty: 'box-shadow, background',
-            transitionDuration: '0.2s',
-            // No transition for width - direct updates
-            transform: 'translateZ(0)', // Hardware acceleration hint
-            willChange: 'width' // Hint for browser optimization
-          }}></div>
           <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            color: '#ffffff',
-            textShadow: '1px 1px 2px #000000',
-            fontSize: '0.65rem',
-            fontWeight: 'bold'
+            borderBottom: '1px solid #ff00ff',
+            paddingBottom: '8px',
+            marginBottom: '8px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}>
-            {boostData.cooldown > 0 
-              ? "CHARGING" 
-              : boostData.active 
-                ? "ACTIVE" 
-                : "READY"
-            }
+            <span style={{ color: '#ff00ff', fontSize: '0.7rem' }}>SYSTEMS</span>
+            <span style={{ 
+              color: hullStatus.color, 
+              fontSize: '0.6rem',
+              animation: hullStatus.text === 'CRITICAL' ? 'alertBlink 0.5s infinite alternate' : 'none'
+            }}>{hullStatus.text}</span>
+          </div>
+
+          {/* Hull Status */}
+          <div style={{ marginBottom: '15px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '5px',
+              color: hullStatus.color,
+              fontSize: '0.7rem'
+            }}>
+              <span>HULL INTEGRITY:</span>
+            </div>
+            <div style={{
+              width: '100%',
+              height: '20px',
+              background: 'rgba(0, 0, 0, 0.5)',
+              border: '2px solid #555555',
+              borderRadius: '10px',
+              overflow: 'hidden',
+              boxShadow: '0 0 10px rgba(0, 0, 0, 0.3), inset 0 0 5px rgba(0, 0, 0, 0.5)',
+              position: 'relative'
+            }}>
+              <div style={{ 
+                width: `${playerHealthPercentage}%`,
+                height: '100%',
+                background: `linear-gradient(90deg, 
+                  #F44336, 
+                  ${playerHealthPercentage > 60 ? '#4CAF50' : 
+                    playerHealthPercentage > 30 ? '#FFC107' : '#F44336'})`,
+                transition: 'width 0.3s ease'
+              }}></div>
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                color: '#ffffff',
+                textShadow: '1px 1px 2px #000000',
+                fontSize: '0.65rem',
+                fontWeight: 'bold'
+              }}>
+                {Math.round(playerHealthPercentage)}%
+              </div>
+            </div>
+          </div>
+          
+          {/* Boost System */}
+          <div>
+            <div style={{
+              color: '#00ffff', 
+              marginBottom: '5px',
+              fontSize: '0.7rem'
+            }}>
+              BOOST SYSTEM:
+            </div>
+            <div style={{
+              width: '100%',
+              height: '20px',
+              background: 'rgba(0, 0, 0, 0.5)',
+              border: '2px solid #555555',
+              borderRadius: '10px',
+              overflow: 'hidden',
+              boxShadow: '0 0 10px rgba(0, 0, 0, 0.3), inset 0 0 5px rgba(0, 0, 0, 0.5)',
+              position: 'relative'
+            }}>
+              <div style={{ 
+                width: boostData.cooldown > 0 
+                  ? `${(1 - boostData.cooldown / 3.0) * 100}%` 
+                  : `${Math.max(0, (boostData.remaining / boostData.maxTime) * 100)}%`,
+                height: '100%',
+                background: boostData.cooldown > 0
+                  ? 'linear-gradient(90deg, #330066, #660066)'
+                  : (boostData.active 
+                      ? 'linear-gradient(90deg, #ff00ff, #00ffff)' 
+                      : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
+                boxShadow: boostData.active 
+                  ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' 
+                  : 'none',
+                transitionProperty: 'box-shadow, background',
+                transitionDuration: '0.2s',
+                transform: 'translateZ(0)',
+                willChange: 'width'
+              }}></div>
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                color: '#ffffff',
+                textShadow: '1px 1px 2px #000000',
+                fontSize: '0.65rem',
+                fontWeight: 'bold'
+              }}>
+                {boostData.cooldown > 0 
+                  ? "CHARGING" 
+                  : boostData.active 
+                    ? "ACTIVE" 
+                    : "READY"
+                }
+              </div>
+            </div>
+          </div>
+          
+          {/* Ship information */}
+          <div style={{
+            marginTop: 'auto',
+            borderTop: '1px solid #555555',
+            paddingTop: '8px',
+            color: '#bbbbbb',
+            fontSize: '0.6rem',
+            display: 'flex',
+            justifyContent: 'space-between'
+          }}>
+            <div>CLASS: DEFENDER</div>
+            <div>ID: DSP-117</div>
+          </div>
+        </div>
+        
+        {/* Right Panel - Radar */}
+        <div className="console-panel retro-text" style={{
+          width: screen.isMobile ? '100%' : '32%',
+          height: screen.isMobile ? '120px' : '100%',
+          display: screen.isMobile ? 'none' : 'flex', // Hide radar on mobile
+          background: 'rgba(0, 0, 0, 0.7)',
+          borderTop: '2px solid #ff00ff',
+          borderLeft: '2px solid #ff00ff',
+          borderRight: '2px solid #ff00ff',
+          borderTopLeftRadius: '15px',
+          borderTopRightRadius: '15px',
+          boxShadow: '0 0 15px rgba(255, 0, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2)',
+          padding: '12px',
+          flexDirection: 'column'
+        }}>
+          <div style={{
+            borderBottom: '1px solid #ff00ff',
+            paddingBottom: '8px',
+            marginBottom: '8px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <span style={{ color: '#ff00ff', fontSize: '0.7rem' }}>RADAR</span>
+            <span style={{ 
+              color: '#00ffff', 
+              fontSize: '0.6rem',
+              animation: 'pulse-opacity 1s infinite alternate'
+            }}>SCANNING</span>
+          </div>
+          
+          {/* Radar Display */}
+          <div style={{
+            flex: '1',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            position: 'relative'
+          }}>
+            {/* Radar circle */}
+            <div style={{
+              width: '120px',
+              height: '120px',
+              borderRadius: '50%',
+              border: '2px solid #00ffff',
+              boxShadow: 'inset 0 0 15px rgba(0, 255, 255, 0.3)',
+              position: 'relative'
+            }}>
+              {/* Center dot */}
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: '#00ffff',
+                transform: 'translate(-50%, -50%)',
+                boxShadow: '0 0 5px #00ffff',
+              }}></div>
+              
+              {/* Radar grid lines */}
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '0',
+                right: '0',
+                height: '1px',
+                background: 'rgba(0, 255, 255, 0.3)'
+              }}></div>
+              <div style={{
+                position: 'absolute',
+                top: '0',
+                bottom: '0',
+                left: '50%',
+                width: '1px',
+                background: 'rgba(0, 255, 255, 0.3)'
+              }}></div>
+              
+              {/* Radar concentric circles */}
+              <div style={{
+                position: 'absolute',
+                top: '25%',
+                left: '25%',
+                right: '25%',
+                bottom: '25%',
+                borderRadius: '50%',
+                border: '1px solid rgba(0, 255, 255, 0.2)'
+              }}></div>
+              
+              {/* Radar sweep animation */}
+              <div style={{
+                position: 'absolute',
+                top: '0',
+                bottom: '0',
+                left: '50%',
+                width: '50%',
+                transformOrigin: 'left center',
+                animation: 'radar-scan 4s linear infinite',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: '100%',
+                  height: '100%',
+                  background: 'linear-gradient(90deg, rgba(0, 255, 255, 0.1), rgba(0, 255, 255, 0.4))',
+                  borderTopRightRadius: '100%',
+                  borderBottomRightRadius: '100%'
+                }}></div>
+              </div>
+              
+              {/* Enemy blips */}
+              {Array.from({length: enemiesRemaining.current}).map((_, index) => {
+                // Generate pseudo-random positions that change slowly
+                const angle = (index * (360 / Math.max(enemiesRemaining.current, 1)) + Date.now() / 50) % 360;
+                const distance = 30 + (index % 3) * 15;
+                const radian = angle * Math.PI / 180;
+                const x = Math.cos(radian) * distance;
+                const y = Math.sin(radian) * distance;
+                
+                return (
+                  <div 
+                    key={index}
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      width: '4px',
+                      height: '4px',
+                      borderRadius: '50%',
+                      background: '#ff0000',
+                      transform: `translate(${x}px, ${y}px)`,
+                      boxShadow: '0 0 3px #ff0000',
+                      animation: 'pulse-opacity 0.8s infinite alternate'
+                    }}
+                  ></div>
+                );
+              })}
+            </div>
+            
+            {/* Enemy count */}
+            <div style={{
+              position: 'absolute',
+              bottom: '10px',
+              right: '15px',
+              fontSize: '0.6rem',
+              color: enemiesRemaining.current > 0 ? '#ff5555' : '#44ff44'
+            }}>
+              HOSTILES: {enemiesRemaining.current}
+            </div>
+            <div style={{
+              position: 'absolute',
+              bottom: '10px',
+              left: '15px',
+              fontSize: '0.6rem',
+              color: '#00ffff'
+            }}>
+              WAVE: {currentWave}
+            </div>
           </div>
         </div>
       </div>
-      
-      {/* Smaller, less intrusive message display in top right */}
-      {message && (
-        <div className="retro-text" style={{ 
-          position: 'absolute',
-          top: '20px',
-          right: '20px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          padding: '10px 15px',
-          borderRadius: '8px',
-          border: '2px solid #ff00ff',
-          boxShadow: '0 0 15px rgba(255, 0, 255, 0.5)',
-          fontFamily: "'Press Start 2P', monospace",
-          fontSize: '0.7rem',
-          textAlign: 'center',
-          color: '#ffff00',
-          zIndex: 10,
-          pointerEvents: 'none',
-          maxWidth: '250px',
-          transform: damageEffect.active ? getShakeTransform() : 'none'
-        }}>
-          {message}
-        </div>
-      )}
     </>
   );
 };

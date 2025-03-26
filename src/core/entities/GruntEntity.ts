@@ -57,7 +57,6 @@ export function createGrunt(
     isVisible: true
   };
   world.addComponent(entity, 'Renderable', renderable);
-  console.log(`Created grunt entity ${entity} with renderable:`, renderable);
   
   // Add collider for collision detection (keep full-size for gameplay consistency)
   world.addComponent(entity, 'Collider', {

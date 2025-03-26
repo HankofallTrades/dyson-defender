@@ -45,7 +45,5 @@ export function createWormhole(
     } as WormholeAnimationData
   });
   
-  console.log(`Created independent wormhole entity ${entity} at position:`, position);
-  
   return entity;
 } 
