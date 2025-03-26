@@ -17,7 +17,14 @@ export function createDysonSphere(world: World): number {
   world.addComponent(entity, 'Renderable', renderableComponent);
   
   // Add both shield and health components
-  world.addComponent(entity, 'Shield', { current: 100, max: 100 });
+  world.addComponent(entity, 'Shield', {
+    current: 100,
+    max: 100,
+    lastHitTime: 0,
+    regenDelay: 3,      // 3 seconds before regeneration starts
+    regenRate: 10,      // 10 shield points per second
+    isRegenerating: false
+  });
   world.addComponent(entity, 'Health', { current: 500, max: 500 });
   
   world.addComponent(entity, 'AutoRotate', { speedX: 0, speedY: 0.05, speedZ: 0 });

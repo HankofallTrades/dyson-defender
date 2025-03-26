@@ -37,6 +37,10 @@ export interface Health {
 export interface Shield {
   current: number;
   max: number;
+  lastHitTime: number;     // Time when shield was last hit
+  regenDelay: number;      // Delay before shield starts regenerating (in seconds)
+  regenRate: number;       // Shield points regenerated per second
+  isRegenerating: boolean; // Whether the shield is currently regenerating
 }
 
 export interface InputReceiver {

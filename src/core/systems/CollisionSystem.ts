@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { World, System } from '../World';
 import { Position, Collider, Projectile, Health, Enemy, InputReceiver, Shield } from '../components';
 import { HUDSystem } from './HUDSystem';
+import { ShieldSystem } from './ShieldSystem';
 import { createFloatingScore } from '../entities/FloatingScoreEntity';
 
 /**
@@ -220,11 +221,17 @@ export class CollisionSystem implements System {
     // Check for shield first
     const shield = this.world.getComponent<Shield>(dysonSphereEntity, 'Shield');
     const health = this.world.getComponent<Health>(dysonSphereEntity, 'Health');
+    const shieldSystem = this.getShieldSystem();
     
     if (!health) return;
     
     // Damage logic - shield first, then health
     if (shield && shield.current > 0) {
+      // Notify shield system of hit
+      if (shieldSystem) {
+        shieldSystem.onShieldHit(dysonSphereEntity);
+      }
+      
       // Apply damage to shield
       shield.current -= enemy.damage;
       
@@ -254,6 +261,7 @@ export class CollisionSystem implements System {
     
     // Get HUD system for notifications
     const hudSystem = this.getHUDSystem();
+    const shieldSystem = this.getShieldSystem();
     
     // Check if this is the Dyson Sphere (which has both shield and health)
     if (this.isDysonSphere(targetEntity)) {
@@ -263,6 +271,11 @@ export class CollisionSystem implements System {
       if (health) {
         // Damage logic - shield first, then health
         if (shield && shield.current > 0) {
+          // Notify shield system of hit
+          if (shieldSystem) {
+            shieldSystem.onShieldHit(targetEntity);
+          }
+          
           // Apply damage to shield
           shield.current -= projectile.damage;
           
@@ -397,6 +410,20 @@ export class CollisionSystem implements System {
     
     for (const system of systems) {
       if (system instanceof HUDSystem) {
+        return system;
+      }
+    }
+    
+    return null;
+  }
+
+  // Get the Shield system from the world
+  private getShieldSystem(): ShieldSystem | null {
+    const systems = (this.world as any).systems;
+    if (!systems) return null;
+    
+    for (const system of systems) {
+      if (system instanceof ShieldSystem) {
         return system;
       }
     }
