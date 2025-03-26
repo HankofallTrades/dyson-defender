@@ -1,6 +1,8 @@
 import { World, System } from '../World';
-import { WaveInfo, Enemy, Renderable, GameStateDisplay } from '../components';
+import { WaveInfo, Enemy, Renderable, GameStateDisplay, Position } from '../components';
 import { createGrunt } from '../entities/GruntEntity';
+import { createWormhole } from '../entities/WormholeEntity';
+import { AnimationSystem } from './AnimationSystem';
 import * as THREE from 'three';
 
 export class WaveSystem implements System {
@@ -9,6 +11,7 @@ export class WaveSystem implements System {
   private timeSinceLastSpawn: number = 0;
   private spawnInterval: number = 1.5; // Time between spawns within a wave
   private gameStateEntity: number = -1; // Track game state entity
+  private animationSystem: AnimationSystem | null = null;
   
   constructor(private world: World) {
     // Create a special entity just to hold the wave information
@@ -29,6 +32,11 @@ export class WaveSystem implements System {
     if (gameStateEntities.length > 0) {
       this.gameStateEntity = gameStateEntities[0];
     }
+  }
+  
+  // Set the reference to the animation system
+  public setAnimationSystem(animationSystem: AnimationSystem): void {
+    this.animationSystem = animationSystem;
   }
   
   // Method to find the Dyson Sphere entity
@@ -114,13 +122,35 @@ export class WaveSystem implements System {
   
   private spawnEnemy(): number {
     // Pick a random position on a sphere around the Dyson Sphere
-    const radius = 160; // Doubled spawn radius from 80 to 160
+    const radius = 160; // Spawn radius
     const position = this.getRandomPositionOnSphere(radius);
     
-    // Create the enemy entity
-    const enemyEntity = createGrunt(this.world, position, this.dysonSphereEntity);
+    // Create a wormhole entity first
+    const wormholeEntity = createWormhole(this.world, position, this.dysonSphereEntity);
     
-    return enemyEntity;
+    // Calculate direction away from Dyson sphere (this is the direction the wormhole faces)
+    const dysonPosition = this.world.getComponent<Position>(this.dysonSphereEntity, 'Position');
+    if (!dysonPosition) return wormholeEntity;
+    
+    // Calculate normalized direction vector pointing away from Dyson sphere
+    const direction = new THREE.Vector3(
+      position.x - dysonPosition.x,
+      position.y - dysonPosition.y,
+      position.z - dysonPosition.z
+    ).normalize();
+    
+    // Offset enemy position 8 units behind the wormhole opening (increased from 4)
+    const enemyPosition = {
+      x: position.x + direction.x * 8,
+      y: position.y + direction.y * 8,
+      z: position.z + direction.z * 8
+    };
+    
+    // Create the enemy at the offset position
+    const enemyEntity = createGrunt(this.world, enemyPosition, this.dysonSphereEntity);
+    console.log(`Enemy ${enemyEntity} spawned inside wormhole ${wormholeEntity}`);
+    
+    return wormholeEntity;
   }
   
   private getRandomPositionOnSphere(radius: number): { x: number, y: number, z: number } {

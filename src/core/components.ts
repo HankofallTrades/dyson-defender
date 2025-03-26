@@ -189,7 +189,7 @@ export interface Boost {
 
 // Animation components
 export interface Animation {
-  type: 'wormhole' | 'explosion' | 'lightning';
+  type: 'wormhole' | 'explosion' | 'lightning' | 'growth';
   progress: number;      // 0 to 1
   duration: number;      // Total duration in seconds
   isComplete: boolean;   // Whether the animation has completed
@@ -219,5 +219,9 @@ export interface LightningAnimationData {
   intensity: number;       // Current lightning intensity
 }
 
+export interface GrowthAnimationData {
+  finalScale: number;      // Target scale to grow to
+}
+
 // Union type for animation data
-export type AnimationData = WormholeAnimationData | ExplosionAnimationData | LightningAnimationData;
+export type AnimationData = WormholeAnimationData | ExplosionAnimationData | LightningAnimationData | GrowthAnimationData;

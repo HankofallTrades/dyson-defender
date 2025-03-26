@@ -51,6 +51,7 @@ class Game {
   private hudSystem!: HUDSystem; // Use definite assignment assertion
   private waveSystem!: WaveSystem; // Use definite assignment assertion
   private floatingScoreSystem!: FloatingScoreSystem; // Use definite assignment assertion
+  private animationSystem!: AnimationSystem; // Add reference to AnimationSystem
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -92,11 +93,14 @@ class Game {
     this.floatingScoreSystem = new FloatingScoreSystem(this.world);
     this.world.addSystem(this.floatingScoreSystem);
     
-    // Add the animation system before the rendering system
-    this.world.addSystem(new AnimationSystem(this.world, this.sceneManager.getScene()));
+    // Create and store reference to Animation system
+    this.animationSystem = new AnimationSystem(this.world, this.sceneManager.getScene());
+    this.world.addSystem(this.animationSystem);
     
-    // Set the camera reference for the floating score system
-    // Need to do this after camera is created
+    // Connect the WaveSystem with the AnimationSystem
+    this.waveSystem.setAnimationSystem(this.animationSystem);
+    
+    // Add the rendering system last
     this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
   }
 

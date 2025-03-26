@@ -1,6 +1,6 @@
 import { World } from '../World';
 import * as THREE from 'three';
-import { Position, Renderable, Velocity, Rotation, Health, Collider, Animation, WormholeAnimationData } from '../components';
+import { Position, Renderable, Velocity, Rotation, Health, Collider, Animation } from '../components';
 import { COLORS } from '../../constants/colors';
 
 export function createGrunt(
@@ -40,7 +40,7 @@ export function createGrunt(
     laserCooldown: 3.0, // Fire a laser every 3 seconds
     currentLaserCooldown: 0,
     canMove: true, // Enemy can move right away
-    canShoot: false // Enemy can't shoot until animation completes
+    canShoot: false // Enemy can't shoot until the shooting timer completes
   });
   
   // Add health component
@@ -49,20 +49,20 @@ export function createGrunt(
     max: 10 
   });
   
-  // Add renderable component
+  // Add renderable component with initial small scale
   const renderable = {
     modelId: 'grunt',
-    scale: 0.1, // Start with a small but visible scale (will be animated by AnimationSystem)
+    scale: 0.1, // Start with a small scale as before
     color: COLORS.GRUNT_BASE,
-    isVisible: true // Explicitly set to true
+    isVisible: true
   };
   world.addComponent(entity, 'Renderable', renderable);
   console.log(`Created grunt entity ${entity} with renderable:`, renderable);
   
-  // Add collider for collision detection
+  // Add collider for collision detection (keep full-size for gameplay consistency)
   world.addComponent(entity, 'Collider', {
     type: 'sphere',
-    radius: 6.0, // Increased radius from 3.0 to 6.0 (2x bigger)
+    radius: 6.0,
     isTrigger: false,
     layer: 'enemy'
   });
@@ -73,21 +73,18 @@ export function createGrunt(
     y: 0, 
     z: 0 
   });
-
-  // Add wormhole animation component
+  
+  // Add a growth animation component that matches the wormhole's timing
+  // The wormhole is in growing phase (0-30%) and stable phase (30-70%)
+  // We'll make the enemy fully grown by the time the wormhole is stable (70%)
   world.addComponent(entity, 'Animation', {
-    type: 'wormhole',
+    type: 'growth',
     progress: 0,
-    duration: 5.0, // Increased to 5 seconds for better visibility
+    duration: 3.5, // 70% of the 5-second wormhole animation (growing + stable phases)
     isComplete: false,
     data: {
-      targetPosition: { ...dysonPosition },
-      spawnPosition: { ...position }, // Store the initial spawn position
-      scale: 0,
-      rotation: 0,
-      opacity: 0,
-      phase: 'growing'
-    } as WormholeAnimationData
+      finalScale: 6.0 // Target scale to grow to
+    }
   });
   
   return entity;

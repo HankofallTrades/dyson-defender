@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { World, System } from '../World';
-import { Animation, Position, WormholeAnimationData, Renderable } from '../components';
+import { Animation, Position, WormholeAnimationData, Renderable, GrowthAnimationData } from '../components';
 import { COLORS } from '../../constants/colors';
+
+// Define a type for animation events
+type AnimationEventCallback = (entity: number, position: Position) => void;
 
 /**
  * AnimationSystem
@@ -14,16 +17,27 @@ import { COLORS } from '../../constants/colors';
  * - Manages animation phases (e.g., wormhole growing/stable/shrinking)
  * - Creates and updates visual effects using Three.js
  * - Cleans up completed animations
+ * - Triggers callbacks when animations reach certain phases
  */
 export class AnimationSystem implements System {
   private world: World;
   private scene: THREE.Scene;
   private effectMeshes: Map<number, THREE.Group> = new Map();
   private shootingTimers: Map<number, number> = new Map();
+  private wormholeStableCallbacks: Map<number, AnimationEventCallback> = new Map();
 
   constructor(world: World, scene: THREE.Scene) {
     this.world = world;
     this.scene = scene;
+  }
+
+  /**
+   * Register a callback to be called when a wormhole entity reaches the stable phase
+   * @param entity - The wormhole entity ID
+   * @param callback - Function to call when the wormhole reaches stable phase
+   */
+  public onWormholeStable(entity: number, callback: AnimationEventCallback): void {
+    this.wormholeStableCallbacks.set(entity, callback);
   }
 
   update(deltaTime: number): void {
@@ -70,6 +84,10 @@ export class AnimationSystem implements System {
         continue;
       }
 
+      // Store previous phase to detect phase changes
+      const prevPhase = animation.type === 'wormhole' ? 
+        (animation.data as WormholeAnimationData).phase : null;
+
       // Update animation progress
       animation.progress += deltaTime / animation.duration;
 
@@ -78,17 +96,22 @@ export class AnimationSystem implements System {
         case 'wormhole':
           this.updateWormholeAnimation(entity, animation, position, deltaTime);
           
-          // Check if the enemy just entered the stable phase (has emerged from wormhole)
-          // This happens at 30% of the way through the animation
-          if (animation.progress >= 0.3 && animation.progress < 0.3 + deltaTime / animation.duration) {
-            // Enemy has just emerged - start the shooting timer
-            const enemy = this.world.getComponent<any>(entity, 'Enemy');
-            if (enemy && !enemy.canShoot && !this.shootingTimers.has(entity)) {
-              // Start 0.5 second timer for shooting ability
-              this.shootingTimers.set(entity, 0.5);
-              console.log(`Enemy ${entity} has emerged and will be able to shoot in 0.5 seconds`);
+          // Check for phase change to stable
+          const data = animation.data as WormholeAnimationData;
+          if (prevPhase !== 'stable' && data.phase === 'stable') {
+            console.log(`Wormhole ${entity} has reached stable phase`);
+            
+            // Execute the registered callback for this wormhole if it exists
+            const callback = this.wormholeStableCallbacks.get(entity);
+            if (callback) {
+              callback(entity, position);
+              // Remove the callback after it's been called to avoid duplicate execution
+              this.wormholeStableCallbacks.delete(entity);
             }
           }
+          break;
+        case 'growth':
+          this.updateGrowthAnimation(entity, animation);
           break;
         case 'explosion':
           // TODO: Implement explosion animation
@@ -405,5 +428,50 @@ export class AnimationSystem implements System {
     const c1 = 1.70158;
     const c3 = c1 + 1;
     return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+  }
+
+  /**
+   * Updates the growth animation for an entity
+   * This handles the scaling animation for enemies as they spawn
+   */
+  private updateGrowthAnimation(entity: number, animation: Animation): void {
+    const data = animation.data as GrowthAnimationData;
+    const renderable = this.world.getComponent<Renderable>(entity, 'Renderable');
+    
+    if (renderable) {
+      // Use a smoothed easing function for nicer growth effect
+      // 0-30% of animation: slower growth (matches wormhole growing phase)
+      // 30-100% of animation: faster growth to reach full size (during wormhole stable phase)
+      let progress;
+      
+      if (animation.progress < 0.3) {
+        // During wormhole growing phase - slower growth
+        progress = this.easeInOutQuad(animation.progress / 0.3) * 0.3;
+      } else {
+        // During wormhole stable phase - accelerate to full size
+        progress = 0.3 + this.easeOutBack((animation.progress - 0.3) / 0.7) * 0.7;
+      }
+      
+      // Linearly interpolate from starting scale (0.1) to final scale
+      const startScale = 0.1;
+      renderable.scale = startScale + (data.finalScale - startScale) * progress;
+      
+      // Occasionally log scale for debugging
+      if (animation.progress % 0.25 < 0.01) {
+        console.log(`Entity ${entity} growth scale: ${renderable.scale.toFixed(2)}, progress: ${animation.progress.toFixed(2)}`);
+      }
+      
+      // Start shooting timer when the wormhole enters stable phase (30% of animation)
+      // This is when enemy is at minimal visible size but still growing
+      if (animation.progress >= 0.3 && animation.progress < 0.3 + animation.duration / 60) {
+        // Check if this entity has an Enemy component and if we need to start a shooting timer
+        const enemy = this.world.getComponent<any>(entity, 'Enemy');
+        if (enemy && !enemy.canShoot && !this.shootingTimers.has(entity)) {
+          // Add a 0.5 second timer before the enemy can shoot
+          this.shootingTimers.set(entity, 0.5);
+          console.log(`Enemy ${entity} has emerged and will be able to shoot in 0.5 seconds`);
+        }
+      }
+    }
   }
 } 
