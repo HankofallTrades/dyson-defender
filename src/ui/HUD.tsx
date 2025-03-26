@@ -77,6 +77,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
   const [waveCountdown, setWaveCountdown] = useState<number | null>(null);
   const [waveComplete, setWaveComplete] = useState(false);
   const [alertMessages, setAlertMessages] = useState<string[]>([]);
+  const [animatedMessages, setAnimatedMessages] = useState<Set<string>>(new Set());
   const [reticle, setReticle] = useState<Reticle>({
     visible: true,
     style: 'default',
@@ -144,8 +145,12 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
       if (messageDisplay) {
         if (messageDisplay.message && messageDisplay.message !== message) {
           // When a new message arrives, add it to the alerts array
-          if (messageDisplay.message.trim() !== '') {
-            setAlertMessages(prev => [...prev.slice(-4), messageDisplay.message]);
+          // Don't add new alerts if it's just the objective message after a wave
+          if (messageDisplay.message.trim() !== '' && 
+              !(alertMessages.length === 1 && 
+                alertMessages[0] === "OBJECTIVE: DEFEND THE DYSON SPHERE")) {
+            // Add new alerts to the beginning instead of end (make room at the top)
+            setAlertMessages(prev => [messageDisplay.message, ...prev.slice(0, 3)]);
           }
         }
         setMessage(messageDisplay.message);
@@ -280,6 +285,22 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
       cancelAnimationFrame(animationId);
     };
   }, [world, camera]);
+  
+  // Effect to handle alert messages after wave countdown
+  useEffect(() => {
+    // When wave countdown ends (changes from a number to null), show only the objective alert
+    if (waveCountdown === null && gameState === 'playing') {
+      // Clear alerts immediately before setting new one to prevent flashing
+      setAlertMessages([]);
+      
+      // Small delay to ensure full clear before showing objective
+      setTimeout(() => {
+        setAlertMessages(["OBJECTIVE: DEFEND THE DYSON SPHERE"]);
+        // Reset animated messages so objective gets animated
+        setAnimatedMessages(new Set());
+      }, 200);
+    }
+  }, [waveCountdown, gameState]);
   
   // Convert hex color to CSS color format
   const hexToCSS = (hexColor: number): string => {
@@ -599,7 +620,8 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
           boxShadow: '0 0 15px rgba(255, 0, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2)',
           padding: '12px',
           overflow: 'hidden',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          minWidth: '350px'
         }}>
           <div style={{
             borderBottom: '1px solid #ff00ff',
@@ -622,59 +644,13 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
             </span>
           </div>
           
-          <div className="console-content" style={{
-            flex: '1',
-            overflowY: 'hidden',
-            display: 'flex',
+          <div style={{ 
+            position: 'relative', 
+            height: '100%', 
+            display: 'flex', 
             flexDirection: 'column',
-            justifyContent: 'flex-end',
-            position: 'relative'
+            overflow: 'hidden'
           }}>
-            {/* Console scanline effect */}
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'linear-gradient(to bottom, transparent, transparent 50%, rgba(0, 255, 255, 0.05) 50%, transparent)',
-              backgroundSize: '100% 4px',
-              pointerEvents: 'none',
-              zIndex: 1
-            }}></div>
-            
-            {/* Add scanning effect - enhanced when wave countdown is active */}
-            <div className="console-scanner" style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              overflow: 'hidden',
-              pointerEvents: 'none',
-              zIndex: 1
-            }}>
-              <div style={{
-                position: 'absolute',
-                top: '-100%',
-                left: 0,
-                right: 0,
-                height: waveCountdown !== null ? '8px' : '4px',
-                background: `linear-gradient(0deg, transparent 0%, rgba(0, 255, 255, ${waveCountdown !== null ? '0.6' : '0.3'}) 50%, transparent 100%)`,
-                animation: waveCountdown !== null ? 'urgent-vertical-scan 1.5s linear infinite' : 'console-vertical-scan 2s linear infinite'
-              }}></div>
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: '-100%',
-                bottom: 0,
-                width: waveCountdown !== null ? '8px' : '4px',
-                background: `linear-gradient(90deg, transparent 0%, rgba(255, 0, 255, ${waveCountdown !== null ? '0.6' : '0.3'}) 50%, transparent 100%)`,
-                animation: waveCountdown !== null ? 'urgent-horizontal-scan 2s linear infinite' : 'console-horizontal-scan 3s linear infinite'
-              }}></div>
-            </div>
-            
-            {/* Add glitchy overlay when wave notifications are active */}
             {waveCountdown && (
               <div 
                 className="wave-alert-overlay"
@@ -732,32 +708,50 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
             
             {/* Normal console content when no wave notification */}
             {waveCountdown === null && (
-              <div style={{ position: 'relative', zIndex: 2 }}>
-                {/* Show alert messages */}
-                {alertMessages.map((alert, index) => (
-                  <div 
-                    key={`alert-${index}`} 
-                    style={{ 
-                      color: '#ff5555', 
-                      fontSize: '0.7rem', 
-                      marginBottom: '8px',
-                      animation: index === alertMessages.length - 1 ? 'alert-text-blink 1s infinite' : 'none'
-                    }}
-                  >
-                    &gt; ALERT: {alert}
-                  </div>
-                ))}
-                
-                {/* Show regular wave status */}
-                <div style={{ color: '#ff5555', fontSize: '0.7rem', marginBottom: '8px' }}>
-                  &gt; WAVE {currentWave} ACTIVE
-                </div>
-                <div style={{ color: '#ffff00', fontSize: '0.7rem', marginBottom: '8px' }}>
-                  &gt; HOSTILES: {enemiesRemaining.current}/{enemiesRemaining.total}
-                </div>
-                <div style={{ color: '#00ffff', fontSize: '0.7rem' }}>
-                  &gt; DEFEND DYSON SPHERE
-                </div>
+              <div style={{ 
+                position: 'relative', 
+                zIndex: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                width: '100%',
+                padding: '5px 0'
+              }}>
+                {/* Show all alerts without the "ALERT:" prefix */}
+                {alertMessages.map((alert, index) => {
+                  // Only show animation for messages we haven't animated yet
+                  const shouldAnimate = index === 0 && !animatedMessages.has(alert);
+                  
+                  // When a message has been rendered with animation, add it to the set
+                  if (shouldAnimate) {
+                    // Use timeout to ensure message gets animated before adding to set
+                    setTimeout(() => {
+                      setAnimatedMessages(prev => new Set([...prev, alert]));
+                    }, 2100); // Wait for animation to complete
+                  }
+                  
+                  return (
+                    <div 
+                      key={`alert-${index}`} 
+                      style={{ 
+                        color: alert.includes('OBJECTIVE') ? '#00ffff' : '#ff5555', 
+                        fontSize: '0.7rem', 
+                        marginBottom: '8px',
+                        width: '100%',
+                        lineHeight: '1.2'
+                      }}
+                    >
+                      &gt; <span 
+                        className={shouldAnimate ? "typing-animation" : ""}
+                        style={{
+                          display: 'inline-block',
+                          maxWidth: 'calc(100% - 15px)',
+                          wordBreak: 'break-word'
+                        }}
+                      >{alert}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

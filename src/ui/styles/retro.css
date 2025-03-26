@@ -934,4 +934,28 @@
   2%, 8%, 12%, 62% {
     opacity: 0.6;
   }
+}
+
+/* Typewriter animation for alerts */
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes cursor-blink {
+  from, to { border-color: transparent; }
+  50% { border-color: inherit; }
+}
+
+.typing-animation {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 0;
+  animation: 
+    typewriter 2s steps(40, end) forwards,
+    cursor-blink 0.75s step-end infinite;
+  border-right: 2px solid;
+  border-right-color: inherit;
+  vertical-align: bottom;
 } 

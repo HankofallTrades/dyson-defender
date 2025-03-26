@@ -161,8 +161,8 @@ export class HUDSystem implements System {
       gameOverStats.enemiesDefeated = Math.floor(scoreDisplay.score / 10);
     }
     
-    // Display game over message
-    this.displayMessage(`GAME OVER - ${reason}`, 0); // Duration 0 means permanent
+    // Don't display game over message in comms area
+    // this.displayMessage(`GAME OVER - ${reason}`, 0);
   }
   
   public displayMessage(message: string, duration: number = 3): void {
@@ -210,7 +210,7 @@ export class HUDSystem implements System {
     if (gameStateDisplay) {
       gameStateDisplay.currentState = 'playing';
       this.gameStartTime = Date.now();
-      this.displayMessage('Game Started! Protect the Dyson Sphere!', 3);
+      this.displayMessage('INITIALIZING SYSTEMS', 3);
       
       // Reset all HUD components when starting a game
       this.resetHUD(hudEntity);

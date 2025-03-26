@@ -158,10 +158,7 @@ export class WaveSystem implements System {
     // Base of 5 enemies for wave 1, then +3 per wave
     waveInfo.totalEnemies = 5 + (waveInfo.currentWave - 1) * 3;
     
-    // Announce the start of the wave
-    if (this.hudSystem) {
-      this.hudSystem.displayMessage(`WAVE ${waveInfo.currentWave} STARTED!`, 3);
-    }
+    // No need to display objective message here since it's always shown in the UI
     
     // Spawn the first enemy immediately
     this.spawnEnemy();

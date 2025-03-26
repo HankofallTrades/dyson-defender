@@ -306,9 +306,6 @@ export class CollisionSystem implements System {
             // Activate damage effect
             hudSystem.activateDamageEffect(0.8, 0.5);
             
-            // Display hit message
-            hudSystem.displayMessage(`Hit by projectile! -${projectile.damage} health`, 1.5);
-            
             // Check if player is destroyed
             if (health.current <= 0) {
               // Find the HUD entity to pass to triggerGameOver
@@ -384,9 +381,6 @@ export class CollisionSystem implements System {
     if (hudSystem) {
       // Activate damage effect with higher intensity since this is direct collision
       hudSystem.activateDamageEffect(1.0, 0.7);
-      
-      // Display hit message
-      hudSystem.displayMessage(`Hit by enemy! -${enemy.damage} health`, 1.5);
     }
     
     // Remove the enemy
