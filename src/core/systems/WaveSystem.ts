@@ -165,13 +165,13 @@ export class WaveSystem implements System {
     // Reset announcement flags for the new wave
     this.hasAnnouncedShieldGuardian = false;
     
-    // Spawn the first enemy immediately
-    this.spawnEnemy();
+    // Spawn the first enemy immediately - always make it a grunt, never a shield guardian
+    this.spawnEnemy(true); // Pass true to force a grunt for first enemy
     waveInfo.totalEnemies--;
     this.timeSinceLastSpawn = 0;
   }
   
-  private spawnEnemy(): number {
+  private spawnEnemy(forceGrunt: boolean = false): number {
     // Pick a random position on a sphere around the Dyson Sphere
     const radius = 160; // Spawn radius
     const position = this.getRandomPositionOnSphere(radius);
@@ -200,6 +200,13 @@ export class WaveSystem implements System {
     // Get current wave info
     const waveInfo = this.world.getComponent<WaveInfo>(this.waveEntity, 'WaveInfo');
     let enemyEntity: number;
+    
+    // If we're forcing a grunt (first enemy in wave) or we're before wave 3, spawn a grunt
+    if (forceGrunt || (waveInfo && waveInfo.currentWave < 3)) {
+      // Default to grunt
+      enemyEntity = createGrunt(this.world, enemyPosition, this.dysonSphereEntity);
+      return wormholeEntity;
+    }
     
     // Shield Guardians start spawning at wave 3
     if (waveInfo && waveInfo.currentWave >= 3) {

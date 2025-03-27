@@ -37,14 +37,12 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, currentW
     }
   }, []);
 
-  const handleWaveChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const wave = parseInt(event.target.value, 10);
-    setSelectedWave(wave);
+  const handleWaveSelect = (wave: number) => {
+    onSelectWave(wave);
   };
 
-  const handleWaveSelect = () => {
-    onSelectWave(selectedWave);
-  };
+  // Generate array of wave numbers
+  const waveNumbers = Array.from({ length: maxWaves }, (_, i) => i + 1);
 
   return (
     <div style={{
@@ -121,48 +119,32 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, currentW
           textAlign: 'center',
           textShadow: '0 0 8px #00ffff'
         }}>
-          Settings
+          Wave Select
         </h2>
         
         <div style={{
           display: 'flex',
-          flexDirection: 'column',
-          gap: '1rem',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
+          justifyContent: 'center',
           width: '100%'
         }}>
-          <label style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5rem',
-            color: '#ff00ff'
-          }}>
-            Wave Select: {selectedWave}
-            <input
-              type="range"
-              min="1"
-              max={maxWaves}
-              value={selectedWave}
-              onChange={handleWaveChange}
-              className="retro-range"
+          {waveNumbers.map(wave => (
+            <button 
+              key={wave}
+              className="retro-button"
+              onClick={() => handleWaveSelect(wave)}
               style={{
-                width: '100%',
-                accentColor: '#ff00ff'
+                fontSize: '1rem',
+                padding: '0.5rem 0.75rem',
+                color: 'white',
+                background: selectedWave === wave ? 'rgba(255, 0, 255, 0.5)' : 'transparent',
+                minWidth: '40px'
               }}
-            />
-          </label>
-
-          <button 
-            className="retro-button"
-            onClick={handleWaveSelect}
-            style={{
-              fontSize: '1rem',
-              padding: '0.75rem',
-              marginTop: '0.5rem',
-              color: 'white'
-            }}
-          >
-            Start
-          </button>
+            >
+              {wave}
+            </button>
+          ))}
         </div>
       </div>
     </div>

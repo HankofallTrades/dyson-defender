@@ -85,7 +85,7 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ stats, onRestart }) => 
           letterSpacing: '2px'
         }}
       >
-        Play Again
+        Restart
       </button>
     </div>
   );
