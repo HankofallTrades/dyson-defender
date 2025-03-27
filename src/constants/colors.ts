@@ -17,6 +17,13 @@ export const COLORS = {
   GRUNT_EYES_SIEGE: 0xff0000, // Pure red for eyes in siege mode
   GRUNT_EYES_SIEGE_EMISSIVE: 0xff0000, // Bright red glow for eyes in siege mode
   
+  // Shield Guardian colors
+  SHIELD_GUARDIAN_CRYSTAL: 0x00ccff, // Bright blue crystal body (changed from teal/cyan)
+  SHIELD_GUARDIAN_SHARD: 0x66ddff,   // Lighter blue for crystal shards
+  SHIELD_GUARDIAN_CORE: 0xffffff,    // Bright white core
+  SHIELD_BUBBLE: 0x0088ff,           // Vibrant blue for shield bubble (changed from green-cyan)
+  SHIELD_BUBBLE_INNER: 0x66aaff,     // Brighter blue inner glow
+  
   // Projectile colors
   LASER_GREEN: 0x00ff00,
   

@@ -2,6 +2,7 @@ import { World, System } from '../World';
 import { WaveInfo, Enemy, Renderable, GameStateDisplay, Position } from '../components';
 import { createGrunt } from '../entities/GruntEntity';
 import { createWormhole } from '../entities/WormholeEntity';
+import { createShieldGuardian } from '../entities/ShieldGuardianEntity';
 import { AnimationSystem } from './AnimationSystem';
 import { HUDSystem } from './HUDSystem';
 import * as THREE from 'three';
@@ -16,6 +17,8 @@ export class WaveSystem implements System {
   private hudSystem: HUDSystem | null = null;
   private hasAnnouncedWave: boolean = false;
   private hasAnnouncedCompletion: boolean = false;
+  private hasAnnouncedShieldGuardian: boolean = false;
+  private shouldSpawnShieldGuardian: boolean = false;
   
   constructor(private world: World) {
     // Create a special entity just to hold the wave information
@@ -160,10 +163,19 @@ export class WaveSystem implements System {
     
     // No need to display objective message here since it's always shown in the UI
     
+    // Reset announcement flags for the new wave
+    this.hasAnnouncedShieldGuardian = false;
+    
     // Spawn the first enemy immediately
     this.spawnEnemy();
     waveInfo.totalEnemies--;
     this.timeSinceLastSpawn = 0;
+    
+    // Special case: if this is wave 1, schedule a Shield Guardian to spawn
+    if (waveInfo.currentWave === 1) {
+      // Set a flag to ensure we spawn a Shield Guardian during this wave
+      this.shouldSpawnShieldGuardian = true;
+    }
   }
   
   private spawnEnemy(): number {
@@ -192,8 +204,54 @@ export class WaveSystem implements System {
       z: position.z + direction.z * 8
     };
     
-    // Create the enemy at the offset position
-    const enemyEntity = createGrunt(this.world, enemyPosition, this.dysonSphereEntity);
+    // Get current wave info
+    const waveInfo = this.world.getComponent<WaveInfo>(this.waveEntity, 'WaveInfo');
+    let enemyEntity: number;
+    
+    // Special case for wave 1 - spawn exactly ONE Shield Guardian
+    if (waveInfo && waveInfo.currentWave === 1 && this.shouldSpawnShieldGuardian) {
+      // At the middle of wave 1, spawn the Shield Guardian
+      const totalEnemiesInWave1 = 5;
+      if (waveInfo.totalEnemies <= Math.ceil(totalEnemiesInWave1 / 2)) {
+        // Spawn Shield Guardian
+        enemyEntity = createShieldGuardian(this.world, enemyPosition, this.dysonSphereEntity);
+        
+        // Announce the Shield Guardian only if not already announced
+        if (this.hudSystem && !this.hasAnnouncedShieldGuardian) {
+          this.hudSystem.displayMessage("SHIELD GUARDIAN DETECTED!", 3);
+          this.hasAnnouncedShieldGuardian = true;
+        }
+        
+        // Reset the flag so we only spawn one
+        this.shouldSpawnShieldGuardian = false;
+        
+        return wormholeEntity;
+      }
+    }
+    
+    // For wave 2+ use the original logic with probability
+    if (waveInfo && waveInfo.currentWave >= 2) {
+      // From wave 2 onwards, there's a chance to spawn Shield Guardians
+      // Chance increases with each wave
+      const shieldGuardianChance = Math.min(0.3, 0.05 * (waveInfo.currentWave - 1));
+      
+      if (Math.random() < shieldGuardianChance) {
+        // Spawn Shield Guardian
+        enemyEntity = createShieldGuardian(this.world, enemyPosition, this.dysonSphereEntity);
+        
+        // Announce a shield guardian if it's the first one in this wave
+        if (this.hudSystem && !this.hasAnnouncedShieldGuardian) {
+          this.hudSystem.displayMessage("SHIELD GUARDIAN DETECTED!", 3);
+          this.hasAnnouncedShieldGuardian = true;
+        }
+      } else {
+        // Spawn regular grunt
+        enemyEntity = createGrunt(this.world, enemyPosition, this.dysonSphereEntity);
+      }
+    } else {
+      // Default to grunt for other cases
+      enemyEntity = createGrunt(this.world, enemyPosition, this.dysonSphereEntity);
+    }
     
     return wormholeEntity;
   }
@@ -229,5 +287,7 @@ export class WaveSystem implements System {
     this.timeSinceLastSpawn = 0;
     this.hasAnnouncedWave = false;
     this.hasAnnouncedCompletion = false;
+    this.hasAnnouncedShieldGuardian = false;
+    this.shouldSpawnShieldGuardian = false;
   }
 } 

@@ -247,3 +247,13 @@ export interface GrowthAnimationData {
 
 // Union type for animation data
 export type AnimationData = WormholeAnimationData | ExplosionAnimationData | LightningAnimationData | GrowthAnimationData;
+
+export interface ShieldComponent {
+  currentShield: number;  // Current hits remaining
+  maxShield: number;      // Maximum hits
+}
+
+export interface ShieldBubbleComponent {
+  guardian: number;       // Entity ID of the Shield Guardian
+  radius: number;         // Radius of the shield
+}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, CSSProperties } from 'react';
+import React, { useEffect, useState, CSSProperties, useRef } from 'react';
 import { World } from '../core/World';
 import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position, WaveInfo, Radar } from '../core/components';
 import { COLORS } from '../constants/colors';
@@ -110,6 +110,9 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
     trackedEntities: []
   });
   
+  // Use a ref to track processed messages so we have immediate access to the latest value
+  const processedMessagesRef = useRef<Set<string>>(new Set());
+  
   // Update UI data from ECS world
   useEffect(() => {
     let lastRender = performance.now();
@@ -143,17 +146,28 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
       // Update message
       const messageDisplay = world.getComponent<MessageDisplay>(hudEntity, 'MessageDisplay');
       if (messageDisplay) {
-        if (messageDisplay.message && messageDisplay.message !== message) {
-          // When a new message arrives, add it to the alerts array
-          // Don't add new alerts if it's just the objective message after a wave
-          if (messageDisplay.message.trim() !== '' && 
-              !(alertMessages.length === 1 && 
-                alertMessages[0] === "OBJECTIVE: DEFEND THE DYSON SPHERE")) {
-            // Add new alerts to the beginning instead of end (make room at the top)
-            setAlertMessages(prev => [messageDisplay.message, ...prev.slice(0, 3)]);
-          }
+        const newMessage = messageDisplay.message;
+        
+        // Only process if this is a new message that we haven't seen before
+        // Using the ref for immediate access to the latest processed messages
+        if (newMessage && newMessage.trim() !== '' && 
+            !processedMessagesRef.current.has(newMessage) && 
+            !alertMessages.includes(newMessage) &&  // Also check current alert messages
+            !(newMessage === "OBJECTIVE: DEFEND THE DYSON SPHERE" && 
+              alertMessages.includes("OBJECTIVE: DEFEND THE DYSON SPHERE"))) {
+          
+          // Add to processed messages ref immediately
+          processedMessagesRef.current.add(newMessage);
+          
+          // Add to alert messages array
+          setAlertMessages(prev => {
+            const newMessages = [...prev, newMessage];
+            // Limit to last 4 messages if we have more
+            return newMessages.length > 4 ? newMessages.slice(-4) : newMessages;
+          });
         }
-        setMessage(messageDisplay.message);
+        
+        setMessage(newMessage);
       }
       
       // Update Dyson Sphere status
@@ -295,12 +309,23 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
       
       // Small delay to ensure full clear before showing objective
       setTimeout(() => {
+        // Always show the objective message when wave countdown ends
         setAlertMessages(["OBJECTIVE: DEFEND THE DYSON SPHERE"]);
         // Reset animated messages so objective gets animated
         setAnimatedMessages(new Set());
       }, 200);
     }
-  }, [waveCountdown, gameState]);
+  }, [waveCountdown, gameState]); // Remove alertMessages from dependencies
+  
+  // Reset processed messages when starting a new wave
+  useEffect(() => {
+    if (waveCountdown !== null) {
+      // Reset the processed messages when a new wave is about to start
+      processedMessagesRef.current = new Set();
+      // Reset animated messages so new messages get animated
+      setAnimatedMessages(new Set());
+    }
+  }, [waveCountdown]);
   
   // Convert hex color to CSS color format
   const hexToCSS = (hexColor: number): string => {
@@ -715,12 +740,15 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
                 flexDirection: 'column',
                 height: '100%',
                 width: '100%',
-                padding: '5px 0'
+                padding: '5px 0',
+                overflowY: 'auto',
+                scrollBehavior: 'smooth',
+                maxHeight: '100%'
               }}>
-                {/* Show all alerts without the "ALERT:" prefix */}
+                {/* Display messages with oldest at the top, newest at the bottom */}
                 {alertMessages.map((alert, index) => {
-                  // Only show animation for messages we haven't animated yet
-                  const shouldAnimate = index === 0 && !animatedMessages.has(alert);
+                  // Animate the newest message (last one in the array)
+                  const shouldAnimate = index === alertMessages.length - 1 && !animatedMessages.has(alert);
                   
                   // When a message has been rendered with animation, add it to the set
                   if (shouldAnimate) {
@@ -732,7 +760,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
                   
                   return (
                     <div 
-                      key={`alert-${index}`} 
+                      key={`alert-${index}-${alert}`} // Add alert to key to ensure unique keys 
                       style={{ 
                         color: alert.includes('OBJECTIVE') ? '#00ffff' : '#ff5555', 
                         fontSize: '0.7rem', 
@@ -752,6 +780,11 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
                     </div>
                   );
                 })}
+                {alertMessages.length === 0 && (
+                  <div style={{ color: '#666666', fontSize: '0.7rem', fontStyle: 'italic' }}>
+                    &gt; No messages
+                  </div>
+                )}
               </div>
             )}
           </div>

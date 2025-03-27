@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { World, System } from '../World';
-import { Position, Collider, Projectile, Health, Enemy, InputReceiver, Shield } from '../components';
+import { Position, Collider, Projectile, Health, Enemy, InputReceiver, Shield, ShieldComponent, ShieldBubbleComponent } from '../components';
 import { HUDSystem } from './HUDSystem';
 import { ShieldSystem } from './ShieldSystem';
 import { createFloatingScore } from '../entities/FloatingScoreEntity';
@@ -26,10 +26,11 @@ export class CollisionSystem implements System {
     
     // Set up collision matrix - which layers can collide with which
     this.collisionMatrix = new Map();
-    this.collisionMatrix.set('projectile', ['enemy', 'dysonSphere', 'player']);
+    this.collisionMatrix.set('projectile', ['enemy', 'dysonSphere', 'player', 'shield']);
     this.collisionMatrix.set('enemy', ['player', 'projectile', 'dysonSphere']);
     this.collisionMatrix.set('player', ['enemy', 'projectile']);
     this.collisionMatrix.set('dysonSphere', ['enemy']);
+    this.collisionMatrix.set('shield', ['projectile']);
   }
 
   update(deltaTime: number): void {
@@ -191,8 +192,15 @@ export class CollisionSystem implements System {
     
     if (!colliderA || !colliderB) return;
     
+    // Handle projectile collision with shield
+    if (colliderA.layer === 'projectile' && colliderB.layer === 'shield') {
+      this.handleProjectileShieldCollision(entityA, entityB);
+    } else if (colliderA.layer === 'shield' && colliderB.layer === 'projectile') {
+      this.handleProjectileShieldCollision(entityB, entityA);
+    }
+    
     // Handle projectile collision
-    if (colliderA.layer === 'projectile' && this.collisionMatrix.get('projectile')?.includes(colliderB.layer)) {
+    else if (colliderA.layer === 'projectile' && this.collisionMatrix.get('projectile')?.includes(colliderB.layer)) {
       this.handleProjectileCollision(entityA, entityB);
     } else if (colliderB.layer === 'projectile' && this.collisionMatrix.get('projectile')?.includes(colliderA.layer)) {
       this.handleProjectileCollision(entityB, entityA);
@@ -423,5 +431,71 @@ export class CollisionSystem implements System {
     }
     
     return null;
+  }
+
+  // Add this new method for shield collisions
+  private handleProjectileShieldCollision(projectileEntity: number, shieldEntity: number): void {
+    // Get the projectile component
+    const projectile = this.world.getComponent<Projectile>(projectileEntity, 'Projectile');
+    if (!projectile) return;
+    
+    // Check if this projectile is from a player or an enemy
+    const ownerEntity = projectile.ownerEntity;
+    const isPlayerProjectile = this.world.hasComponent(ownerEntity, 'InputReceiver');
+    
+    // Only player projectiles should damage shields
+    if (!isPlayerProjectile) {
+      return; // Skip collision for enemy projectiles with shields
+    }
+    
+    // Get the shield bubble component
+    const bubbleComponent = this.world.getComponent<ShieldBubbleComponent>(shieldEntity, 'ShieldBubbleComponent');
+    if (!bubbleComponent) return;
+    
+    // Get the guardian entity
+    const guardianEntity = bubbleComponent.guardian;
+    if (!this.world.hasEntity(guardianEntity)) return;
+    
+    // Get shield component from guardian
+    const shield = this.world.getComponent<ShieldComponent>(guardianEntity, 'ShieldComponent');
+    if (!shield) return;
+    
+    // Get the position for visual effects
+    const position = this.world.getComponent<Position>(shieldEntity, 'Position');
+    
+    // Get the renderable to add visual feedback
+    const renderable = this.world.getComponent<any>(shieldEntity, 'Renderable');
+    if (renderable && renderable.mesh && renderable.mesh instanceof THREE.Group) {
+      // Activate shield hit effect - make all arcs flash
+      const mesh = renderable.mesh;
+      if (mesh.children.length >= 5) {
+        const arcGroup = mesh.children[4];
+        if (arcGroup instanceof THREE.Group) {
+          arcGroup.children.forEach((arc) => {
+            if (arc instanceof THREE.Line && 
+                arc.material instanceof THREE.LineBasicMaterial) {
+              // Bright flash for hit effect
+              arc.material.opacity = 0.95;
+              
+              // Reset the flash timer if it exists
+              if ((arc as any).animData) {
+                (arc as any).animData.timeToNextFlash = 0.1 + Math.random() * 0.1;
+              }
+            }
+          });
+        }
+      }
+    }
+    
+    // Decrement shield
+    shield.currentShield -= 1;
+    
+    // If shield is depleted, remove the shield bubble
+    if (shield.currentShield <= 0) {
+      this.world.removeEntity(shieldEntity);
+    }
+    
+    // Remove the projectile
+    this.world.removeEntity(projectileEntity);
   }
 } 

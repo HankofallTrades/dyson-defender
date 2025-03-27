@@ -21,6 +21,7 @@ import { GameStateDisplay } from './components';
 import { InputManager } from './input/InputManager';
 import { AnimationSystem } from './systems/AnimationSystem';
 import { ShieldSystem } from './systems/ShieldSystem';
+import { ShieldBubbleSystem } from './systems/ShieldBubbleSystem';
 
 /**
  * Main Game Controller
@@ -82,6 +83,7 @@ class Game {
     this.world.addSystem(new EnemySystem(this.world, this.sceneManager.getScene()));
     this.world.addSystem(new CollisionSystem(this.world));
     this.world.addSystem(new ShieldSystem(this.world));
+    this.world.addSystem(new ShieldBubbleSystem(this.world));
     
     // Create and store reference to HUD system
     this.hudSystem = new HUDSystem(this.world);

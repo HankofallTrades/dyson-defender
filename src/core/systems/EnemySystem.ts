@@ -1,5 +1,5 @@
 import { World, System } from '../World';
-import { Enemy, Position, Velocity, Rotation, Collider, InputReceiver, Health, Renderable, Shield } from '../components';
+import { Enemy, Position, Velocity, Rotation, Collider, InputReceiver, Health, Renderable, Shield, ShieldComponent } from '../components';
 import { createLaser } from '../entities/LaserEntity';
 import * as THREE from 'three';
 import { COLORS } from '../../constants/colors';
@@ -45,6 +45,12 @@ export class EnemySystem implements System {
         velocity.y = 0;
         velocity.z = 0;
         continue;
+      }
+      
+      // Special behavior for Shield Guardian
+      if (enemy.type === 'shieldGuardian') {
+        this.updateShieldGuardian(entity, position, velocity, rotation, enemy, deltaTime);
+        continue; // Skip regular enemy behavior
       }
       
       // Get target (Dyson Sphere) position and size
@@ -326,6 +332,92 @@ export class EnemySystem implements System {
     if (hudEntities.length > 0) {
       // Directly trigger game over
       hudSystem.triggerGameOver(hudEntities[0], 'Player Ship Destroyed');
+    }
+  }
+  
+  // Add this new method for Shield Guardian behavior
+  private updateShieldGuardian(
+    entity: number,
+    position: Position,
+    velocity: Velocity,
+    rotation: Rotation,
+    enemy: Enemy,
+    deltaTime: number
+  ): void {
+    // Find nearby enemies to protect
+    const allEnemies = this.world.getEntitiesWith(['Enemy', 'Position']);
+    let nearestEnemyDist = Infinity;
+    let nearestEnemyPosition: Position | null = null;
+    
+    for (const otherEntity of allEnemies) {
+      // Skip self
+      if (otherEntity === entity) continue;
+      
+      const otherPosition = this.world.getComponent<Position>(otherEntity, 'Position');
+      if (!otherPosition) continue;
+      
+      // Calculate distance
+      const dist = Math.sqrt(
+        Math.pow(position.x - otherPosition.x, 2) +
+        Math.pow(position.y - otherPosition.y, 2) +
+        Math.pow(position.z - otherPosition.z, 2)
+      );
+      
+      // Find nearest enemy
+      if (dist < nearestEnemyDist) {
+        nearestEnemyDist = dist;
+        nearestEnemyPosition = otherPosition;
+      }
+    }
+    
+    // If there's a nearby enemy, move toward it
+    if (nearestEnemyPosition) {
+      // Direction to the nearest enemy
+      const direction = new THREE.Vector3(
+        nearestEnemyPosition.x - position.x,
+        nearestEnemyPosition.y - position.y,
+        nearestEnemyPosition.z - position.z
+      );
+      
+      // If too far, move toward it
+      if (nearestEnemyDist > 15) { // Stay 15 units away
+        direction.normalize();
+        velocity.x = direction.x * enemy.speed;
+        velocity.y = direction.y * enemy.speed;
+        velocity.z = direction.z * enemy.speed;
+      } else {
+        // Close enough, stop moving
+        velocity.x = 0;
+        velocity.y = 0;
+        velocity.z = 0;
+      }
+      
+      // Face the nearest enemy
+      this.faceTarget(rotation, position, nearestEnemyPosition);
+    } else {
+      // No other enemies, move toward the target (Dyson Sphere)
+      const targetPosition = this.world.getComponent<Position>(enemy.targetEntity, 'Position');
+      if (targetPosition) {
+        const directionToDyson = new THREE.Vector3(
+          targetPosition.x - position.x,
+          targetPosition.y - position.y,
+          targetPosition.z - position.z
+        ).normalize();
+        
+        velocity.x = directionToDyson.x * enemy.speed;
+        velocity.y = directionToDyson.y * enemy.speed;
+        velocity.z = directionToDyson.z * enemy.speed;
+        
+        // Face the target
+        this.faceTarget(rotation, position, targetPosition);
+      }
+    }
+    
+    // Check shield status and update visual indication if needed
+    const shield = this.world.getComponent<ShieldComponent>(entity, 'ShieldComponent');
+    if (shield) {
+      // Could update visual effects based on shield status here
+      // For example, change color intensity based on remaining shield hits
     }
   }
 } 
