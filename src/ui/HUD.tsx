@@ -1,6 +1,6 @@
 import React, { useEffect, useState, CSSProperties, useRef } from 'react';
 import { World } from '../core/World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position, WaveInfo, Radar } from '../core/components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position, WaveInfo, Radar, ShieldBarComponent, ShieldComponent } from '../core/components';
 import { COLORS } from '../constants/colors';
 import StartScreen from './StartScreen';
 import GameOverScreen from './GameOverScreen';
@@ -112,6 +112,15 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
     active: true,
     trackedEntities: []
   });
+  
+  // Add state for shield bars
+  const [shieldBars, setShieldBars] = useState<Array<{
+    id: number;
+    position: { x: number, y: number };
+    width: number;
+    height: number;
+    percent: number;
+  }>>([]);
   
   // Use a ref to track processed messages so we have immediate access to the latest value
   const processedMessagesRef = useRef<Set<string>>(new Set());
@@ -288,6 +297,49 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           active: radarComponent.active,
           trackedEntities: radarComponent.trackedEntities
         });
+      }
+      
+      // Update shield bars if camera is available
+      if (camera) {
+        const shieldBarEntities = world.getEntitiesWith(['ShieldBarComponent', 'Position']);
+        
+        const newShieldBars = shieldBarEntities.map(entity => {
+          const shieldBarComp = world.getComponent<ShieldBarComponent>(entity, 'ShieldBarComponent');
+          const positionComp = world.getComponent<Position>(entity, 'Position');
+          
+          if (!shieldBarComp || !positionComp || !shieldBarComp.visible) return null;
+          
+          // Get the shield component to determine fill percentage
+          const shieldComp = world.getComponent<ShieldComponent>(shieldBarComp.entity, 'ShieldComponent');
+          if (!shieldComp) return null;
+          
+          // Convert world position to screen coordinates
+          const basePos = worldToScreen({
+            x: positionComp.x,
+            y: positionComp.y + shieldBarComp.offsetY, // Apply vertical offset
+            z: positionComp.z
+          }, camera);
+          
+          if (!basePos) return null;
+          
+          const percent = (shieldComp.currentShield / shieldComp.maxShield) * 100;
+          
+          return {
+            id: entity,
+            position: basePos,
+            width: shieldBarComp.width,
+            height: shieldBarComp.height,
+            percent
+          };
+        }).filter(bar => bar !== null) as Array<{
+          id: number;
+          position: { x: number, y: number };
+          width: number;
+          height: number;
+          percent: number;
+        }>;
+        
+        setShieldBars(newShieldBars);
       }
       
       // Request next frame update - use the timestamp
@@ -485,6 +537,34 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           }}
         >
           +{score.value}
+        </div>
+      ))}
+      
+      {/* Shield Bars */}
+      {shieldBars.map(bar => (
+        <div
+          key={bar.id}
+          style={{
+            position: 'absolute',
+            top: bar.position.y,
+            left: bar.position.x - bar.width / 2, // Center on position
+            width: `${bar.width}px`,
+            height: `${bar.height}px`,
+            background: 'rgba(0, 0, 0, 0.5)',
+            border: '1px solid #21a9f3',
+            borderRadius: '2px',
+            overflow: 'hidden',
+            zIndex: 20,
+            pointerEvents: 'none',
+            boxShadow: '0 0 4px rgba(33, 169, 243, 0.6)'
+          }}
+        >
+          <div style={{
+            width: `${bar.percent}%`,
+            height: '100%',
+            background: 'linear-gradient(90deg, #21a9f3, #64c6f7)',
+            transition: 'width 0.2s ease'
+          }} />
         </div>
       ))}
       

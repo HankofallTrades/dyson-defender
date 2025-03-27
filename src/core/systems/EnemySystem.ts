@@ -353,6 +353,10 @@ export class EnemySystem implements System {
       // Skip self
       if (otherEntity === entity) continue;
       
+      // Skip other shield guardians
+      const otherEnemy = this.world.getComponent<Enemy>(otherEntity, 'Enemy');
+      if (otherEnemy && otherEnemy.type === 'shieldGuardian') continue;
+      
       const otherPosition = this.world.getComponent<Position>(otherEntity, 'Position');
       if (!otherPosition) continue;
       

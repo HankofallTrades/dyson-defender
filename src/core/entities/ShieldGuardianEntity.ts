@@ -1,6 +1,6 @@
 import { World } from '../World';
 import * as THREE from 'three';
-import { Position, Velocity, Rotation, Health, Collider, Enemy, ShieldComponent, ShieldBubbleComponent } from '../components';
+import { Position, Velocity, Rotation, Health, Collider, Enemy, ShieldComponent, ShieldBubbleComponent, ShieldBarComponent } from '../components';
 import { COLORS } from '../../constants/colors';
 
 export function createShieldGuardian(
@@ -52,6 +52,15 @@ export function createShieldGuardian(
     maxShield: 5
   });
   
+  // Add shield bar component for visual display
+  world.addComponent(guardian, 'ShieldBarComponent', {
+    entity: guardian,
+    offsetY: 7, // Position above the guardian
+    width: 40,
+    height: 5,
+    visible: true
+  });
+  
   // Add renderable component
   world.addComponent(guardian, 'Renderable', {
     modelId: 'shieldGuardian',
@@ -88,13 +97,13 @@ export function createShieldGuardian(
   // Add shield bubble component
   world.addComponent(bubble, 'ShieldBubbleComponent', {
     guardian: guardian,
-    radius: 20
+    radius: 40  // Doubled from 20 to 40
   });
   
   // Add renderable component for the bubble
   world.addComponent(bubble, 'Renderable', {
     modelId: 'shieldBubble',
-    scale: 20,
+    scale: 40,  // Doubled from 20 to 40
     color: COLORS.SHIELD_BUBBLE,
     isVisible: true
   });
@@ -102,7 +111,7 @@ export function createShieldGuardian(
   // Add collider for the bubble
   world.addComponent(bubble, 'Collider', {
     type: 'sphere',
-    radius: 20.0,
+    radius: 40.0,  // Doubled from 20 to 40
     isTrigger: true, // It's a trigger collider as it doesn't physically block
     layer: 'shield'  // Custom layer for shield
   });

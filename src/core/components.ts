@@ -257,3 +257,11 @@ export interface ShieldBubbleComponent {
   guardian: number;       // Entity ID of the Shield Guardian
   radius: number;         // Radius of the shield
 }
+
+export interface ShieldBarComponent {
+  entity: number;         // Entity to track for shield display
+  offsetY: number;        // Vertical offset from entity position
+  width: number;          // Width of the shield bar
+  height: number;         // Height of the shield bar
+  visible: boolean;       // Whether the shield bar is visible
+}

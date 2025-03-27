@@ -18,7 +18,6 @@ export class WaveSystem implements System {
   private hasAnnouncedWave: boolean = false;
   private hasAnnouncedCompletion: boolean = false;
   private hasAnnouncedShieldGuardian: boolean = false;
-  private shouldSpawnShieldGuardian: boolean = false;
   
   constructor(private world: World) {
     // Create a special entity just to hold the wave information
@@ -170,12 +169,6 @@ export class WaveSystem implements System {
     this.spawnEnemy();
     waveInfo.totalEnemies--;
     this.timeSinceLastSpawn = 0;
-    
-    // Special case: if this is wave 1, schedule a Shield Guardian to spawn
-    if (waveInfo.currentWave === 1) {
-      // Set a flag to ensure we spawn a Shield Guardian during this wave
-      this.shouldSpawnShieldGuardian = true;
-    }
   }
   
   private spawnEnemy(): number {
@@ -208,51 +201,34 @@ export class WaveSystem implements System {
     const waveInfo = this.world.getComponent<WaveInfo>(this.waveEntity, 'WaveInfo');
     let enemyEntity: number;
     
-    // Special case for wave 1 - spawn exactly ONE Shield Guardian
-    if (waveInfo && waveInfo.currentWave === 1 && this.shouldSpawnShieldGuardian) {
-      // At the middle of wave 1, spawn the Shield Guardian
-      const totalEnemiesInWave1 = 5;
-      if (waveInfo.totalEnemies <= Math.ceil(totalEnemiesInWave1 / 2)) {
+    // Shield Guardians start spawning at wave 3
+    if (waveInfo && waveInfo.currentWave >= 3) {
+      // Guarantee at least one shield guardian for all waves 3+
+      if (!this.hasAnnouncedShieldGuardian) {
         // Spawn Shield Guardian
         enemyEntity = createShieldGuardian(this.world, enemyPosition, this.dysonSphereEntity);
         
-        // Announce the Shield Guardian only if not already announced
-        if (this.hudSystem && !this.hasAnnouncedShieldGuardian) {
+        // Announce the shield guardian
+        if (this.hudSystem) {
           this.hudSystem.displayMessage("SHIELD GUARDIAN DETECTED!", 3);
-          this.hasAnnouncedShieldGuardian = true;
         }
-        
-        // Reset the flag so we only spawn one
-        this.shouldSpawnShieldGuardian = false;
+        this.hasAnnouncedShieldGuardian = true;
         
         return wormholeEntity;
       }
-    }
-    
-    // For wave 2+ use the original logic with probability
-    if (waveInfo && waveInfo.currentWave >= 2) {
-      // From wave 2 onwards, there's a chance to spawn Shield Guardians
-      // Chance increases with each wave
-      const shieldGuardianChance = Math.min(0.3, 0.05 * (waveInfo.currentWave - 1));
+      
+      // 5% chance to spawn additional shield guardians
+      const shieldGuardianChance = 0.05;
       
       if (Math.random() < shieldGuardianChance) {
         // Spawn Shield Guardian
         enemyEntity = createShieldGuardian(this.world, enemyPosition, this.dysonSphereEntity);
-        
-        // Announce a shield guardian if it's the first one in this wave
-        if (this.hudSystem && !this.hasAnnouncedShieldGuardian) {
-          this.hudSystem.displayMessage("SHIELD GUARDIAN DETECTED!", 3);
-          this.hasAnnouncedShieldGuardian = true;
-        }
-      } else {
-        // Spawn regular grunt
-        enemyEntity = createGrunt(this.world, enemyPosition, this.dysonSphereEntity);
+        return wormholeEntity;
       }
-    } else {
-      // Default to grunt for other cases
-      enemyEntity = createGrunt(this.world, enemyPosition, this.dysonSphereEntity);
     }
     
+    // Default to grunt
+    enemyEntity = createGrunt(this.world, enemyPosition, this.dysonSphereEntity);
     return wormholeEntity;
   }
   
@@ -288,6 +264,5 @@ export class WaveSystem implements System {
     this.hasAnnouncedWave = false;
     this.hasAnnouncedCompletion = false;
     this.hasAnnouncedShieldGuardian = false;
-    this.shouldSpawnShieldGuardian = false;
   }
 } 
