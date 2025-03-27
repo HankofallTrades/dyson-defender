@@ -65,6 +65,30 @@ function App() {
     }
   };
 
+  const handleResumeGame = () => {
+    if (gameRef.current) {
+      gameRef.current.resumeGame();
+    }
+  };
+
+  const handleRestartAtWave = (waveNumber: number) => {
+    if (gameRef.current) {
+      gameRef.current.restartAtWave(waveNumber);
+      
+      // Update the world reference after restart
+      const gameWorld = gameRef.current.getWorld();
+      if (gameWorld) {
+        setWorld(gameWorld);
+      }
+      
+      // Update the camera reference after restart
+      const gameCamera = gameRef.current.getCamera();
+      if (gameCamera) {
+        setCamera(gameCamera);
+      }
+    }
+  };
+
   return (
     <div className="app">
       <div id="game-container" className="game-container" ref={containerRef}></div>
@@ -74,6 +98,8 @@ function App() {
           camera={camera as Camera | undefined}
           onStartGame={handleStartGame}
           onRestartGame={handleRestartGame}
+          onResumeGame={handleResumeGame}
+          onRestartAtWave={handleRestartAtWave}
         />
       )}
     </div>

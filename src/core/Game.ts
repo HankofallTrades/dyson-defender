@@ -22,6 +22,7 @@ import { InputManager } from './input/InputManager';
 import { AnimationSystem } from './systems/AnimationSystem';
 import { ShieldSystem } from './systems/ShieldSystem';
 import { ShieldBubbleSystem } from './systems/ShieldBubbleSystem';
+import { WaveInfo } from './components';
 
 /**
  * Main Game Controller
@@ -186,6 +187,37 @@ class Game {
     }
   }
 
+  public resumeGame(): void {
+    // Update the game state to playing through the HUD system
+    const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
+    if (hudEntities.length > 0) {
+      const hudEntity = hudEntities[0];
+      const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
+      
+      if (gameStateDisplay) {
+        // Remove and add component to update game state
+        this.world.removeComponent(hudEntity, 'GameStateDisplay');
+        this.world.addComponent(hudEntity, 'GameStateDisplay', {
+          ...gameStateDisplay,
+          currentState: 'playing'
+        });
+      }
+    }
+    
+    // Set game to running state
+    if (!this.isRunning) {
+      this.isRunning = true;
+      this.lastFrameTime = performance.now();
+    }
+    
+    // Request pointer lock when resuming the game
+    const inputManager = InputManager.getInstance(this.container);
+    inputManager.requestPointerLock();
+    
+    // Update game state manager
+    this.stateManager.updateState({ isPaused: false });
+  }
+
   private animate = (): void => {
     this.animationFrameId = requestAnimationFrame(this.animate);
     
@@ -198,9 +230,9 @@ class Game {
       const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
       
       if (gameStateDisplay) {
-        // If game state changed to game_over, exit pointer lock
-        if (gameStateDisplay.currentState === 'game_over') {
-          // Exit pointer lock when game is over
+        // If game state changed to game_over or paused, exit pointer lock
+        if (gameStateDisplay.currentState === 'game_over' || gameStateDisplay.currentState === 'paused') {
+          // Exit pointer lock when game is over or paused
           if (document.pointerLockElement === this.container) {
             document.exitPointerLock();
           }
@@ -253,6 +285,52 @@ class Game {
     }
     window.removeEventListener('resize', this.handleResize);
     this.sceneManager.dispose();
+  }
+
+  public restartAtWave(waveNumber: number): void {
+    // Stop the current game loop
+    this.pause();
+    
+    // Clean up any existing Three.js objects in the scene
+    // to prevent memory leaks and duplicate objects
+    this.sceneManager.clearScene();
+    
+    // Clear all entities by creating a new World instance
+    this.world = new World();
+    
+    // Reinitialize systems and entities
+    this.initSystems();
+    this.initEntities();
+    
+    // Start the game
+    this.hudSystem.startGame();
+    
+    // Set the specific wave number
+    const waveEntities = this.world.getEntitiesWith(['WaveInfo']);
+    if (waveEntities.length > 0) {
+      const waveEntity = waveEntities[0];
+      const waveInfo = this.world.getComponent<WaveInfo>(waveEntity, 'WaveInfo');
+      
+      if (waveInfo) {
+        // Remove the old component and add the updated one
+        this.world.removeComponent(waveEntity, 'WaveInfo');
+        this.world.addComponent(waveEntity, 'WaveInfo', {
+          ...waveInfo,
+          currentWave: waveNumber - 1, // Subtract 1 because next wave will be incremented
+          isActive: false,
+          nextWaveTimer: 3, // Start next wave countdown
+          enemiesRemaining: 0
+        });
+      }
+    }
+    
+    // Reset the game state to running
+    this.isRunning = true;
+    this.lastFrameTime = performance.now();
+    
+    // Request pointer lock when restarting the game
+    const inputManager = InputManager.getInstance(this.container);
+    inputManager.requestPointerLock();
   }
 }
 

@@ -4,6 +4,7 @@ import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSp
 import { COLORS } from '../constants/colors';
 import StartScreen from './StartScreen';
 import GameOverScreen from './GameOverScreen';
+import PauseScreen from './PauseScreen';
 import './styles/retro.css';
 import { Vector3, Camera } from 'three';
 
@@ -47,10 +48,12 @@ interface HUDProps {
   world: World;
   onStartGame: () => void;
   onRestartGame: () => void;
+  onResumeGame: () => void;
+  onRestartAtWave: (waveNumber: number) => void;
   camera?: Camera; // Add camera as an optional prop
 }
 
-const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) => {
+const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGame, onRestartAtWave, camera }) => {
   // Screen size for responsive layout
   const screen = useScreenSize();
   
@@ -361,6 +364,67 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
     return 'translate(0, 0)';
   };
   
+  // Add handlers for pause functionality
+  const handlePauseGame = () => {
+    if (gameState === 'playing') {
+      // Update world gameState
+      const hudEntities = world.getEntitiesWith(['UIDisplay']);
+      if (hudEntities.length > 0) {
+        const hudEntity = hudEntities[0];
+        const gameStateDisplay = world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
+        
+        if (gameStateDisplay) {
+          // Remove the old component and add the updated one
+          world.removeComponent(hudEntity, 'GameStateDisplay');
+          world.addComponent(hudEntity, 'GameStateDisplay', {
+            ...gameStateDisplay,
+            currentState: 'paused'
+          });
+        }
+      }
+    }
+  };
+  
+  const handleResumeGame = () => {
+    // Call the prop function to handle resuming the game at the App level
+    onResumeGame();
+    
+    // Update world gameState
+    const hudEntities = world.getEntitiesWith(['UIDisplay']);
+    if (hudEntities.length > 0) {
+      const hudEntity = hudEntities[0];
+      const gameStateDisplay = world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
+      
+      if (gameStateDisplay) {
+        // Remove the old component and add the updated one
+        world.removeComponent(hudEntity, 'GameStateDisplay');
+        world.addComponent(hudEntity, 'GameStateDisplay', {
+          ...gameStateDisplay,
+          currentState: 'playing'
+        });
+      }
+    }
+  };
+  
+  const handleSelectWave = (wave: number) => {
+    // Call the App-level handler to fully restart the game at the selected wave
+    onRestartAtWave(wave);
+  };
+  
+  // Add keyboard event listener for Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && gameState === 'playing') {
+        handlePauseGame();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [gameState]);
+  
   // Render appropriate screen based on game state
   if (gameState === 'not_started') {
     return <StartScreen onStartGame={onStartGame} />;
@@ -368,6 +432,17 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, camera }) 
   
   if (gameState === 'game_over') {
     return <GameOverScreen stats={gameOverStats} onRestart={onRestartGame} />;
+  }
+  
+  if (gameState === 'paused') {
+    return (
+      <PauseScreen 
+        onResume={handleResumeGame} 
+        onRestart={onRestartGame}
+        currentWave={currentWave}
+        onSelectWave={handleSelectWave}
+      />
+    );
   }
   
   // Main game HUD (only show when playing)
