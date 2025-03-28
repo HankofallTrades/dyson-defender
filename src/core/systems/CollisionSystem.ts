@@ -344,17 +344,19 @@ export class CollisionSystem implements System {
               const enemy = this.world.getComponent<Enemy>(targetEntity, 'Enemy');
               
               if (enemyPosition && enemy) {
-                // Add score based on enemy type (10 points per enemy)
-                const scoreValue = 10; // Default for 'grunt' enemies
+                // Add score based on enemy type
+                let scoreValue = 10; // Default for 'grunt' enemies
+                
+                // Special score values for different enemy types
+                if (enemy.type === 'warpRaider') {
+                  scoreValue = 25; // Warp Raiders are worth more points
+                }
                 
                 // Create floating score at enemy position
                 createFloatingScore(this.world, enemyPosition, scoreValue);
                 
                 // Still update the score in HUD
                 hudSystem.incrementScore(scoreValue);
-                
-                // We don't need to display message anymore since we have floating indicators
-                // hudSystem.displayMessage("Enemy destroyed! +10 points", 1.5);
               }
             }
             
