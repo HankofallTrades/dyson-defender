@@ -324,8 +324,8 @@ export class HUDSystem implements System {
       
       const distance = distanceVector.length();
       
-      // Check if within radar range
-      if (distance <= radar.range) {
+      // Check if within radar range - asteroids are always visible regardless of distance
+      if (distance <= radar.range || enemy.type === 'asteroid') {
         // Calculate normalized direction vector for the radar
         const rawDirection = distanceVector.clone().normalize();
         
@@ -353,6 +353,15 @@ export class HUDSystem implements System {
             case 'bomber':
               threatLevel = 0.8;
               break;
+            case 'asteroid':
+              threatLevel = 1.0; // Highest threat level for asteroids
+              break;
+            case 'warpRaider':
+              threatLevel = 0.8;
+              break;
+            case 'shieldGuardian':
+              threatLevel = 0.7;
+              break;
             default:
               threatLevel = 0.5;
           }
@@ -374,6 +383,44 @@ export class HUDSystem implements System {
           threatLevel: threatLevel
         });
       }
+    }
+    
+    // Find and add Dyson Sphere to radar
+    const dysonSphereEntities = this.world.getEntitiesWith(['Renderable', 'Position']);
+    for (const dysonEntity of dysonSphereEntities) {
+      const renderable = this.world.getComponent<Renderable>(dysonEntity, 'Renderable');
+      const position = this.world.getComponent<Position>(dysonEntity, 'Position');
+      
+      if (!renderable || !position || renderable.modelId !== 'dysonSphere') continue;
+      
+      // Calculate distance vector from player to Dyson Sphere
+      const distanceVector = new THREE.Vector3(
+        position.x - playerPos.x,
+        position.y - playerPos.y,
+        position.z - playerPos.z
+      );
+      
+      const distance = distanceVector.length();
+      
+      // Dyson sphere is always on radar regardless of distance
+      const rawDirection = distanceVector.clone().normalize();
+      
+      // Project the Dyson Sphere position onto the player's local space
+      const forwardProjection = playerForward.dot(rawDirection);
+      const rightProjection = playerRight.dot(rawDirection);
+      
+      // Add Dyson Sphere to tracked entities
+      radar.trackedEntities.push({
+        entityId: dysonEntity,
+        entityType: 'dysonSphere',
+        distance: distance,
+        direction: {
+          x: rightProjection,
+          y: position.y - playerPos.y,
+          z: forwardProjection
+        },
+        threatLevel: 0.0 // Special value for Dyson Sphere - will render differently
+      });
     }
   }
 } 

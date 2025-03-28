@@ -1408,7 +1408,85 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
                 const x = entity.direction.x * scaledDistance;
                 const y = -entity.direction.z * scaledDistance; // Negative because screen Y is inverted
                 
-                // Fixed red color for all enemies
+                // Check vertical position (y-coordinate in 3D space)
+                // If significantly above or below player, show triangle instead of dot
+                const verticalThreshold = 10; // Units difference to show elevation indicator
+                const isAbove = entity.direction.y > verticalThreshold;
+                const isBelow = entity.direction.y < -verticalThreshold;
+                
+                // Special case for the Dyson Sphere
+                if (entity.entityType === 'dysonSphere') {
+                  // Dyson Sphere is displayed as a blue circle
+                  return (
+                    <div 
+                      key={entity.entityId}
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        width: '10px',
+                        height: '10px',
+                        borderRadius: '50%',
+                        border: '2px solid #00ff00',
+                        background: 'rgba(0, 255, 0, 0.3)',
+                        transform: `translate(${x}px, ${y}px)`,
+                        boxShadow: '0 0 6px #00ff00',
+                        zIndex: 10 // Keep Dyson Sphere on top
+                      }}
+                    ></div>
+                  );
+                }
+
+                // Special case for asteroids
+                if (entity.entityType === 'asteroid') {
+                  const asteroidSize = Math.max(3, 6 - (normalizedDistance * 2));
+                  
+                  // If asteroid is above or below, render triangle with asteroid color
+                  if (isAbove || isBelow) {
+                    return (
+                      <div 
+                        key={entity.entityId}
+                        style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          width: '0',
+                          height: '0',
+                          borderLeft: `${asteroidSize}px solid transparent`,
+                          borderRight: `${asteroidSize}px solid transparent`,
+                          borderBottom: isAbove ? `${asteroidSize * 2}px solid #ff9900` : 'none',
+                          borderTop: isBelow ? `${asteroidSize * 2}px solid #ff9900` : 'none',
+                          transform: `translate(${x - asteroidSize}px, ${y - (isAbove ? asteroidSize : 0)}px)`,
+                          boxShadow: '0 0 8px #ff9900',
+                          animation: 'pulse-opacity 0.5s infinite alternate', // Faster pulsing
+                          zIndex: 3 // Higher than regular enemies
+                        }}
+                      ></div>
+                    );
+                  }
+                  
+                  // At similar elevation, use diamond shape
+                  return (
+                    <div 
+                      key={entity.entityId}
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        width: `${asteroidSize}px`,
+                        height: `${asteroidSize}px`,
+                        background: '#ff9900', // Orange warning color
+                        transform: `translate(${x}px, ${y}px) rotate(45deg)`, // Diamond shape
+                        boxShadow: '0 0 8px #ff9900',
+                        animation: 'pulse-opacity 0.5s infinite alternate', // Faster pulsing
+                        zIndex: 3 // Higher than regular enemies
+                      }}
+                    ></div>
+                  );
+                }
+                
+                // Handle regular enemies
+                // Fixed red color for other enemies
                 const color = '#ff0000';
                 
                 // Size based on distance - closer = larger, with minimum size
@@ -1416,12 +1494,6 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
                 
                 // Fixed pulse speed
                 const pulseSpeed = 0.8;
-                
-                // Check vertical position (y-coordinate in 3D space)
-                // If significantly above or below player, show triangle instead of dot
-                const verticalThreshold = 10; // Units difference to show elevation indicator
-                const isAbove = entity.direction.y > verticalThreshold;
-                const isBelow = entity.direction.y < -verticalThreshold;
                 
                 // If above or below, render triangle, otherwise render dot
                 if (isAbove || isBelow) {

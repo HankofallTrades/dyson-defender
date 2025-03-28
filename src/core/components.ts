@@ -176,7 +176,7 @@ export interface Radar {
   timeUntilRefresh: number;    // Time remaining until next refresh
   trackedEntities: Array<{     // Array of entities currently being tracked
     entityId: number;          // The entity ID
-    entityType: string;        // Type of entity ('grunt', 'bomber', etc.)
+    entityType: string;        // Type of entity ('grunt', 'bomber', 'asteroid', 'warpRaider', 'shieldGuardian', 'dysonSphere')
     distance: number;          // Distance from player to entity
     direction: {               // Direction vector from player to entity (normalized)
       x: number;               // Used for calculating radar blip position
