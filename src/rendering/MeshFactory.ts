@@ -560,6 +560,74 @@ export class MeshFactory {
     // Create a main group for the entire ship
     const group = new THREE.Group();
     
+    // Add XYZ axes for orientation visualization
+    const axesGroup = new THREE.Group();
+    
+    // X-axis (red)
+    const xAxisGeometry = new THREE.CylinderGeometry(0.05, 0.05, 4, 8);
+    const xAxisMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const xAxis = new THREE.Mesh(xAxisGeometry, xAxisMaterial);
+    xAxis.rotation.z = Math.PI / 2; // Rotate to align with X-axis
+    xAxis.position.x = 2; // Center the axis
+    axesGroup.add(xAxis);
+    
+    // Y-axis (green)
+    const yAxisGeometry = new THREE.CylinderGeometry(0.05, 0.05, 4, 8);
+    const yAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const yAxis = new THREE.Mesh(yAxisGeometry, yAxisMaterial);
+    yAxis.position.y = 2; // Center the axis
+    axesGroup.add(yAxis);
+    
+    // Z-axis (blue)
+    const zAxisGeometry = new THREE.CylinderGeometry(0.05, 0.05, 4, 8);
+    const zAxisMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+    const zAxis = new THREE.Mesh(zAxisGeometry, zAxisMaterial);
+    zAxis.rotation.x = Math.PI / 2; // Rotate to align with Z-axis
+    zAxis.position.z = 2; // Center the axis
+    axesGroup.add(zAxis);
+    
+    // Add axis labels (cones)
+    const createAxisTip = (color: number) => {
+      const tipGeometry = new THREE.ConeGeometry(0.15, 0.3, 8);
+      const tipMaterial = new THREE.MeshBasicMaterial({ color });
+      return new THREE.Mesh(tipGeometry, tipMaterial);
+    };
+    
+    // X-axis tip
+    const xTip = createAxisTip(0xff0000);
+    xTip.rotation.z = -Math.PI / 2; // Point along X-axis
+    xTip.position.x = 4; // End of axis
+    axesGroup.add(xTip);
+    
+    // Y-axis tip
+    const yTip = createAxisTip(0x00ff00);
+    yTip.position.y = 4; // End of axis
+    axesGroup.add(yTip);
+    
+    // Z-axis tip
+    const zTip = createAxisTip(0x0000ff);
+    zTip.rotation.x = Math.PI / 2; // Point along Z-axis
+    zTip.position.z = 4; // End of axis
+    axesGroup.add(zTip);
+    
+    // Set axes to be slightly transparent so they don't obscure the model
+    axesGroup.children.forEach(child => {
+      const mesh = child as THREE.Mesh;
+      if (mesh.material) {
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach(mat => {
+            mat.transparent = true;
+            mat.opacity = 0.7;
+          });
+        } else {
+          mesh.material.transparent = true;
+          mesh.material.opacity = 0.7;
+        }
+      }
+    });
+    
+    group.add(axesGroup);
+    
     // ==========================================
     // BODY CREATION - Angular prism-shaped hull
     // ==========================================
@@ -699,9 +767,22 @@ export class MeshFactory {
       // Position wings on the sides, slightly toward the back of the ship
       wing.position.set(side * 0.8, 0, -0.5);
       
-      // Rotate wings to be horizontal from the sides
-      wing.rotation.z = side * 0.2; // Slight upward angle for aggression
-      wing.rotation.y = -side * Math.PI/2; // Rotate to point outward from sides
+      // Apply rotations for both wings
+      if (side === 1) { // Right wing
+        // Point wing along positive X-axis
+        wing.rotation.y = 0;
+        // Rotate 90 degrees about X-axis
+        wing.rotation.x = Math.PI / 2;
+        // Flip 180 degrees about Z-axis
+        wing.rotation.z = Math.PI;
+      } else { // Left wing
+        // Point wing along negative X-axis
+        wing.rotation.y = Math.PI;
+        // Rotate 90 degrees about X-axis PLUS an additional 180 degrees
+        wing.rotation.x = Math.PI / 2 + Math.PI; // = 3 * Math.PI / 2
+        // Flip 180 degrees about Z-axis
+        wing.rotation.z = Math.PI;
+      }
       
       group.add(wing);
 
