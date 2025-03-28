@@ -14,7 +14,7 @@ export function getRandomPowerUpType(): 'fireRate' | 'speed' | 'health' {
 
 /**
  * Creates a fire rate power-up entity that appears as a glowing red orb
- * When collected, doubles the player's fire rate for 3 seconds
+ * When collected, doubles the player's fire rate for 6 seconds
  */
 export function createFireRatePowerUp(
   world: World,
@@ -35,7 +35,7 @@ export function createFireRatePowerUp(
   // Add power-up component with lifetime property
   world.addComponent(entity, 'PowerUp', {
     type: 'fireRate',
-    duration: 3.0, // Effect lasts 3 seconds when collected
+    duration: 6.0, // Effect lasts 6 seconds when collected
     timeRemaining: 0,
     active: false,
     lifetime: 7.0 // Time before the power-up disappears if not collected
@@ -68,7 +68,7 @@ export function createFireRatePowerUp(
 
 /**
  * Creates a speed boost power-up entity that appears as a glowing green orb
- * When collected, increases the player's movement speed by 1.5x for 3 seconds
+ * When collected, increases the player's movement speed by 1.5x for 6 seconds
  */
 export function createSpeedPowerUp(
   world: World,
@@ -89,7 +89,7 @@ export function createSpeedPowerUp(
   // Add power-up component with lifetime property
   world.addComponent(entity, 'PowerUp', {
     type: 'speed',
-    duration: 3.0, // Effect lasts 3 seconds when collected
+    duration: 6.0, // Effect lasts 6 seconds when collected
     timeRemaining: 0,
     active: false,
     lifetime: 7.0 // Time before the power-up disappears if not collected
@@ -143,7 +143,7 @@ export function createHealthPowerUp(
   // Add power-up component with lifetime property
   world.addComponent(entity, 'PowerUp', {
     type: 'health',
-    duration: 0.1, // Almost instant effect (health is added immediately)
+    duration: 0.2, // Almost instant effect (health is added immediately)
     timeRemaining: 0,
     active: false,
     lifetime: 7.0 // Time before the power-up disappears if not collected
