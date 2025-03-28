@@ -131,7 +131,7 @@ class Game {
   private initEntities(): void {
     const dysonSphere = createDysonSphere(this.world);
     const playerShip = createPlayerShip(this.world);
-    const _cameraEntity = createCamera(this.world, playerShip);
+    const cameraEntity = createCamera(this.world, playerShip);
     createHUD(this.world, playerShip, dysonSphere);
     
     // Set camera for the floating score system after entities are created

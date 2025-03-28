@@ -1,6 +1,5 @@
 import { World } from '../World';
 import * as THREE from 'three';
-import type { Position, Renderable, Velocity, Rotation, Collider, Projectile } from '../components';
 import { COLORS } from '../../constants/colors';
 
 export function createLaser(

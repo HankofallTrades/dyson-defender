@@ -1,6 +1,6 @@
 // src/core/entities/PlayerShipEntity.ts
 import { World } from '../World';
-import type { Position, Velocity, Renderable, InputReceiver, Rotation, MouseLook, LaserCooldown, Collider, Health, Boost } from '../components';
+import { Position, Velocity, Renderable, InputReceiver, Rotation, MouseLook, LaserCooldown, Collider, Health, Boost } from '../components';
 import { COLORS } from '../../constants/colors';
 
 export function createPlayerShip(world: World): number {

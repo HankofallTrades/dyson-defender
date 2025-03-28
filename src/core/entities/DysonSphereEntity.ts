@@ -1,5 +1,5 @@
 import { World } from '../World';
-import type { Position, Renderable, Health, AutoRotate, Rotation, Collider, Shield } from '../components';
+import { Position, Renderable, Health, AutoRotate, Rotation, Collider, Shield } from '../components';
 import { COLORS } from '../../constants/colors';
 
 export function createDysonSphere(world: World): number {

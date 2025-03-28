@@ -1,6 +1,6 @@
 import { World } from '../World';
 import * as THREE from 'three';
-import type { Position, Renderable, Velocity, Rotation, Health, Collider, Animation } from '../components';
+import { Position, Renderable, Velocity, Rotation, Health, Collider, Animation } from '../components';
 import { COLORS } from '../../constants/colors';
 
 export function createGrunt(
