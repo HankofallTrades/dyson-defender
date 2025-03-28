@@ -6,7 +6,9 @@ import { COLORS } from '../../constants/colors';
 export function createGrunt(
   world: World,
   position: { x: number, y: number, z: number },
-  targetEntity: number // The Dyson Sphere entity ID that this enemy will target
+  targetEntity: number, // The Dyson Sphere entity ID that this enemy will target
+  speedIncrease: number = 1, // Speed multiplier (default: 1 = no increase)
+  cooldownReduction: number = 1 // Cooldown multiplier (default: 1 = no reduction)
 ): number {
   const entity = world.createEntity();
   
@@ -32,12 +34,12 @@ export function createGrunt(
   world.addComponent(entity, 'Enemy', {
     targetEntity: targetEntity,
     type: 'grunt',
-    speed: 10, // Units per second
+    speed: 10 * speedIncrease, // Base speed multiplied by wave-based increase
     damage: 10,
-    attackCooldown: 2, // Seconds between attacks
+    attackCooldown: 2 * cooldownReduction, // Base cooldown multiplied by wave-based reduction
     currentCooldown: 0,
     inSiegeMode: false, // Start in normal mode
-    laserCooldown: 3.0, // Fire a laser every 3 seconds
+    laserCooldown: 3.0 * cooldownReduction, // Base laser cooldown multiplied by wave-based reduction
     currentLaserCooldown: 0,
     canMove: true, // Enemy can move right away
     canShoot: false // Enemy can't shoot until the shooting timer completes

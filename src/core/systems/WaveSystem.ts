@@ -243,37 +243,27 @@ export class WaveSystem implements System {
     
     let enemyEntity: number;
 
-    // Spawn an asteroid in wave 3
-    if (!forceGrunt && waveInfo.currentWave === 3) {
-      // Calculate total enemies for wave 3
-      const totalEnemiesInWave = 5 + (waveInfo.currentWave - 1) * 3;
+    // After wave 3, 15% chance to spawn an asteroid
+    if (!forceGrunt && waveInfo.currentWave > 3 && Math.random() < 0.15) {
+      // Create asteroid at a much further distance (4-6.5x normal spawn distance)
+      const asteroidSpawnMultiplier = 4 + Math.random() * 2.5;
+      const asteroidPosition = this.getRandomPositionOnSphere(radius * asteroidSpawnMultiplier);
       
-      // Spawn asteroid as the second enemy in wave 3
-      if (totalEnemiesInWave - waveInfo.totalEnemies === 1) {
-        console.log('Spawning asteroid in wave 3');
-        
-        // Create asteroid at a much further distance (7.5-10x normal spawn distance)
-        const asteroidSpawnMultiplier = 4 + Math.random() * 2.5; // Random between 7.5-10x (1200-1600 units)
-        const asteroidPosition = this.getRandomPositionOnSphere(radius * asteroidSpawnMultiplier);
-        
-        console.log(`Spawning asteroid at distance: ${radius * asteroidSpawnMultiplier} units`);
-        
-        enemyEntity = createAsteroid(this.world, asteroidPosition, this.dysonSphereEntity);
-        
-        if (!this.hasAnnouncedAsteroid && this.hudSystem) {
-          this.hudSystem.displayMessage("CRITICAL THREAT: Incoming Asteroid!", 5);
-          this.hasAnnouncedAsteroid = true;
-        }
-        return enemyEntity;
+      console.log(`Spawning asteroid at distance: ${radius * asteroidSpawnMultiplier} units`);
+      
+      enemyEntity = createAsteroid(this.world, asteroidPosition, this.dysonSphereEntity);
+      
+      if (!this.hasAnnouncedAsteroid && this.hudSystem) {
+        this.hudSystem.displayMessage("CRITICAL THREAT: Incoming Asteroid!", 5);
+        this.hasAnnouncedAsteroid = true;
       }
+      return enemyEntity;
     }
     
     // First, handle the guaranteed Warp Raider spawn in wave 4
     if (!forceGrunt && waveInfo.currentWave === 4) {
-      // Calculate total enemies for wave 4 (should be 5 + (4-1) * 3 = 14)
       const totalEnemiesInWave = 5 + (waveInfo.currentWave - 1) * 3;
       
-      // Spawn Warp Raider as the third enemy in wave 4
       if (totalEnemiesInWave - waveInfo.totalEnemies === 2) {
         console.log('Spawning guaranteed Warp Raider in wave 4');
         enemyEntity = createWarpRaider(this.world, enemyPosition, this.dysonSphereEntity);
@@ -286,24 +276,38 @@ export class WaveSystem implements System {
       }
     }
     
-    // For waves 3+, there's a 5% chance to spawn a Shield Guardian alongside any other enemy
-    if (!forceGrunt && waveInfo.currentWave >= 3 && Math.random() < 0.05) {
-      // Create a shield guardian enemy
+    // Calculate progressive spawn chances based on wave number
+    const baseShieldGuardianChance = 0.10;
+    const baseWarpRaiderChance = 0.10;
+    const waveProgression = Math.max(0, waveInfo.currentWave - 3); // Start scaling from wave 3
+    const shieldGuardianChance = baseShieldGuardianChance + (waveProgression * 0.01); // +1% per wave
+    const warpRaiderChance = baseWarpRaiderChance + (waveProgression * 0.01); // +1% per wave
+    
+    // For waves 3+, chance to spawn a Shield Guardian increases by 1% per wave
+    if (!forceGrunt && waveInfo.currentWave >= 3 && Math.random() < shieldGuardianChance) {
       enemyEntity = createShieldGuardian(this.world, enemyPosition, this.dysonSphereEntity);
       
-      // Only show the message once per wave
       if (!this.hasAnnouncedShieldGuardian && this.hudSystem) {
         this.hudSystem.displayMessage("NEW THREAT: Shield Guardian detected!", 4);
         this.hasAnnouncedShieldGuardian = true;
       }
     } 
-    // Random chance for Warp Raiders in waves 5+
-    else if (!forceGrunt && waveInfo.currentWave >= 5 && Math.random() < 0.05) {
+    // Random chance for Warp Raiders in waves 5+, chance increases by 1% per wave
+    else if (!forceGrunt && waveInfo.currentWave >= 5 && Math.random() < warpRaiderChance) {
       enemyEntity = createWarpRaider(this.world, enemyPosition, this.dysonSphereEntity);
     }
     else {
-      // Create a regular grunt enemy
-      enemyEntity = createGrunt(this.world, enemyPosition, this.dysonSphereEntity);
+      // Create a regular grunt enemy with progressive difficulty scaling
+      const speedIncrease = 1 + (waveInfo.currentWave - 1) * 0.1; // 10% faster each wave
+      const cooldownReduction = Math.max(0.5, 1 - (waveInfo.currentWave - 1) * 0.05); // 5% faster shooting each wave, minimum 0.5x
+      
+      enemyEntity = createGrunt(
+        this.world,
+        enemyPosition,
+        this.dysonSphereEntity,
+        speedIncrease,
+        cooldownReduction
+      );
     }
     
     return enemyEntity;
