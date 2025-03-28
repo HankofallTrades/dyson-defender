@@ -76,7 +76,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
   });
   const [damageEffect, setDamageEffect] = useState({ active: false, intensity: 0 });
   const [gameState, setGameState] = useState<'not_started' | 'playing' | 'paused' | 'game_over'>('not_started');
-  const [gameOverStats, setGameOverStats] = useState({ finalScore: 0, survivalTime: 0, enemiesDefeated: 0 });
+  const [gameOverStats, setGameOverStats] = useState({ finalScore: 0, survivalTime: 0, enemiesDefeated: 0, wavesCompleted: 0 });
   const [waveCountdown, setWaveCountdown] = useState<number | null>(null);
   const [waveComplete, setWaveComplete] = useState(false);
   const [alertMessages, setAlertMessages] = useState<string[]>([]);

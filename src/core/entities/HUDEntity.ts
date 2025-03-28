@@ -45,7 +45,8 @@ export function createHUD(world: World, playerEntity: number, dysonSphereEntity:
   world.addComponent(entity, 'GameOverStats', {
     finalScore: 0,
     survivalTime: 0,
-    enemiesDefeated: 0
+    enemiesDefeated: 0,
+    wavesCompleted: 0
   });
   
   // Add reticle component

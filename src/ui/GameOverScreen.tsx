@@ -7,6 +7,7 @@ interface GameOverScreenProps {
     finalScore: number;
     survivalTime: number;
     enemiesDefeated: number;
+    wavesCompleted: number;
     level?: number; // Optional level property
   };
   onRestart: () => void;
@@ -30,11 +31,6 @@ const styles = {
 };
 
 const GameOverScreen: React.FC<GameOverScreenProps> = ({ stats, onRestart }) => {
-  // Format survival time into minutes and seconds
-  const minutes = Math.floor(stats.survivalTime / 60);
-  const seconds = Math.floor(stats.survivalTime % 60);
-  const timeString = `${minutes}m ${seconds}s`;
-
   // Ensure pointer lock is released when this component mounts
   useEffect(() => {
     if (document.pointerLockElement) {
@@ -72,7 +68,7 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ stats, onRestart }) => 
         `
       }}>
         <p className="text-2xl" style={{ color: '#00ffff', marginBottom: '1.5rem' }}>Final Score: {stats.finalScore}</p>
-        <p className="text-xl" style={{ color: '#ff00ff', marginBottom: '1rem' }}>Survival Time: {timeString}</p>
+        <p className="text-xl" style={{ color: '#ff00ff', marginBottom: '1rem' }}>Waves Completed: {stats.wavesCompleted}</p>
         <p className="text-xl" style={{ color: '#ff00ff', marginBottom: '1rem' }}>Enemies Defeated: {stats.enemiesDefeated}</p>
         {stats.level && <p className="text-xl" style={{ color: '#ff00ff' }}>You reached level {stats.level}</p>}
       </div>

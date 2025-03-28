@@ -1,5 +1,5 @@
 import { System, World } from '../World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, Renderable, DamageEffect, GameStateDisplay, GameOverStats, Shield, Reticle, Radar, Enemy, Position, Rotation } from '../components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, Renderable, DamageEffect, GameStateDisplay, GameOverStats, Shield, Reticle, Radar, Enemy, Position, Rotation, WaveInfo } from '../components';
 import { InputManager } from '../input/InputManager';
 import * as THREE from 'three';
 
@@ -159,6 +159,15 @@ export class HUDSystem implements System {
       // Calculate enemies defeated based on score
       // This is a simplified example - you might have a dedicated counter in a real game
       gameOverStats.enemiesDefeated = Math.floor(scoreDisplay.score / 10);
+      
+      // Get the current wave information
+      const waveEntities = this.world.getEntitiesWith(['WaveInfo']);
+      if (waveEntities.length > 0) {
+        const waveInfo = this.world.getComponent<WaveInfo>(waveEntities[0], 'WaveInfo');
+        if (waveInfo) {
+          gameOverStats.wavesCompleted = waveInfo.currentWave;
+        }
+      }
     }
     
     // Don't display game over message in comms area
@@ -254,6 +263,7 @@ export class HUDSystem implements System {
       gameOverStats.finalScore = 0;
       gameOverStats.survivalTime = 0;
       gameOverStats.enemiesDefeated = 0;
+      gameOverStats.wavesCompleted = 0;
     }
     
     // Reset message display

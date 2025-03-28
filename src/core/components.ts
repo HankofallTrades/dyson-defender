@@ -159,6 +159,7 @@ export interface GameOverStats {
   finalScore: number;
   survivalTime: number;
   enemiesDefeated: number;
+  wavesCompleted: number;
 }
 
 export interface Reticle {
