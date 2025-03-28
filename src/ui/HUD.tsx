@@ -138,6 +138,9 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
   // Use a ref to track processed messages so we have immediate access to the latest value
   const processedMessagesRef = useRef<Set<string>>(new Set());
   
+  // Add this ref near the other refs (around line 95)
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
   // Update UI data from ECS world
   useEffect(() => {
     let lastRender = performance.now();
@@ -174,22 +177,17 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         const newMessage = messageDisplay.message;
         
         // Only process if this is a new message that we haven't seen before
-        // Using the ref for immediate access to the latest processed messages
         if (newMessage && newMessage.trim() !== '' && 
             !processedMessagesRef.current.has(newMessage) && 
-            !alertMessages.includes(newMessage) &&  // Also check current alert messages
+            !alertMessages.includes(newMessage) &&  
             !(newMessage === "OBJECTIVE: DEFEND THE DYSON SPHERE" && 
               alertMessages.includes("OBJECTIVE: DEFEND THE DYSON SPHERE"))) {
           
           // Add to processed messages ref immediately
           processedMessagesRef.current.add(newMessage);
           
-          // Add to alert messages array
-          setAlertMessages(prev => {
-            const newMessages = [...prev, newMessage];
-            // Limit to last 4 messages if we have more
-            return newMessages.length > 4 ? newMessages.slice(-4) : newMessages;
-          });
+          // Add to alert messages array - keep all messages, don't limit to 4
+          setAlertMessages(prev => [...prev, newMessage]);
         }
         
         setMessage(newMessage);
@@ -435,6 +433,13 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
       setAnimatedMessages(new Set());
     }
   }, [waveCountdown]);
+  
+  // Add this effect to scroll to the bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [alertMessages]);
   
   // Convert hex color to CSS color format
   const hexToCSS = (hexColor: number): string => {
@@ -1053,9 +1058,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
             
             {/* Normal console content when no wave notification */}
             {waveCountdown === null && (
-              <div style={{ 
-                position: 'relative', 
-                zIndex: 2,
+              <div style={{
                 display: 'flex',
                 flexDirection: 'column',
                 height: '100%',
@@ -1067,8 +1070,8 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
               }}>
                 {/* Display messages with oldest at the top, newest at the bottom */}
                 {alertMessages.map((alert, index) => {
-                  // Animate the newest message (last one in the array)
-                  const shouldAnimate = index === alertMessages.length - 1 && !animatedMessages.has(alert);
+                  // Only animate messages that haven't been animated yet
+                  const shouldAnimate = !animatedMessages.has(alert);
                   
                   // When a message has been rendered with animation, add it to the set
                   if (shouldAnimate) {
@@ -1077,26 +1080,58 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
                       setAnimatedMessages(prev => new Set([...prev, alert]));
                     }, 2100); // Wait for animation to complete
                   }
+
+                  // Split message into lines with max 25 characters per line
+                  const words = alert.split(' ');
+                  let lines: string[] = [];
+                  let currentLine = '';
+
+                  words.forEach(word => {
+                    if (currentLine.length + word.length + 1 > 25) {
+                      lines.push(currentLine.trim());
+                      currentLine = word;
+                    } else {
+                      currentLine += (currentLine ? ' ' : '') + word;
+                    }
+                  });
+                  if (currentLine) {
+                    lines.push(currentLine.trim());
+                  }
                   
                   return (
                     <div 
-                      key={`alert-${index}-${alert}`} // Add alert to key to ensure unique keys 
+                      key={`alert-${index}-${alert}`}
                       style={{ 
-                        color: alert.includes('OBJECTIVE') ? '#00ffff' : '#ff5555', 
+                        color: alert.includes('OBJECTIVE') ? '#00ff00' : '#ff5555', 
                         fontSize: '0.7rem', 
                         marginBottom: '8px',
                         width: '100%',
                         lineHeight: '1.2'
                       }}
                     >
-                      &gt; <span 
-                        className={shouldAnimate ? "typing-animation" : ""}
-                        style={{
-                          display: 'inline-block',
-                          maxWidth: 'calc(100% - 15px)',
-                          wordBreak: 'break-word'
-                        }}
-                      >{alert}</span>
+                      &gt; {lines.map((line, lineIndex) => (
+                        <div 
+                          key={`line-${lineIndex}`}
+                          style={{
+                            display: 'block',
+                            marginLeft: lineIndex > 0 ? '12px' : '0'
+                          }}
+                        >
+                          <span 
+                            className={shouldAnimate ? `typing-animation line-${lineIndex}` : ""}
+                            style={{
+                              display: 'inline-block',
+                              maxWidth: 'calc(100% - 15px)',
+                              wordBreak: 'break-word',
+                              '--delay': lineIndex * 1.2,
+                              '--total-lines': lines.length,
+                              '--line-index': lineIndex
+                            } as React.CSSProperties}
+                          >
+                            {line}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   );
                 })}
@@ -1105,6 +1140,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
                     &gt; No messages
                   </div>
                 )}
+                <div ref={messagesEndRef} /> {/* This element helps us scroll to the bottom */}
               </div>
             )}
           </div>

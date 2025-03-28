@@ -952,10 +952,62 @@
   overflow: hidden;
   white-space: nowrap;
   width: 0;
-  animation: 
-    typewriter 2s steps(40, end) forwards,
-    cursor-blink 0.75s step-end infinite;
-  border-right: 2px solid;
-  border-right-color: inherit;
+  animation: typewriter 1s steps(25, end) forwards;
+  animation-delay: calc(var(--delay, 0) * 1s);
   vertical-align: bottom;
+}
+
+/* Only show cursor on the current line being typed */
+.typing-animation::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: currentColor;
+  margin-left: 1px;
+  vertical-align: bottom;
+  opacity: 0;
+  animation: cursor-blink 0.75s step-end infinite;
+  animation-delay: calc(var(--delay, 0) * 1s);
+}
+
+/* Show cursor only when it's this line's turn to animate */
+.typing-animation.line-0::after {
+  opacity: 1;
+  animation-play-state: running;
+}
+
+.typing-animation:not(.line-0)::after {
+  opacity: 0;
+  animation-play-state: paused;
+}
+
+/* For subsequent lines, show cursor only after previous line is done */
+.typing-animation[class*="line-"]::after {
+  opacity: 0;
+  animation-play-state: paused;
+}
+
+.typing-animation.line-1::after {
+  opacity: 1;
+  animation-play-state: running;
+  animation-delay: calc(1 * 1.2s);
+}
+
+.typing-animation.line-2::after {
+  opacity: 1;
+  animation-play-state: running;
+  animation-delay: calc(2 * 1.2s);
+}
+
+.typing-animation.line-3::after {
+  opacity: 1;
+  animation-play-state: running;
+  animation-delay: calc(3 * 1.2s);
+}
+
+.typing-animation.line-4::after {
+  opacity: 1;
+  animation-play-state: running;
+  animation-delay: calc(4 * 1.2s);
 } 
