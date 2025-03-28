@@ -63,7 +63,7 @@ export function createLaser(
   // Add projectile component
   world.addComponent(entity, 'Projectile', {
     speed: laserSpeed,
-    damage: 10,
+    damage: 5, // Halved damage since we fire two lasers at once
     lifetime: 6, // 6 seconds lifetime - doubled to allow lasers to travel further
     timeAlive: 0,
     ownerEntity: ownerEntity // Store the owner entity ID

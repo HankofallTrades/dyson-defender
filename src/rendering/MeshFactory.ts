@@ -67,6 +67,39 @@ export class MeshFactory {
     const wing = new THREE.Mesh(wingGeometry, wingMaterial);
     wing.position.y = -1;
     group.add(wing);
+    
+    // Add dual laser cannons on each side of the ship
+    [-1.5, 1.5].forEach(x => {
+      const cannonGroup = new THREE.Group();
+      // Position cannons on front sides
+      cannonGroup.position.set(x, -0.5, 1.0);
+      group.add(cannonGroup);
+
+      // Main cannon barrel
+      const barrelGeometry = new THREE.CylinderGeometry(0.12, 0.15, 1.0, 8);
+      const barrelMaterial = new THREE.MeshPhongMaterial({
+        color: 0x444444, // Dark gray for cannons
+        shininess: 90
+      });
+      const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
+      
+      // Rotate barrel to point forward (along positive Z)
+      barrel.rotation.x = Math.PI / 2;
+      cannonGroup.add(barrel);
+
+      // Energy glow at barrel end
+      const glowGeometry = new THREE.SphereGeometry(0.14, 8, 8);
+      const glowMaterial = new THREE.MeshPhongMaterial({
+        color: COLORS.LASER_GREEN,
+        emissive: COLORS.LASER_GREEN,
+        emissiveIntensity: 0.7,
+        transparent: true,
+        opacity: 0.8
+      });
+      const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+      glow.position.z = 0.5; // Position at the end of the barrel
+      cannonGroup.add(glow);
+    });
 
     // Apply scale
     group.scale.set(renderable.scale, renderable.scale, renderable.scale);

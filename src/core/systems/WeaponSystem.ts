@@ -94,15 +94,33 @@ export class WeaponSystem implements System {
     forward.applyMatrix4(pitchMatrix);
     forward.applyMatrix4(yawMatrix);
     
-    // Create spawn position (2 units in front of the ship)
-    const spawnPos = {
-      x: position.x + forward.x * 2,
-      y: position.y + forward.y * 2,
-      z: position.z + forward.z * 2
-    };
+    // Create right vector for positioning the dual cannons
+    const right = new THREE.Vector3(1, 0, 0);
+    right.applyMatrix4(pitchMatrix);
+    right.applyMatrix4(yawMatrix);
     
-    // Create the laser entity
-    createLaser(this.world, this.scene, spawnPos, forward, entity);
+    // Define cannon offset positions (left and right of the ship)
+    const cannonOffsets = [-1.5, 1.5];
+    
+    // Fire from both cannons
+    cannonOffsets.forEach(offset => {
+      // Calculate the cannon position
+      const cannonPos = new THREE.Vector3(
+        position.x + right.x * offset + forward.x * 2,
+        position.y + right.y * offset + forward.y * 2 - 0.5, // Adjust for cannon height
+        position.z + right.z * offset + forward.z * 2
+      );
+      
+      // Spawn position for the laser
+      const spawnPos = {
+        x: cannonPos.x,
+        y: cannonPos.y,
+        z: cannonPos.z
+      };
+      
+      // Create the laser entity
+      createLaser(this.world, this.scene, spawnPos, forward, entity);
+    });
   }
   
   private updateProjectiles(deltaTime: number): void {

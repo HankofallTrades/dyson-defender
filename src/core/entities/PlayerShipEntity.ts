@@ -38,7 +38,7 @@ export function createPlayerShip(world: World): number {
   // Add weapon cooldown component
   world.addComponent(entity, 'LaserCooldown', {
     current: 0,
-    max: 0.25, // 4 shots per second
+    max: 0.3, // Slightly slower fire rate to balance dual cannons
     canFire: true
   });
   
