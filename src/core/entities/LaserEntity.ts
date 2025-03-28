@@ -15,6 +15,10 @@ export function createLaser(
   // Check if the owner is a player (has InputReceiver component)
   const isPlayerLaser = world.hasComponent(ownerEntity, 'InputReceiver');
   
+  // Check if the owner is a Warp Raider
+  const enemy = world.getComponent<{ type: string }>(ownerEntity, 'Enemy');
+  const isWarpRaider = enemy?.type === 'warpRaider';
+  
   // Add position component
   world.addComponent(entity, 'Position', { 
     x: position.x, 
@@ -66,7 +70,7 @@ export function createLaser(
   // Add projectile component with damage based on owner type
   world.addComponent(entity, 'Projectile', {
     speed: laserSpeed,
-    damage: isPlayerLaser ? 5 : 10, // 5 damage for player (dual cannons), 10 for enemies
+    damage: isPlayerLaser ? 5 : isWarpRaider ? 15 : 10, // 5 for player, 15 for warp raider, 10 for other enemies
     lifetime: 6, // 6 seconds lifetime - doubled to allow lasers to travel further
     timeAlive: 0,
     ownerEntity: ownerEntity // Store the owner entity ID
