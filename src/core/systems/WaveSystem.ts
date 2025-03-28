@@ -261,7 +261,7 @@ export class WaveSystem implements System {
         enemyEntity = createAsteroid(this.world, asteroidPosition, this.dysonSphereEntity);
         
         if (!this.hasAnnouncedAsteroid && this.hudSystem) {
-          this.hudSystem.displayMessage("CRITICAL THREAT: Asteroid on collision course with Dyson Sphere!", 5);
+          this.hudSystem.displayMessage("CRITICAL THREAT: Incoming Asteroid!", 5);
           this.hasAnnouncedAsteroid = true;
         }
         return enemyEntity;
@@ -279,7 +279,7 @@ export class WaveSystem implements System {
         enemyEntity = createWarpRaider(this.world, enemyPosition, this.dysonSphereEntity);
         
         if (!this.hasAnnouncedWarpRaider && this.hudSystem) {
-          this.hudSystem.displayMessage("ALERT: Fast Warp Raider incoming!", 4);
+          this.hudSystem.displayMessage("NEW THREAT: Warp Raider incoming!", 4);
           this.hasAnnouncedWarpRaider = true;
         }
         return enemyEntity;
@@ -293,7 +293,7 @@ export class WaveSystem implements System {
       
       // Only show the message once per wave
       if (!this.hasAnnouncedShieldGuardian && this.hudSystem) {
-        this.hudSystem.displayMessage("WARNING: Shield Guardian detected!", 4);
+        this.hudSystem.displayMessage("NEW THREAT: Shield Guardian detected!", 4);
         this.hasAnnouncedShieldGuardian = true;
       }
     } 
