@@ -1,6 +1,6 @@
 import { World } from '../World';
 import * as THREE from 'three';
-import { Position, Velocity, Rotation, Health, Collider, Enemy, ShieldComponent, ShieldBubbleComponent, ShieldBarComponent } from '../components';
+import type { Position, Velocity, Rotation, Health, Collider, Enemy, ShieldComponent, ShieldBubbleComponent, ShieldBarComponent } from '../components';
 import { COLORS } from '../../constants/colors';
 
 export function createShieldGuardian(

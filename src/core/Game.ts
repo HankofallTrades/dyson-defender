@@ -121,6 +121,9 @@ class Game {
     this.devSystem = new DevSystem(this.world, this.sceneManager, this.container);
     this.world.addSystem(this.devSystem);
     
+    // Add the AutoRotateSystem to handle rotation of entities
+    this.world.addSystem(new AutoRotateSystem(this.world));
+    
     // Add the rendering system last
     this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
   }
@@ -128,7 +131,7 @@ class Game {
   private initEntities(): void {
     const dysonSphere = createDysonSphere(this.world);
     const playerShip = createPlayerShip(this.world);
-    const cameraEntity = createCamera(this.world, playerShip);
+    const _cameraEntity = createCamera(this.world, playerShip);
     createHUD(this.world, playerShip, dysonSphere);
     
     // Set camera for the floating score system after entities are created
