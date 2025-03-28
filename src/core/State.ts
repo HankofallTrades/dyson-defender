@@ -63,8 +63,8 @@ export const initialGameState: GameState = {
   
   // Boost system initial values
   boostActive: false,
-  boostRemaining: 1.0, // 1 second of boost
-  boostCooldown: 0
+  boostRemaining: 1.0, // Full boost (1 second)
+  boostCooldown: 0  // No cooldown - ready to use
 };
 
 /**

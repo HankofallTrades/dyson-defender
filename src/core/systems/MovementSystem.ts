@@ -129,17 +129,10 @@ export class MovementSystem implements System {
    * @param boostKeyPressed Whether the boost key is currently pressed
    */
   private updateBoostState(entity: number, deltaTime: number, boostKeyPressed: boolean): void {
-    // Get or create the Boost component
-    let boost = this.world.getComponent<Boost>(entity, 'Boost');
+    // Get the Boost component - should already exist from PlayerShipEntity creation
+    const boost = this.world.getComponent<Boost>(entity, 'Boost');
     if (!boost) {
-      boost = {
-        active: false,
-        remaining: 1.0, // 1 second of boost (changed from 3.0)
-        maxTime: 1.0,   // 1 second total (changed from 3.0)
-        cooldown: 0,
-        speedMultiplier: 1.75 // 75% speed increase
-      };
-      this.world.addComponent(entity, 'Boost', boost);
+      return; // Skip if no boost component (shouldn't happen now)
     }
     
     // Track if we just released the boost key

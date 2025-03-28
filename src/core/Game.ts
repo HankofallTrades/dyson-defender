@@ -160,8 +160,14 @@ class Game {
     // to prevent memory leaks and duplicate objects
     this.sceneManager.clearScene();
     
+    // Reset the game state
+    this.stateManager.resetState();
+    
     // Clear all entities by creating a new World instance
     this.world = new World();
+    
+    // Set the game state in the world
+    this.world.setGameState(this.stateManager.getState());
     
     // Reinitialize systems and entities
     this.initSystems();
@@ -325,8 +331,14 @@ class Game {
     // to prevent memory leaks and duplicate objects
     this.sceneManager.clearScene();
     
+    // Reset the game state
+    this.stateManager.resetState();
+    
     // Clear all entities by creating a new World instance
     this.world = new World();
+    
+    // Set the game state in the world
+    this.world.setGameState(this.stateManager.getState());
     
     // Reinitialize systems and entities
     this.initSystems();

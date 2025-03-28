@@ -1,6 +1,6 @@
 // src/core/entities/PlayerShipEntity.ts
 import { World } from '../World';
-import { Position, Velocity, Renderable, InputReceiver, Rotation, MouseLook, LaserCooldown, Collider, Health } from '../components';
+import { Position, Velocity, Renderable, InputReceiver, Rotation, MouseLook, LaserCooldown, Collider, Health, Boost } from '../components';
 import { COLORS } from '../../constants/colors';
 
 export function createPlayerShip(world: World): number {
@@ -40,6 +40,15 @@ export function createPlayerShip(world: World): number {
     current: 0,
     max: 0.25, // 4 shots per second
     canFire: true
+  });
+  
+  // Add boost component with initial values
+  world.addComponent(entity, 'Boost', {
+    active: false,
+    remaining: 1.0, // Full boost
+    maxTime: 1.0,
+    cooldown: 0, // No cooldown
+    speedMultiplier: 1.75
   });
   
   // Add collider for collision detection
