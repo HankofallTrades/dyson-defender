@@ -1,6 +1,6 @@
 import { World, System } from '../World';
-import { Position, PowerUp, LaserCooldown } from '../components';
-import { createFireRatePowerUp } from '../entities/PowerUpEntity';
+import { Position, PowerUp, LaserCooldown, InputReceiver, Velocity } from '../components';
+import { createFireRatePowerUp, createSpeedPowerUp, getRandomPowerUpType } from '../entities/PowerUpEntity';
 import * as THREE from 'three';
 
 /**
@@ -28,8 +28,15 @@ export class PowerUpSystem implements System {
       z: position.z
     };
     
-    // Create the power-up at exactly this position
-    createFireRatePowerUp(this.world, powerUpPos);
+    // Randomly choose which power-up to spawn
+    const powerUpType = getRandomPowerUpType();
+    
+    // Create the appropriate power-up at this position
+    if (powerUpType === 'fireRate') {
+      createFireRatePowerUp(this.world, powerUpPos);
+    } else if (powerUpType === 'speed') {
+      createSpeedPowerUp(this.world, powerUpPos);
+    }
   }
   
   /**
@@ -44,6 +51,8 @@ export class PowerUpSystem implements System {
     // Handle different power-up types
     if (powerUp.type === 'fireRate') {
       this.applyFireRatePowerUp(playerEntity, powerUp);
+    } else if (powerUp.type === 'speed') {
+      this.applySpeedPowerUp(playerEntity, powerUp);
     }
     
     // Remove the power-up entity after collection
@@ -77,6 +86,36 @@ export class PowerUpSystem implements System {
     // Add the PowerUp component to the player to track its duration
     this.world.addComponent(playerEntity, 'PowerUp', {
       type: 'fireRate',
+      duration: powerUp.duration,
+      timeRemaining: powerUp.duration,
+      active: true
+    });
+  }
+  
+  /**
+   * Apply speed power-up effect to increase player movement speed by 1.5x
+   */
+  private applySpeedPowerUp(playerEntity: number, powerUp: PowerUp): void {
+    // Get InputSystem's BASE_SPEED indirectly through an InputReceiver entity
+    const inputReceiver = this.world.getComponent<InputReceiver>(playerEntity, 'InputReceiver');
+    if (!inputReceiver) {
+      return;
+    }
+    
+    // Store original velocity multiplier if not already stored
+    const velocity = this.world.getComponent<Velocity>(playerEntity, 'Velocity');
+    if (velocity && !(velocity as any).originalMultiplier) {
+      (velocity as any).originalMultiplier = 1.0;
+      (velocity as any).speedBoostActive = true;
+    }
+    
+    // Activate power-up and set duration
+    powerUp.active = true;
+    powerUp.timeRemaining = powerUp.duration;
+    
+    // Add the PowerUp component to the player to track its duration
+    this.world.addComponent(playerEntity, 'PowerUp', {
+      type: 'speed',
       duration: powerUp.duration,
       timeRemaining: powerUp.duration,
       active: true
@@ -141,6 +180,15 @@ export class PowerUpSystem implements System {
         if (laserCooldown && (laserCooldown as any).originalMax) {
           // Restore original cooldown
           laserCooldown.max = (laserCooldown as any).originalMax;
+        }
+      }
+    } else if (powerUp.type === 'speed') {
+      // Only handle if this is the player entity (has InputReceiver)
+      if (this.world.hasComponent(entity, 'InputReceiver')) {
+        const velocity = this.world.getComponent<Velocity>(entity, 'Velocity');
+        if (velocity && (velocity as any).speedBoostActive) {
+          // Mark the speed boost as inactive
+          (velocity as any).speedBoostActive = false;
         }
       }
     }

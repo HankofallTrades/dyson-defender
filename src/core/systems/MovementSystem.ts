@@ -1,6 +1,6 @@
 // src/core/systems/MovementSystem.ts
 import { System, World } from '../World';
-import { Position, Velocity, InputReceiver, Rotation, Boost } from '../components';
+import { Position, Velocity, InputReceiver, Rotation, Boost, PowerUp } from '../components';
 import { SceneManager } from '../../rendering/SceneManager';
 import { InputManager } from '../input/InputManager';
 import * as THREE from 'three';
@@ -58,9 +58,21 @@ export class MovementSystem implements System {
       // Apply boost to velocity if active
       let speedMultiplier = 1.0;
       if (hasInputReceiver) {
+        // Check if the ship boost is active
         const boost = this.world.getComponent<Boost>(entity, 'Boost');
         if (boost && boost.active) {
           speedMultiplier = boost.speedMultiplier;
+        }
+        
+        // Check if a speed power-up is active
+        const powerUp = this.world.getComponent<PowerUp>(entity, 'PowerUp');
+        if (powerUp && powerUp.active && powerUp.type === 'speed') {
+          speedMultiplier *= 1.5; // Reduced from 2.0 to 1.5 for a more balanced boost
+        }
+        
+        // Also check for speedBoostActive flag from PowerUpSystem
+        if ((velocity as any).speedBoostActive) {
+          speedMultiplier *= 1.5; // Reduced from 2.0 to 1.5 for a more balanced boost
         }
       }
 

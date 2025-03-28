@@ -1000,52 +1000,87 @@ export class MeshFactory {
     light.position.set(0, 0, 0);
     group.add(light);
     
-    // Add fire rate symbol in the center (double arrow)
+    // Create a billboard group for the icon
     const symbolGroup = new THREE.Group();
     
-    // Create double arrow shape to indicate faster fire rate - larger and more visible
-    // Arrow 1 (top)
-    const arrow1 = new THREE.Group();
+    // Check power-up type based on color to determine which icon to show
+    const isSpeedPowerUp = renderable.color === COLORS.POWERUP_SPEED;
     
-    // Arrow body - thicker
-    const arrowLine1 = new THREE.Mesh(
-      new THREE.BoxGeometry(0.6, 0.15, 0.15),
-      new THREE.MeshBasicMaterial({ color: 0x000000 })
-    );
-    arrowLine1.position.set(0, 0.18, 0);
-    arrow1.add(arrowLine1);
-    
-    // Arrow head - larger
-    const arrowHead1 = new THREE.Mesh(
-      new THREE.ConeGeometry(0.15, 0.25, 8),
-      new THREE.MeshBasicMaterial({ color: 0x000000 })
-    );
-    arrowHead1.position.set(0.35, 0.18, 0);
-    arrowHead1.rotation.z = -Math.PI / 2;
-    arrow1.add(arrowHead1);
-    
-    // Arrow 2 (bottom)
-    const arrow2 = new THREE.Group();
-    
-    // Arrow body - thicker
-    const arrowLine2 = new THREE.Mesh(
-      new THREE.BoxGeometry(0.6, 0.15, 0.15),
-      new THREE.MeshBasicMaterial({ color: 0x000000 })
-    );
-    arrowLine2.position.set(0, -0.18, 0);
-    arrow2.add(arrowLine2);
-    
-    // Arrow head - larger
-    const arrowHead2 = new THREE.Mesh(
-      new THREE.ConeGeometry(0.15, 0.25, 8),
-      new THREE.MeshBasicMaterial({ color: 0x000000 })
-    );
-    arrowHead2.position.set(0.35, -0.18, 0);
-    arrowHead2.rotation.z = -Math.PI / 2;
-    arrow2.add(arrowHead2);
-    
-    symbolGroup.add(arrow1);
-    symbolGroup.add(arrow2);
+    if (isSpeedPowerUp) {
+      // Create lightning bolt shape for speed boost power-up
+      const lightning = new THREE.Group();
+      
+      // Main bolt shape
+      const boltGeometry = new THREE.BufferGeometry();
+      const vertices = new Float32Array([
+        0, 0.3, 0,    // Top point
+        -0.1, 0.05, 0, // Left bend
+        0.05, 0.05, 0,  // Right after bend
+        -0.15, -0.2, 0, // Left point at bottom
+        0, -0.1, 0,    // Bottom center
+        0.15, 0.1, 0    // Right point
+      ]);
+      const indices = [
+        0, 1, 2,
+        1, 3, 4,
+        1, 4, 2,
+        2, 4, 5
+      ];
+      boltGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+      boltGeometry.setIndex(indices);
+      boltGeometry.computeVertexNormals();
+      
+      const boltMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+      const boltMesh = new THREE.Mesh(boltGeometry, boltMaterial);
+      boltMesh.scale.set(1.5, 1.5, 1.5); // Make it larger
+      lightning.add(boltMesh);
+      
+      symbolGroup.add(lightning);
+    } else {
+      // Create double arrow shape to indicate faster fire rate (default for fireRate power-up)
+      // Arrow 1 (top)
+      const arrow1 = new THREE.Group();
+      
+      // Arrow body - thicker
+      const arrowLine1 = new THREE.Mesh(
+        new THREE.BoxGeometry(0.6, 0.15, 0.15),
+        new THREE.MeshBasicMaterial({ color: 0x000000 })
+      );
+      arrowLine1.position.set(0, 0.18, 0);
+      arrow1.add(arrowLine1);
+      
+      // Arrow head - larger
+      const arrowHead1 = new THREE.Mesh(
+        new THREE.ConeGeometry(0.15, 0.25, 8),
+        new THREE.MeshBasicMaterial({ color: 0x000000 })
+      );
+      arrowHead1.position.set(0.35, 0.18, 0);
+      arrowHead1.rotation.z = -Math.PI / 2;
+      arrow1.add(arrowHead1);
+      
+      // Arrow 2 (bottom)
+      const arrow2 = new THREE.Group();
+      
+      // Arrow body - thicker
+      const arrowLine2 = new THREE.Mesh(
+        new THREE.BoxGeometry(0.6, 0.15, 0.15),
+        new THREE.MeshBasicMaterial({ color: 0x000000 })
+      );
+      arrowLine2.position.set(0, -0.18, 0);
+      arrow2.add(arrowLine2);
+      
+      // Arrow head - larger
+      const arrowHead2 = new THREE.Mesh(
+        new THREE.ConeGeometry(0.15, 0.25, 8),
+        new THREE.MeshBasicMaterial({ color: 0x000000 })
+      );
+      arrowHead2.position.set(0.35, -0.18, 0);
+      arrowHead2.rotation.z = -Math.PI / 2;
+      arrow2.add(arrowHead2);
+      
+      symbolGroup.add(arrow1);
+      symbolGroup.add(arrow2);
+    }
     
     // Move symbol slightly forward for better visibility
     symbolGroup.position.z = 0.2;

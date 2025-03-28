@@ -283,7 +283,7 @@ export interface DevMode {
 }
 
 export interface PowerUp {
-  type: 'fireRate' | 'shield' | 'multiplier';
+  type: 'fireRate' | 'shield' | 'multiplier' | 'speed';
   duration: number;
   timeRemaining: number;
   active: boolean;

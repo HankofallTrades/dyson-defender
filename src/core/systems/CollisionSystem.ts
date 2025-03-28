@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { World, System } from '../World';
-import { Position, Collider, Projectile, Health, Enemy, InputReceiver, Shield, ShieldComponent, ShieldBubbleComponent, HealthBarComponent } from '../components';
+import { Position, Collider, Projectile, Health, Enemy, InputReceiver, Shield, ShieldComponent, ShieldBubbleComponent, HealthBarComponent, PowerUp } from '../components';
 import { HUDSystem } from './HUDSystem';
 import { ShieldSystem } from './ShieldSystem';
 import { AnimationSystem } from './AnimationSystem';
@@ -420,18 +420,17 @@ export class CollisionSystem implements System {
                 // Still update the score in HUD
                 hudSystem.incrementScore(scoreValue);
                 
-                // Spawn a power-up at the enemy's position (100% chance)
-                if (this.powerUpSystem) {
-                  // Debug enemy position before spawning
-                  console.log(`CollisionSystem: About to spawn power-up at position X=${enemyPosition.x.toFixed(2)}, Y=${enemyPosition.y.toFixed(2)}, Z=${enemyPosition.z.toFixed(2)}`);
-                  console.log(`Enemy type: ${enemy.type}, ID: ${targetEntity}`);
-                  
+                // Spawn a power-up at the enemy's position (10% chance)
+                if (this.powerUpSystem && Math.random() < 0.1) {
                   // Create a fresh copy of the enemy position to avoid reference issues
                   const powerUpPosition = {
                     x: enemyPosition.x,
                     y: enemyPosition.y,
                     z: enemyPosition.z
                   };
+                  
+                  // Debug enemy position before spawning
+                  console.log(`Enemy destroyed: ${enemy.type} at position X=${powerUpPosition.x.toFixed(2)}, Y=${powerUpPosition.y.toFixed(2)}, Z=${powerUpPosition.z.toFixed(2)}`);
                   
                   this.powerUpSystem.spawnPowerUpAtPosition(powerUpPosition);
                 }
@@ -664,6 +663,12 @@ export class CollisionSystem implements System {
       }
     }
     
+    // Get the power-up type to display the correct message
+    const powerUp = this.world.getComponent<PowerUp>(powerUpEntity, 'PowerUp');
+    if (!powerUp) {
+      return;
+    }
+    
     // Apply the power-up effect
     this.powerUpSystem.applyPowerUp(powerUpEntity, playerEntity);
     console.log("Power-up applied successfully");
@@ -671,8 +676,12 @@ export class CollisionSystem implements System {
     // Get HUD system for notifications
     const hudSystem = this.getHUDSystem();
     if (hudSystem) {
-      // Display message about collecting power-up
-      hudSystem.displayMessage("Double Fire Rate Power-Up Collected!", 2);
+      // Display message based on power-up type
+      if (powerUp.type === 'fireRate') {
+        hudSystem.displayMessage("Double Fire Rate Power-Up Collected!", 2);
+      } else if (powerUp.type === 'speed') {
+        hudSystem.displayMessage("1.5x Speed Boost Power-Up Collected!", 2);
+      }
     }
   }
 } 
