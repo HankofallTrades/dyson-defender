@@ -266,6 +266,15 @@ export interface ShieldBarComponent {
   visible: boolean;       // Whether the shield bar is visible
 }
 
+export interface HealthBarComponent {
+  entity: number;         // Entity to track for health display
+  offsetY: number;        // Vertical offset from entity position
+  width: number;          // Width of the health bar
+  height: number;         // Height of the health bar
+  visible: boolean;       // Whether the health bar is visible
+  showWhenDamaged: boolean; // Only show health bar when entity is damaged
+}
+
 // Developer mode component for debugging and inspection
 export interface DevMode {
   isActive: boolean;        // Whether dev mode is active

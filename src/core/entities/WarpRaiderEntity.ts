@@ -1,6 +1,6 @@
 import { World } from '../World';
 import * as THREE from 'three';
-import { Position, Renderable, Velocity, Rotation, Health, Collider, Animation } from '../components';
+import { Position, Renderable, Velocity, Rotation, Health, Collider, Animation, Enemy, HealthBarComponent } from '../components';
 import { COLORS } from '../../constants/colors';
 
 export function createWarpRaider(
@@ -47,6 +47,16 @@ export function createWarpRaider(
   world.addComponent(entity, 'Health', { 
     current: 30, 
     max: 30 
+  });
+  
+  // Add health bar component that only shows when damaged
+  world.addComponent(entity, 'HealthBarComponent', {
+    entity: entity,
+    offsetY: 7, // Position above the entity
+    width: 40,
+    height: 4,
+    visible: false, // Start invisible
+    showWhenDamaged: true // Only show when damaged
   });
   
   // Add renderable component with initial small scale

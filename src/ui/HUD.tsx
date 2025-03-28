@@ -1,6 +1,6 @@
 import React, { useEffect, useState, CSSProperties, useRef } from 'react';
 import { World } from '../core/World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position, WaveInfo, Radar, ShieldBarComponent, ShieldComponent } from '../core/components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position, WaveInfo, Radar, ShieldBarComponent, ShieldComponent, HealthBarComponent } from '../core/components';
 import { COLORS } from '../constants/colors';
 import StartScreen from './StartScreen';
 import GameOverScreen from './GameOverScreen';
@@ -115,6 +115,15 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
   
   // Add state for shield bars
   const [shieldBars, setShieldBars] = useState<Array<{
+    id: number;
+    position: { x: number, y: number };
+    width: number;
+    height: number;
+    percent: number;
+  }>>([]);
+  
+  // Add state for health bars
+  const [healthBars, setHealthBars] = useState<Array<{
     id: number;
     position: { x: number, y: number };
     width: number;
@@ -344,6 +353,47 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         }>;
         
         setShieldBars(newShieldBars);
+        
+        // Update health bars
+        const healthBarEntities = world.getEntitiesWith(['HealthBarComponent', 'Position']);
+        
+        const newHealthBars = healthBarEntities.map(entity => {
+          const healthBarComp = world.getComponent<HealthBarComponent>(entity, 'HealthBarComponent');
+          const positionComp = world.getComponent<Position>(entity, 'Position');
+          
+          if (!healthBarComp || !positionComp || !healthBarComp.visible) return null;
+          
+          // Get the health component to determine fill percentage
+          const healthComp = world.getComponent<Health>(healthBarComp.entity, 'Health');
+          if (!healthComp) return null;
+          
+          // Convert world position to screen coordinates
+          const basePos = worldToScreen({
+            x: positionComp.x,
+            y: positionComp.y + healthBarComp.offsetY, // Apply vertical offset
+            z: positionComp.z
+          }, camera);
+          
+          if (!basePos) return null;
+          
+          const percent = (healthComp.current / healthComp.max) * 100;
+          
+          return {
+            id: entity,
+            position: basePos,
+            width: healthBarComp.width,
+            height: healthBarComp.height,
+            percent
+          };
+        }).filter(bar => bar !== null) as Array<{
+          id: number;
+          position: { x: number, y: number };
+          width: number;
+          height: number;
+          percent: number;
+        }>;
+        
+        setHealthBars(newHealthBars);
       }
       
       // Request next frame update - use the timestamp
@@ -635,6 +685,34 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
             width: `${bar.percent}%`,
             height: '100%',
             background: 'linear-gradient(90deg, #21a9f3, #64c6f7)',
+            transition: 'width 0.2s ease'
+          }} />
+        </div>
+      ))}
+      
+      {/* Health Bars */}
+      {healthBars.map(bar => (
+        <div
+          key={bar.id}
+          style={{
+            position: 'absolute',
+            top: bar.position.y,
+            left: bar.position.x - bar.width / 2, // Center on position
+            width: `${bar.width}px`,
+            height: `${bar.height}px`,
+            background: 'rgba(0, 0, 0, 0.5)',
+            border: '1px solid #ff5252',
+            borderRadius: '2px',
+            overflow: 'hidden',
+            zIndex: 20,
+            pointerEvents: 'none',
+            boxShadow: '0 0 4px rgba(255, 82, 82, 0.6)'
+          }}
+        >
+          <div style={{
+            width: `${bar.percent}%`,
+            height: '100%',
+            background: 'linear-gradient(90deg, #ff5252, #ff8a80)',
             transition: 'width 0.2s ease'
           }} />
         </div>

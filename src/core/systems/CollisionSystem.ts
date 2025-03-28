@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { World, System } from '../World';
-import { Position, Collider, Projectile, Health, Enemy, InputReceiver, Shield, ShieldComponent, ShieldBubbleComponent } from '../components';
+import { Position, Collider, Projectile, Health, Enemy, InputReceiver, Shield, ShieldComponent, ShieldBubbleComponent, HealthBarComponent } from '../components';
 import { HUDSystem } from './HUDSystem';
 import { ShieldSystem } from './ShieldSystem';
 import { createFloatingScore } from '../entities/FloatingScoreEntity';
@@ -326,11 +326,18 @@ export class CollisionSystem implements System {
             }
           }
         }
-        
-        // Check if entity is destroyed
-        if (health.current <= 0) {
-          // If this is an enemy, update the score
-          if (this.world.hasComponent(targetEntity, 'Enemy')) {
+        // Check if entity is an enemy
+        else if (this.world.hasComponent(targetEntity, 'Enemy')) {
+          // Check if the enemy has a HealthBarComponent and update its visibility if damaged
+          if (this.world.hasComponent(targetEntity, 'HealthBarComponent')) {
+            const healthBar = this.world.getComponent<HealthBarComponent>(targetEntity, 'HealthBarComponent');
+            if (healthBar && healthBar.showWhenDamaged && health.current < health.max) {
+              healthBar.visible = true;
+            }
+          }
+          
+          // Check if entity is destroyed
+          if (health.current <= 0) {
             if (hudSystem) {
               // Get the enemy position for the floating score
               const enemyPosition = this.world.getComponent<Position>(targetEntity, 'Position');
@@ -350,10 +357,10 @@ export class CollisionSystem implements System {
                 // hudSystem.displayMessage("Enemy destroyed! +10 points", 1.5);
               }
             }
+            
+            // Remove the destroyed entity
+            this.world.removeEntity(targetEntity);
           }
-          
-          // Remove the destroyed entity
-          this.world.removeEntity(targetEntity);
         }
       }
     }
