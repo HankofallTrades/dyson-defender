@@ -48,8 +48,8 @@ export function createShieldGuardian(
   
   // Add shield component
   world.addComponent(guardian, 'ShieldComponent', {
-    currentShield: 5, // Increased from 3 to 5 hits to destroy
-    maxShield: 5
+    currentShield: 20, // Increased from 5 to 10 hits to destroy
+    maxShield: 20
   });
   
   // Add shield bar component for visual display

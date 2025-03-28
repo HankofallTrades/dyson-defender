@@ -45,8 +45,8 @@ export function createWarpRaider(
   
   // Add health component - 30 hit points as specified
   world.addComponent(entity, 'Health', { 
-    current: 30, 
-    max: 30 
+    current: 50, 
+    max: 50 
   });
   
   // Add health bar component that only shows when damaged
