@@ -200,7 +200,7 @@ export class WaveSystem implements System {
           const guardianEntity = createShieldGuardian(this.world, enemyPosition, this.dysonSphereEntity);
           
           if (this.hudSystem) {
-            this.hudSystem.displayMessage("WARNING: Shield Guardian detected!", 4);
+            this.hudSystem.displayMessage("NEW THREAT: Shield Guardian detected!", 4);
             this.hasAnnouncedShieldGuardian = true;
           }
         }, 500); // 500ms = 0.5 seconds
