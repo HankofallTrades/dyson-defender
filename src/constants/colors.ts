@@ -21,8 +21,8 @@ export const COLORS = {
   SHIELD_GUARDIAN_CRYSTAL: 0x00ccff, // Bright blue crystal body (changed from teal/cyan)
   SHIELD_GUARDIAN_SHARD: 0x66ddff,   // Lighter blue for crystal shards
   SHIELD_GUARDIAN_CORE: 0xffffff,    // Bright white core
-  SHIELD_BUBBLE: 0x0088ff,           // Vibrant blue for shield bubble (changed from green-cyan)
-  SHIELD_BUBBLE_INNER: 0x66aaff,     // Brighter blue inner glow
+  SHIELD_BUBBLE: 0x00ffff,           // Vibrant cyan for shield bubble (more electric blue)
+  SHIELD_BUBBLE_INNER: 0x66ffff,     // Brighter cyan inner glow
   
   // Warp Raider colors
   WARP_RAIDER_BASE: 0x1a0026, // Very dark purple for the main body

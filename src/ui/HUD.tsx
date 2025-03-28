@@ -706,7 +706,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
             width: `${1 * reticle.size}px`,
             background: reticle.color,
             boxShadow: `0 0 5px ${reticle.color}`,
-            opacity: 0.4
+            opacity: 0.6
           }}></div>
           
           {/* Corner brackets with lag effect - create a container for all brackets */}

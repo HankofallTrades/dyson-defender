@@ -376,110 +376,103 @@ export class MeshFactory {
   }
   
   private static createShieldBubbleMesh(renderable: Renderable): THREE.Object3D {
-    // Create a more distinctive shield effect
+    // Create a simple yet effective shield bubble
     const group = new THREE.Group();
     
-    // Base shield bubble - hexagonal panels for a honeycomb look
-    const icosaGeometry = new THREE.IcosahedronGeometry(1, 2); // Higher detail for more panels
-    const shieldMaterial = new THREE.MeshBasicMaterial({
-      color: renderable.color || COLORS.SHIELD_BUBBLE,
+    // Base shield bubble - main shield surface
+    const icosaGeometry = new THREE.IcosahedronGeometry(1, 3); 
+    const shieldMaterial = new THREE.MeshPhongMaterial({
+      color: 0x00ffff, // Pure cyan color for shield
       transparent: true,
-      opacity: 0.20, // Increased opacity for more vibrancy
+      opacity: 0.4, // Moderate opacity
       side: THREE.DoubleSide,
+      emissive: 0x0088ff, // Blue emissive for glow
+      emissiveIntensity: 0.5,
+      shininess: 100,
+      specular: 0xffffff,
+      flatShading: false,
     });
     const shieldMesh = new THREE.Mesh(icosaGeometry, shieldMaterial);
     group.add(shieldMesh);
     
-    // Inner energy field - pulsating core
-    const innerGeometry = new THREE.SphereGeometry(0.92, 32, 32);
+    // Inner energy field
+    const innerGeometry = new THREE.SphereGeometry(0.94, 32, 32);
     const innerMaterial = new THREE.MeshBasicMaterial({
-      color: COLORS.SHIELD_GUARDIAN_CORE,
+      color: 0x66ffff, 
       transparent: true,
-      opacity: 0.15, // Increased opacity for more vibrancy
+      opacity: 0.3,
     });
     const innerMesh = new THREE.Mesh(innerGeometry, innerMaterial);
     group.add(innerMesh);
     
-    // Create energy ripple effect with concentric rings
-    const ringCount = 5;
-    const ringsGroup = new THREE.Group();
+    // Add hexagonal grid pattern covering the entire surface with outlines
+    const hexGroup = new THREE.Group();
     
-    for (let i = 0; i < ringCount; i++) {
-      // Random ring radius between 0.5 and 0.95
-      const ringRadius = 0.5 + (Math.random() * 0.45);
-      const ringGeometry = new THREE.TorusGeometry(ringRadius, 0.005, 16, 100);
+    // Use Fibonacci lattice for even distribution on a sphere
+    const hexCount = 300; // Increased number for better coverage
+    const goldenRatio = (1 + Math.sqrt(5)) / 2;
+    
+    // Helper function to create a hexagon outline at a point on the sphere
+    const createHexagonOutline = (position: THREE.Vector3, radius: number) => {
+      const hexPoints = [];
+      // Create 6 points for hexagon
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI * 2 / 6) * i;
+        hexPoints.push(
+          new THREE.Vector3(
+            Math.cos(angle) * radius,
+            Math.sin(angle) * radius,
+            0
+          )
+        );
+      }
+      // Close the loop
+      hexPoints.push(hexPoints[0].clone());
       
-      // Random axis for orientation
-      const axis = new THREE.Vector3(
-        Math.random() * 2 - 1,
-        Math.random() * 2 - 1,
-        Math.random() * 2 - 1
-      ).normalize();
-      
-      // Create quaternion for random orientation
-      const quaternion = new THREE.Quaternion();
-      quaternion.setFromAxisAngle(axis, Math.random() * Math.PI * 2);
-      
-      const ringMaterial = new THREE.MeshBasicMaterial({
-        color: COLORS.SHIELD_BUBBLE,
+      // Create geometry from points
+      const geometry = new THREE.BufferGeometry().setFromPoints(hexPoints);
+      const material = new THREE.LineBasicMaterial({
+        color: 0x33ffff,
         transparent: true,
-        opacity: 0.35, // Increased opacity for more visibility
+        opacity: 0.2, // Very transparent, barely visible
       });
       
-      const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-      ring.quaternion.copy(quaternion);
+      // Create line loop
+      const hexagon = new THREE.Line(geometry, material);
       
-      // Store animation parameters as properties on the mesh
-      (ring as any).animData = {
-        radius: ringRadius,
-        speed: 0.2 + Math.random() * 0.3, // Random speed for variation
-        axis: axis,
-      };
+      // Position on the sphere at the given position
+      hexagon.position.copy(position);
       
-      ringsGroup.add(ring);
-    }
-    
-    group.add(ringsGroup);
-    
-    // Add hexagonal energy patterns on the surface
-    const hexGroup = new THREE.Group();
-    const hexCount = 30;
+      // Orient to face outward from the sphere center
+      hexagon.lookAt(new THREE.Vector3(0, 0, 0));
+      
+      return hexagon;
+    };
     
     for (let i = 0; i < hexCount; i++) {
-      // Create a small hexagon
-      const hexGeometry = new THREE.CircleGeometry(0.05 + Math.random() * 0.05, 6);
-      const hexMaterial = new THREE.MeshBasicMaterial({
-        color: COLORS.SHIELD_GUARDIAN_CORE,
-        transparent: true,
-        opacity: 0.5 + Math.random() * 0.3, // Increased opacity for more vibrancy
-        side: THREE.DoubleSide,
-      });
+      // Fibonacci lattice calculations to evenly distribute points on a sphere
+      const y = 1 - (i / (hexCount - 1)) * 2; // y goes from 1 to -1
+      const radius = Math.sqrt(1 - y * y); // radius at y position
       
-      const hex = new THREE.Mesh(hexGeometry, hexMaterial);
+      const theta = 2 * Math.PI * i / goldenRatio; // Golden angle in radians
       
-      // Position on the sphere surface
-      const phi = Math.acos(2 * Math.random() - 1);
-      const theta = 2 * Math.PI * Math.random();
+      const x = Math.cos(theta) * radius;
+      const z = Math.sin(theta) * radius;
       
-      hex.position.x = Math.sin(phi) * Math.cos(theta);
-      hex.position.y = Math.sin(phi) * Math.sin(theta);
-      hex.position.z = Math.cos(phi);
+      // Position on the sphere
+      const position = new THREE.Vector3(x, y, z);
       
-      // Orient to face outward
-      hex.lookAt(new THREE.Vector3(0, 0, 0));
+      // Size based on position (slightly smaller near poles)
+      const size = 0.05 - Math.abs(y) * 0.02;
       
-      // Store animation data for pulse effect
-      (hex as any).animData = {
-        pulseSpeed: 0.5 + Math.random() * 2, // Random speed
-        pulsePhase: Math.random() * Math.PI * 2, // Random phase
-      };
-      
-      hexGroup.add(hex);
+      // Create and add hexagon outline
+      const hexagon = createHexagonOutline(position, size);
+      hexGroup.add(hexagon);
     }
     
     group.add(hexGroup);
     
-    // Add energy arcs (electrical discharges) that will animate between random points
+    // Add a few energy arcs - these will be static
     const arcGroup = new THREE.Group();
     const arcCount = 12;
     
@@ -517,9 +510,9 @@ export class MeshFactory {
         
         // Add random offset for zigzag effect
         const offset = new THREE.Vector3(
-          (Math.random() - 0.5) * 0.1,
-          (Math.random() - 0.5) * 0.1,
-          (Math.random() - 0.5) * 0.1
+          (Math.random() - 0.5) * 0.2,
+          (Math.random() - 0.5) * 0.2,
+          (Math.random() - 0.5) * 0.2
         );
         
         basePoint.add(offset).normalize();
@@ -531,20 +524,13 @@ export class MeshFactory {
       // Create arc geometry
       const arcGeometry = new THREE.BufferGeometry().setFromPoints(arcPoints);
       const arcMaterial = new THREE.LineBasicMaterial({
-        color: COLORS.SHIELD_BUBBLE,
+        color: 0x00ffff,
         transparent: true,
-        opacity: 0,  // Start invisible, will be animated
-        linewidth: 2, // Thicker lines
+        opacity: Math.random() > 0.7 ? 0.6 : 0, // Only some arcs visible
+        linewidth: 2,
       });
       
       const arc = new THREE.Line(arcGeometry, arcMaterial);
-      
-      // Store animation data
-      (arc as any).animData = {
-        timeToNextFlash: Math.random() * 5, // Random time until first flash
-        flashDuration: 0.1 + Math.random() * 0.2, // How long the flash lasts
-      };
-      
       arcGroup.add(arc);
     }
     

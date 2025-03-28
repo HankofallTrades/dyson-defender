@@ -460,29 +460,71 @@ export class CollisionSystem implements System {
     const shield = this.world.getComponent<ShieldComponent>(guardianEntity, 'ShieldComponent');
     if (!shield) return;
     
-    // Get the position for visual effects
-    const position = this.world.getComponent<Position>(shieldEntity, 'Position');
+    // Get the projectile position for visual effects
+    const projectilePos = this.world.getComponent<Position>(projectileEntity, 'Position');
+    const bubblePos = this.world.getComponent<Position>(shieldEntity, 'Position');
     
-    // Get the renderable to add visual feedback
-    const renderable = this.world.getComponent<any>(shieldEntity, 'Renderable');
-    if (renderable && renderable.mesh && renderable.mesh instanceof THREE.Group) {
-      // Activate shield hit effect - make all arcs flash
-      const mesh = renderable.mesh;
-      if (mesh.children.length >= 5) {
-        const arcGroup = mesh.children[4];
-        if (arcGroup instanceof THREE.Group) {
-          arcGroup.children.forEach((arc) => {
-            if (arc instanceof THREE.Line && 
-                arc.material instanceof THREE.LineBasicMaterial) {
-              // Bright flash for hit effect
-              arc.material.opacity = 0.95;
+    if (projectilePos && bubblePos) {
+      // Calculate impact point on shield surface
+      const direction = new THREE.Vector3(
+        projectilePos.x - bubblePos.x,
+        projectilePos.y - bubblePos.y,
+        projectilePos.z - bubblePos.z
+      ).normalize();
+      
+      // Get the shield renderable to add impact effect
+      const renderable = this.world.getComponent<any>(shieldEntity, 'Renderable');
+      if (renderable && renderable.mesh) {
+        const mesh = renderable.mesh;
+        
+        // Add impact point to the shield data for visual processing
+        if (mesh instanceof THREE.Group && (mesh as any).shieldData) {
+          const impactPoint = direction.clone();
+          if (!(mesh as any).shieldData.impactPoints) {
+            (mesh as any).shieldData.impactPoints = [];
+          }
+          (mesh as any).shieldData.impactPoints.push(impactPoint);
+          
+          // Make the shield flash brighter momentarily
+          if (mesh.children.length >= 1) {
+            const shell = mesh.children[0];
+            if (shell instanceof THREE.Mesh && 
+                shell.material instanceof THREE.MeshPhongMaterial) {
+              // Temporarily increase emissive intensity for flash effect
+              const currentEmissive = shell.material.emissive.clone();
+              shell.material.emissive.setRGB(
+                currentEmissive.r + 0.3,
+                currentEmissive.g + 0.3,
+                currentEmissive.b + 0.3
+              );
               
-              // Reset the flash timer if it exists
-              if ((arc as any).animData) {
-                (arc as any).animData.timeToNextFlash = 0.1 + Math.random() * 0.1;
-              }
+              // Reset emissive after short delay using animation system
+              setTimeout(() => {
+                if (shell.material instanceof THREE.MeshPhongMaterial) {
+                  shell.material.emissive.copy(currentEmissive);
+                }
+              }, 100);
             }
-          });
+          }
+          
+          // Make arc group flash on impact 
+          if (mesh.children.length >= 7) {
+            const arcGroup = mesh.children[6];
+            if (arcGroup instanceof THREE.Group) {
+              arcGroup.children.forEach((arc) => {
+                if (arc instanceof THREE.Line && 
+                    arc.material instanceof THREE.LineBasicMaterial) {
+                  // Bright flash for hit effect
+                  arc.material.opacity = 0.95;
+                  
+                  // Reset the flash timer if it exists
+                  if ((arc as any).animData) {
+                    (arc as any).animData.timeToNextFlash = 0.1 + Math.random() * 0.1;
+                  }
+                }
+              });
+            }
+          }
         }
       }
     }
@@ -500,8 +542,8 @@ export class CollisionSystem implements System {
       
       // Create score entity if the HUD system is available
       const hudSystem = this.getHUDSystem();
-      if (hudSystem && position) {
-        createFloatingScore(this.world, position, 20); // 20 points for killing a Shield Guardian
+      if (hudSystem && bubblePos) {
+        createFloatingScore(this.world, bubblePos, 20); // 20 points for killing a Shield Guardian
         
         // Update the actual score in the HUD
         hudSystem.incrementScore(20);
