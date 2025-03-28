@@ -59,6 +59,13 @@ export class AnimationSystem implements System {
       }
     }
     
+    // Update any active effect meshes using their custom update functions
+    for (const [entityId, mesh] of this.effectMeshes.entries()) {
+      if (mesh.userData && typeof mesh.userData.update === 'function') {
+        mesh.userData.update(deltaTime);
+      }
+    }
+    
     const entities = this.world.getEntitiesWith(['Animation', 'Position']);
     
     for (const entity of entities) {
@@ -98,7 +105,8 @@ export class AnimationSystem implements System {
           this.updateGrowthAnimation(entity, animation);
           break;
         case 'explosion':
-          // TODO: Implement explosion animation
+          // Explosion animation has its own update in the mesh.userData.update function
+          // No additional updates needed here, but we could add specific updates if needed
           break;
         case 'lightning':
           // TODO: Implement lightning animation
@@ -442,5 +450,112 @@ export class AnimationSystem implements System {
         }
       }
     }
+  }
+
+  /**
+   * Creates an explosion animation at the specified position
+   * @param position Position of the explosion
+   * @param radius Radius of the explosion
+   * @param duration Duration of the explosion in seconds
+   * @param particleCount Number of particles to emit
+   */
+  public createExplosion(position: Position, radius: number = 2.0, duration: number = 1.0, particleCount: number = 30): void {
+    // Create an empty entity for the explosion
+    const explosionEntity = this.world.createEntity();
+    
+    // Add position component at the explosion location
+    this.world.addComponent(explosionEntity, 'Position', {
+      x: position.x,
+      y: position.y,
+      z: position.z
+    });
+    
+    // Add animation component
+    this.world.addComponent(explosionEntity, 'Animation', {
+      type: 'explosion',
+      progress: 0,
+      duration: duration,
+      isComplete: false,
+      data: {
+        radius: radius,
+        intensity: 1.0,
+        particleCount: particleCount
+      }
+    });
+    
+    // Create visual explosion effect
+    const explosionGroup = new THREE.Group();
+    this.effectMeshes.set(explosionEntity, explosionGroup);
+    this.scene.add(explosionGroup);
+    
+    // Position the explosion
+    explosionGroup.position.set(position.x, position.y, position.z);
+    
+    // Create particles for the explosion
+    const particleGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+    const particleMaterial = new THREE.MeshPhongMaterial({
+      color: 0xff6600,
+      emissive: 0xff4400,
+      emissiveIntensity: 2.0,
+      transparent: true,
+      opacity: 0.8
+    });
+    
+    // Create and position particles in a spherical pattern
+    for (let i = 0; i < particleCount; i++) {
+      const particle = new THREE.Mesh(particleGeometry, particleMaterial.clone());
+      
+      // Calculate random direction vector for this particle
+      const theta = Math.random() * Math.PI * 2; // Random angle around y-axis
+      const phi = Math.acos(Math.random() * 2 - 1); // Random angle from y-axis
+      
+      // Set initial position slightly randomized around the center
+      const x = (Math.random() * 0.5) * Math.sin(phi) * Math.cos(theta);
+      const y = (Math.random() * 0.5) * Math.cos(phi);
+      const z = (Math.random() * 0.5) * Math.sin(phi) * Math.sin(theta);
+      particle.position.set(x, y, z);
+      
+      // Store direction vector as user data for animation
+      particle.userData = {
+        direction: new THREE.Vector3(
+          Math.sin(phi) * Math.cos(theta),
+          Math.cos(phi),
+          Math.sin(phi) * Math.sin(theta)
+        ),
+        speed: 0.5 + Math.random() * 1.5, // Random speed
+        size: 0.1 + Math.random() * 0.4 // Random size
+      };
+      
+      // Randomize size
+      particle.scale.set(
+        particle.userData.size,
+        particle.userData.size,
+        particle.userData.size
+      );
+      
+      explosionGroup.add(particle);
+    }
+    
+    // Update the explosion animation in subsequent frames
+    const updateExplosion = (deltaTime: number) => {
+      explosionGroup.children.forEach((child, index) => {
+        // Move particles outward
+        if (child.userData.direction) {
+          child.position.x += child.userData.direction.x * child.userData.speed * deltaTime * 10;
+          child.position.y += child.userData.direction.y * child.userData.speed * deltaTime * 10;
+          child.position.z += child.userData.direction.z * child.userData.speed * deltaTime * 10;
+          
+          // Make particles fade out over time
+          if ('material' in child) {
+            const mesh = child as THREE.Mesh;
+            const material = mesh.material as THREE.MeshPhongMaterial;
+            material.opacity = Math.max(0, material.opacity - deltaTime * 2);
+          }
+        }
+      });
+    };
+    
+    // Store the update function for use in the main update method
+    explosionGroup.userData = { update: updateExplosion };
   }
 } 

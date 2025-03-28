@@ -4,6 +4,7 @@ import { createGrunt } from '../entities/GruntEntity';
 import { createWormhole } from '../entities/WormholeEntity';
 import { createShieldGuardian } from '../entities/ShieldGuardianEntity';
 import { createWarpRaider } from '../entities/WarpRaiderEntity';
+import { createAsteroid } from '../entities/AsteroidEntity';
 import { AnimationSystem } from './AnimationSystem';
 import { HUDSystem } from './HUDSystem';
 import * as THREE from 'three';
@@ -20,6 +21,7 @@ export class WaveSystem implements System {
   private hasAnnouncedCompletion: boolean = false;
   private hasAnnouncedShieldGuardian: boolean = false;
   private hasAnnouncedWarpRaider: boolean = false;
+  private hasAnnouncedAsteroid: boolean = false;
   
   constructor(private world: World) {
     // Create a special entity just to hold the wave information
@@ -162,11 +164,10 @@ export class WaveSystem implements System {
     // Base of 5 enemies for wave 1, then +3 per wave
     waveInfo.totalEnemies = 5 + (waveInfo.currentWave - 1) * 3;
     
-    // No need to display objective message here since it's always shown in the UI
-    
     // Reset announcement flags for the new wave
     this.hasAnnouncedShieldGuardian = false;
     this.hasAnnouncedWarpRaider = false;
+    this.hasAnnouncedAsteroid = false;
     
     // Spawn the first enemy immediately - always make it a grunt
     const firstEnemyPosition = this.getRandomPositionOnSphere(160);
@@ -242,6 +243,31 @@ export class WaveSystem implements System {
     
     let enemyEntity: number;
 
+    // Spawn an asteroid in wave 3
+    if (!forceGrunt && waveInfo.currentWave === 3) {
+      // Calculate total enemies for wave 3
+      const totalEnemiesInWave = 5 + (waveInfo.currentWave - 1) * 3;
+      
+      // Spawn asteroid as the second enemy in wave 3
+      if (totalEnemiesInWave - waveInfo.totalEnemies === 1) {
+        console.log('Spawning asteroid in wave 3');
+        
+        // Create asteroid at a much further distance (7.5-10x normal spawn distance)
+        const asteroidSpawnMultiplier = 4 + Math.random() * 2.5; // Random between 7.5-10x (1200-1600 units)
+        const asteroidPosition = this.getRandomPositionOnSphere(radius * asteroidSpawnMultiplier);
+        
+        console.log(`Spawning asteroid at distance: ${radius * asteroidSpawnMultiplier} units`);
+        
+        enemyEntity = createAsteroid(this.world, asteroidPosition, this.dysonSphereEntity);
+        
+        if (!this.hasAnnouncedAsteroid && this.hudSystem) {
+          this.hudSystem.displayMessage("CRITICAL THREAT: Asteroid on collision course with Dyson Sphere!", 5);
+          this.hasAnnouncedAsteroid = true;
+        }
+        return enemyEntity;
+      }
+    }
+    
     // First, handle the guaranteed Warp Raider spawn in wave 4
     if (!forceGrunt && waveInfo.currentWave === 4) {
       // Calculate total enemies for wave 4 (should be 5 + (4-1) * 3 = 14)
@@ -316,5 +342,6 @@ export class WaveSystem implements System {
     this.hasAnnouncedCompletion = false;
     this.hasAnnouncedShieldGuardian = false;
     this.hasAnnouncedWarpRaider = false;
+    this.hasAnnouncedAsteroid = false;
   }
 } 

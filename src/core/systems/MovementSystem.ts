@@ -95,7 +95,12 @@ export class MovementSystem implements System {
 
       // Skip distance constraints for projectiles
       const isProjectile = this.world.hasComponent(entity, 'Projectile');
-      if (isProjectile) {
+      
+      // Also skip distance constraints for asteroids
+      const isAsteroid = this.world.hasComponent(entity, 'Enemy') && 
+                        this.world.getComponent<any>(entity, 'Enemy')?.type === 'asteroid';
+      
+      if (isProjectile || isAsteroid) {
         continue;
       }
 

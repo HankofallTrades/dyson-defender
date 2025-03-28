@@ -154,6 +154,13 @@ export class EnemySystem implements System {
         velocity.y = 0;
         velocity.z = 0;
         
+        // Special handling for asteroids that reach the Dyson Sphere
+        if (enemy.type === 'asteroid') {
+          // Asteroid impact causes immediate game over
+          this.triggerAsteroidImpact(entity, targetEntity);
+          return; // Stop processing this entity
+        }
+        
         // Enter siege mode if not already
         if (!enemy.inSiegeMode) {
           enemy.inSiegeMode = true;
@@ -506,5 +513,35 @@ export class EnemySystem implements System {
       // Could update visual effects based on shield status here
       // For example, change color intensity based on remaining shield hits
     }
+  }
+
+  private updateAttackCycle(enemy: Enemy, targetEntity: number): void {
+    // ... Add this new method to handle specific enemy attack logic ...
+    // Handle special case for asteroid hitting Dyson Sphere
+    if (enemy.type === 'asteroid') {
+      // When asteroid collides with Dyson Sphere, it's instant game over regardless of shields or health
+      // This is handled in the siege mode section of the update method
+      
+      // Check for collision with Dyson Sphere - will be handled in update() when in siege mode
+    }
+    
+    // Other enemy type logic can be added here
+  }
+
+  // Modify or add this helper method to handle asteroid collision with Dyson sphere
+  private triggerAsteroidImpact(asteroidEntity: number, dysonSphereEntity: number): void {
+    console.log('Asteroid impacted Dyson Sphere - GAME OVER');
+    
+    // Trigger game over when an asteroid hits the Dyson Sphere
+    const gameStateEntities = this.world.getEntitiesWith(['GameStateDisplay']);
+    if (gameStateEntities.length > 0) {
+      const gameStateEntity = gameStateEntities[0];
+      const gameStateDisplay = this.world.getComponent<{currentState: string}>(gameStateEntity, 'GameStateDisplay');
+      if (gameStateDisplay) {
+        gameStateDisplay.currentState = 'game_over';
+      }
+    }
+    
+    // Optional: Add explosion or impact visual effect here
   }
 } 

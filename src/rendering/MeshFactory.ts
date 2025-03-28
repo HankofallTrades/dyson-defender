@@ -30,6 +30,8 @@ export class MeshFactory {
       return this.createShieldBubbleMesh(renderable);
     } else if (renderable.modelId === 'warpRaider') {
       return this.createWarpRaiderMesh(renderable);
+    } else if (renderable.modelId === 'asteroid') {
+      return this.createAsteroidMesh(renderable);
     } else {
       return this.createDefaultMesh(renderable);
     }
@@ -850,6 +852,80 @@ export class MeshFactory {
     });
 
     // Apply scale to the whole ship
+    group.scale.set(renderable.scale, renderable.scale, renderable.scale);
+    
+    return group;
+  }
+
+  private static createAsteroidMesh(renderable: Renderable): THREE.Object3D {
+    const group = new THREE.Group();
+    
+    // Create the main asteroid body (spheroid with irregular surface)
+    const radius = 1.0;
+    const detail = 2; // Higher detail for more vertices to deform
+    const geometry = new THREE.IcosahedronGeometry(radius, detail);
+    
+    // Deform the sphere to create an irregular asteroid shape
+    const positionAttribute = geometry.attributes.position;
+    for (let i = 0; i < positionAttribute.count; i++) {
+      const vertex = new THREE.Vector3();
+      vertex.fromBufferAttribute(positionAttribute, i);
+      
+      // Apply random deformation to create a jagged, irregular shape
+      const deformation = 0.2 + Math.random() * 0.3;
+      const distance = vertex.length();
+      
+      vertex.normalize().multiplyScalar(distance + deformation);
+      
+      positionAttribute.setXYZ(i, vertex.x, vertex.y, vertex.z);
+    }
+    
+    // Update normals after deforming the geometry
+    geometry.computeVertexNormals();
+    
+    // Create the asteroid material
+    const material = new THREE.MeshStandardMaterial({
+      color: renderable.color || 0x888888,
+      roughness: 0.9,
+      metalness: 0.1,
+      flatShading: true, // Creates a more jagged appearance
+    });
+    
+    const asteroidBody = new THREE.Mesh(geometry, material);
+    group.add(asteroidBody);
+    
+    // Add some "craters" to the asteroid surface
+    const numCraters = 5 + Math.floor(Math.random() * 5); // 5-9 craters
+    
+    for (let i = 0; i < numCraters; i++) {
+      // Generate a random position on the asteroid's surface
+      const craterPosition = new THREE.Vector3(
+        Math.random() * 2 - 1,
+        Math.random() * 2 - 1,
+        Math.random() * 2 - 1
+      ).normalize().multiplyScalar(radius + 0.01); // Slightly above surface
+      
+      // Create a small crater geometry
+      const craterSize = 0.2 + Math.random() * 0.3;
+      const craterGeometry = new THREE.CircleGeometry(craterSize, 16);
+      const craterMaterial = new THREE.MeshStandardMaterial({
+        color: 0x555555, // Darker color for craters
+        roughness: 1.0,
+        metalness: 0.0,
+        side: THREE.DoubleSide
+      });
+      
+      const crater = new THREE.Mesh(craterGeometry, craterMaterial);
+      
+      // Position and orient the crater to face outward
+      crater.position.copy(craterPosition);
+      crater.lookAt(new THREE.Vector3(0, 0, 0));
+      crater.rotateX(Math.random() * Math.PI); // Random rotation for variety
+      
+      group.add(crater);
+    }
+    
+    // Apply scale
     group.scale.set(renderable.scale, renderable.scale, renderable.scale);
     
     return group;

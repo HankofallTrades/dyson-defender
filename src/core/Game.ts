@@ -85,7 +85,11 @@ class Game {
     this.world.addSystem(new CameraSystem(this.sceneManager, this.world));
     this.world.addSystem(new WeaponSystem(this.world, this.sceneManager));
     this.world.addSystem(new EnemySystem(this.world, this.sceneManager.getScene()));
-    this.world.addSystem(new CollisionSystem(this.world));
+    
+    // Create and store reference to CollisionSystem
+    const collisionSystem = new CollisionSystem(this.world);
+    this.world.addSystem(collisionSystem);
+    
     this.world.addSystem(new ShieldSystem(this.world));
     this.world.addSystem(new ShieldBubbleSystem(this.world));
     this.world.addSystem(new HealthBarSystem(this.world));
@@ -109,6 +113,9 @@ class Game {
     // Connect the WaveSystem with the AnimationSystem and HUDSystem
     this.waveSystem.setAnimationSystem(this.animationSystem);
     this.waveSystem.setHUDSystem(this.hudSystem);
+    
+    // Connect the CollisionSystem with the AnimationSystem
+    collisionSystem.setAnimationSystem(this.animationSystem);
     
     // Create and store reference to Dev system
     this.devSystem = new DevSystem(this.world, this.sceneManager, this.container);

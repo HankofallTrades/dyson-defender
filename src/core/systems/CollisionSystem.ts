@@ -3,6 +3,7 @@ import { World, System } from '../World';
 import { Position, Collider, Projectile, Health, Enemy, InputReceiver, Shield, ShieldComponent, ShieldBubbleComponent, HealthBarComponent } from '../components';
 import { HUDSystem } from './HUDSystem';
 import { ShieldSystem } from './ShieldSystem';
+import { AnimationSystem } from './AnimationSystem';
 import { createFloatingScore } from '../entities/FloatingScoreEntity';
 
 /**
@@ -20,6 +21,7 @@ import { createFloatingScore } from '../entities/FloatingScoreEntity';
 export class CollisionSystem implements System {
   private world: World;
   private collisionMatrix: Map<string, string[]>;
+  private animationSystem: AnimationSystem | null = null;
 
   constructor(world: World) {
     this.world = world;
@@ -31,6 +33,11 @@ export class CollisionSystem implements System {
     this.collisionMatrix.set('player', ['enemy', 'projectile']);
     this.collisionMatrix.set('dysonSphere', ['enemy']);
     this.collisionMatrix.set('shield', ['projectile']);
+  }
+
+  // Method to set the animation system reference
+  public setAnimationSystem(animationSystem: AnimationSystem): void {
+    this.animationSystem = animationSystem;
   }
 
   update(deltaTime: number): void {
@@ -328,6 +335,9 @@ export class CollisionSystem implements System {
         }
         // Check if entity is an enemy
         else if (this.world.hasComponent(targetEntity, 'Enemy')) {
+          // Get the enemy component to check its type
+          const enemy = this.world.getComponent<Enemy>(targetEntity, 'Enemy');
+          
           // Check if the enemy has a HealthBarComponent and update its visibility if damaged
           if (this.world.hasComponent(targetEntity, 'HealthBarComponent')) {
             const healthBar = this.world.getComponent<HealthBarComponent>(targetEntity, 'HealthBarComponent');
@@ -341,7 +351,6 @@ export class CollisionSystem implements System {
             if (hudSystem) {
               // Get the enemy position for the floating score
               const enemyPosition = this.world.getComponent<Position>(targetEntity, 'Position');
-              const enemy = this.world.getComponent<Enemy>(targetEntity, 'Enemy');
               
               if (enemyPosition && enemy) {
                 // Add score based on enemy type
@@ -350,6 +359,29 @@ export class CollisionSystem implements System {
                 // Special score values for different enemy types
                 if (enemy.type === 'warpRaider') {
                   scoreValue = 25; // Warp Raiders are worth more points
+                } else if (enemy.type === 'asteroid') {
+                  scoreValue = 50; // Asteroids are worth even more points
+                  
+                  // Create a special explosion effect for asteroids
+                  if (this.world.hasComponent(targetEntity, 'Position')) {
+                    // Add an explosion animation at the asteroid's position
+                    if (this.animationSystem) {
+                      const asteroidPos = this.world.getComponent<Position>(targetEntity, 'Position');
+                      if (asteroidPos) {
+                        this.animationSystem.createExplosion(
+                          asteroidPos, 
+                          3.0,  // Larger explosion
+                          1.5,  // Longer duration
+                          50   // More particles
+                        );
+                      }
+                    }
+                    
+                    // Display a special message when destroying an asteroid
+                    if (hudSystem) {
+                      hudSystem.displayMessage("Asteroid Destroyed!", 3);
+                    }
+                  }
                 }
                 
                 // Create floating score at enemy position
