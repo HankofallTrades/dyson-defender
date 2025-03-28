@@ -12,6 +12,9 @@ export function createLaser(
 ) {
   const entity = world.createEntity();
   
+  // Check if the owner is a player (has InputReceiver component)
+  const isPlayerLaser = world.hasComponent(ownerEntity, 'InputReceiver');
+  
   // Add position component
   world.addComponent(entity, 'Position', { 
     x: position.x, 
@@ -60,10 +63,10 @@ export function createLaser(
     color: color // Use the provided color
   });
   
-  // Add projectile component
+  // Add projectile component with damage based on owner type
   world.addComponent(entity, 'Projectile', {
     speed: laserSpeed,
-    damage: 5, // Halved damage since we fire two lasers at once
+    damage: isPlayerLaser ? 5 : 10, // 5 damage for player (dual cannons), 10 for enemies
     lifetime: 6, // 6 seconds lifetime - doubled to allow lasers to travel further
     timeAlive: 0,
     ownerEntity: ownerEntity // Store the owner entity ID
