@@ -122,6 +122,10 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
     percent: number;
   }>>([]);
   
+  // State for tracking brackets position with lag effect
+  const [bracketsOffset, setBracketsOffset] = useState({ x: 0, y: 0 });
+  const lastMouseMoveRef = useRef({ x: 0, y: 0, time: 0 });
+  
   // Use a ref to track processed messages so we have immediate access to the latest value
   const processedMessagesRef = useRef<Set<string>>(new Set());
   
@@ -477,6 +481,74 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
     };
   }, [gameState]);
   
+  // Add effect to handle mouse movement for reticle bracket lag
+  useEffect(() => {
+    if (gameState !== 'playing') return;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      // Capture mouse movement - negate the values to make brackets move in opposite direction
+      const now = performance.now();
+      
+      // Calculate magnitude of movement (speed)
+      const movementMagnitude = Math.sqrt(e.movementX * e.movementX + e.movementY * e.movementY);
+      
+      lastMouseMoveRef.current = { 
+        x: -e.movementX, // Negate to make brackets move in opposite direction
+        y: -e.movementY, // Negate to make brackets move in opposite direction
+        time: now 
+      };
+    };
+
+    // Animation frame to update bracket positions with smoother, springier motion
+    const updateBracketPositions = () => {
+      if (gameState === 'playing') {
+        const now = performance.now();
+        const timeSinceLastMove = now - lastMouseMoveRef.current.time;
+        
+        // Apply lag effect with springy motion
+        const lagFactor = 0.15; // Reduced for smoother movement
+        const springFactor = 0.08; // Reduced for smoother return
+        const maxOffset = 60; // Maximum pixel offset in any direction
+        
+        // If there was recent mouse movement, update the offset
+        if (timeSinceLastMove < 100) {
+          // Add to the current offset
+          setBracketsOffset(prev => {
+            // Calculate new position with lag effect - simplified for smoother motion
+            const targetX = lastMouseMoveRef.current.x;
+            const targetY = lastMouseMoveRef.current.y;
+            
+            const newX = prev.x + (targetX - prev.x) * lagFactor;
+            const newY = prev.y + (targetY - prev.y) * lagFactor;
+            
+            // Apply maximum limits
+            return {
+              x: Math.max(-maxOffset, Math.min(maxOffset, newX)),
+              y: Math.max(-maxOffset, Math.min(maxOffset, newY))
+            };
+          });
+        } else {
+          // No recent movement, smoothly return to center using the same factor
+          setBracketsOffset(prev => ({
+            x: prev.x * (1 - springFactor),
+            y: prev.y * (1 - springFactor)
+          }));
+        }
+      }
+      
+      // Continue the animation loop
+      animationFrameId = requestAnimationFrame(updateBracketPositions);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    let animationFrameId = requestAnimationFrame(updateBracketPositions);
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [gameState]);
+  
   // Render appropriate screen based on game state
   if (gameState === 'not_started') {
     return <StartScreen onStartGame={onStartGame} />;
@@ -595,7 +667,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
             borderRadius: '50%',
             border: `1px solid ${reticle.color}`,
             boxShadow: `0 0 5px ${reticle.color}`,
-            opacity: 0.25
+            opacity: 0.6
           }}></div>
           
           {/* Outer Circle */}
@@ -609,7 +681,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
             borderRadius: '50%',
             border: `1px solid ${reticle.color}`,
             boxShadow: `0 0 8px ${reticle.color}`,
-            opacity: 0.35
+            opacity: 0.6
           }}></div>
           
           {/* Crosshair lines */}
@@ -622,7 +694,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
             height: `${1 * reticle.size}px`,
             background: reticle.color,
             boxShadow: `0 0 5px ${reticle.color}`,
-            opacity: 0.4
+            opacity: 0.6
           }}></div>
           
           <div style={{
@@ -637,82 +709,97 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
             opacity: 0.4
           }}></div>
           
-          {/* Corner brackets */}
+          {/* Corner brackets with lag effect - create a container for all brackets */}
           <div style={{
             position: 'absolute',
             top: '0',
             left: '0',
-            width: `${8 * reticle.size}px`,
-            height: `${1 * reticle.size}px`,
-            background: reticle.color,
-            boxShadow: `0 0 5px ${reticle.color}`,
-          }}></div>
-          <div style={{
-            position: 'absolute',
-            top: '0',
-            left: '0',
-            width: `${1 * reticle.size}px`,
-            height: `${8 * reticle.size}px`,
-            background: reticle.color,
-            boxShadow: `0 0 5px ${reticle.color}`,
-          }}></div>
-          
-          <div style={{
-            position: 'absolute',
-            top: '0',
-            right: '0',
-            width: `${8 * reticle.size}px`,
-            height: `${1 * reticle.size}px`,
-            background: reticle.color,
-            boxShadow: `0 0 5px ${reticle.color}`,
-          }}></div>
-          <div style={{
-            position: 'absolute',
-            top: '0',
-            right: '0',
-            width: `${1 * reticle.size}px`,
-            height: `${8 * reticle.size}px`,
-            background: reticle.color,
-            boxShadow: `0 0 5px ${reticle.color}`,
-          }}></div>
-          
-          <div style={{
-            position: 'absolute',
-            bottom: '0',
-            left: '0',
-            width: `${8 * reticle.size}px`,
-            height: `${1 * reticle.size}px`,
-            background: reticle.color,
-            boxShadow: `0 0 5px ${reticle.color}`,
-          }}></div>
-          <div style={{
-            position: 'absolute',
-            bottom: '0',
-            left: '0',
-            width: `${1 * reticle.size}px`,
-            height: `${8 * reticle.size}px`,
-            background: reticle.color,
-            boxShadow: `0 0 5px ${reticle.color}`,
-          }}></div>
-          
-          <div style={{
-            position: 'absolute',
-            bottom: '0',
-            right: '0',
-            width: `${8 * reticle.size}px`,
-            height: `${1 * reticle.size}px`,
-            background: reticle.color,
-            boxShadow: `0 0 5px ${reticle.color}`,
-          }}></div>
-          <div style={{
-            position: 'absolute',
-            bottom: '0',
-            right: '0',
-            width: `${1 * reticle.size}px`,
-            height: `${8 * reticle.size}px`,
-            background: reticle.color,
-            boxShadow: `0 0 5px ${reticle.color}`,
-          }}></div>
+            width: '100%',
+            height: '100%',
+            transform: `translate(${bracketsOffset.x}px, ${bracketsOffset.y}px)`,
+            transition: 'none', // Removed transition for more direct control
+            opacity: 0.4 // Added transparency to brackets
+          }}>
+            {/* Top-left brackets */}
+            <div style={{
+              position: 'absolute',
+              top: '0',
+              left: '0',
+              width: `${8 * reticle.size}px`,
+              height: `${1 * reticle.size}px`,
+              background: reticle.color,
+              boxShadow: `0 0 5px ${reticle.color}`,
+            }}></div>
+            <div style={{
+              position: 'absolute',
+              top: '0',
+              left: '0',
+              width: `${1 * reticle.size}px`,
+              height: `${8 * reticle.size}px`,
+              background: reticle.color,
+              boxShadow: `0 0 5px ${reticle.color}`,
+            }}></div>
+            
+            {/* Top-right brackets */}
+            <div style={{
+              position: 'absolute',
+              top: '0',
+              right: '0',
+              width: `${8 * reticle.size}px`,
+              height: `${1 * reticle.size}px`,
+              background: reticle.color,
+              boxShadow: `0 0 5px ${reticle.color}`,
+            }}></div>
+            <div style={{
+              position: 'absolute',
+              top: '0',
+              right: '0',
+              width: `${1 * reticle.size}px`,
+              height: `${8 * reticle.size}px`,
+              background: reticle.color,
+              boxShadow: `0 0 5px ${reticle.color}`,
+            }}></div>
+            
+            {/* Bottom-left brackets */}
+            <div style={{
+              position: 'absolute',
+              bottom: '0',
+              left: '0',
+              width: `${8 * reticle.size}px`,
+              height: `${1 * reticle.size}px`,
+              background: reticle.color,
+              boxShadow: `0 0 5px ${reticle.color}`,
+            }}></div>
+            <div style={{
+              position: 'absolute',
+              bottom: '0',
+              left: '0',
+              width: `${1 * reticle.size}px`,
+              height: `${8 * reticle.size}px`,
+              background: reticle.color,
+              boxShadow: `0 0 5px ${reticle.color}`,
+            }}></div>
+            
+            {/* Bottom-right brackets */}
+            <div style={{
+              position: 'absolute',
+              bottom: '0',
+              right: '0',
+              width: `${8 * reticle.size}px`,
+              height: `${1 * reticle.size}px`,
+              background: reticle.color,
+              boxShadow: `0 0 5px ${reticle.color}`,
+            }}></div>
+            <div style={{
+              position: 'absolute',
+              bottom: '0',
+              right: '0',
+              width: `${1 * reticle.size}px`,
+              height: `${8 * reticle.size}px`,
+              background: reticle.color,
+              boxShadow: `0 0 5px ${reticle.color}`,
+            }}></div>
+          </div>
         </div>
       )}
       
