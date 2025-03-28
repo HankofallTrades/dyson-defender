@@ -39,6 +39,10 @@ export const COLORS = {
   DYSON_SECONDARY: 0x0055aa,
   DYSON_EMISSIVE: 0x112244,
   
+  // Power-up colors
+  POWERUP_FIRE_RATE: 0xff0000, // Bright red for fire rate power-up
+  POWERUP_FIRE_RATE_GLOW: 0xff4444, // Lighter red for glow effect
+  
   // UI colors
   UI_TEXT: 0xffffff,
   UI_HEALTH: 0x00ff00,

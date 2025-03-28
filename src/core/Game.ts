@@ -23,6 +23,8 @@ import { AnimationSystem } from './systems/AnimationSystem';
 import { ShieldSystem } from './systems/ShieldSystem';
 import { ShieldBubbleSystem } from './systems/ShieldBubbleSystem';
 import { HealthBarSystem } from './systems/HealthBarSystem';
+import { PowerUpSystem } from './systems/PowerUpSystem';
+import { createFireRatePowerUp } from './entities/PowerUpEntity';
 import { WaveInfo } from './components';
 import { DevSystem } from './systems/DevSystem';
 
@@ -90,6 +92,40 @@ class Game {
     const collisionSystem = new CollisionSystem(this.world);
     this.world.addSystem(collisionSystem);
     
+    // Create and store reference to PowerUpSystem
+    const powerUpSystem = new PowerUpSystem(this.world, this.sceneManager.getScene());
+    this.world.addSystem(powerUpSystem);
+    
+    // Make systems globally accessible for debugging
+    (window as any).powerUpSystem = powerUpSystem;
+    (window as any).collisionSystem = collisionSystem;
+    
+    // Add a debug method to test power-up collection
+    (window as any).testPowerUp = () => {
+      // Find player entity
+      const playerEntities = this.world.getEntitiesWith(['InputReceiver']);
+      if (playerEntities.length === 0) {
+        console.error("No player entity found");
+        return;
+      }
+      
+      // Get player position
+      const playerEntity = playerEntities[0];
+      const playerPos = this.world.getComponent<Position>(playerEntity, 'Position');
+      if (!playerPos) {
+        console.error("Player has no position component");
+        return;
+      }
+      
+      // Create a power-up at player's position
+      console.log("Creating test power-up at player position");
+      const powerUpEntity = createFireRatePowerUp(this.world, playerPos);
+      
+      // Force collision handling
+      console.log("Forcing power-up collection");
+      collisionSystem.handlePlayerPowerUpCollision(playerEntity, powerUpEntity);
+    };
+    
     this.world.addSystem(new ShieldSystem(this.world));
     this.world.addSystem(new ShieldBubbleSystem(this.world));
     this.world.addSystem(new HealthBarSystem(this.world));
@@ -114,8 +150,9 @@ class Game {
     this.waveSystem.setAnimationSystem(this.animationSystem);
     this.waveSystem.setHUDSystem(this.hudSystem);
     
-    // Connect the CollisionSystem with the AnimationSystem
+    // Connect the CollisionSystem with the AnimationSystem and PowerUpSystem
     collisionSystem.setAnimationSystem(this.animationSystem);
+    collisionSystem.setPowerUpSystem(powerUpSystem);
     
     // Create and store reference to Dev system
     this.devSystem = new DevSystem(this.world, this.sceneManager, this.container);
@@ -124,8 +161,15 @@ class Game {
     // Add the AutoRotateSystem to handle rotation of entities
     this.world.addSystem(new AutoRotateSystem(this.world));
     
-    // Add the rendering system last
-    this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
+    // Create and add the RenderingSystem
+    const renderingSystem = new RenderingSystem(this.world, this.sceneManager.getScene());
+    this.world.addSystem(renderingSystem);
+    
+    // Set the camera for the rendering system once the scene is set up
+    const camera = this.sceneManager.getCamera();
+    if (camera) {
+      renderingSystem.setCamera(camera);
+    }
   }
 
   private initEntities(): void {

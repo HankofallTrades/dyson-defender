@@ -4,6 +4,7 @@ import { Position, Collider, Projectile, Health, Enemy, InputReceiver, Shield, S
 import { HUDSystem } from './HUDSystem';
 import { ShieldSystem } from './ShieldSystem';
 import { AnimationSystem } from './AnimationSystem';
+import { PowerUpSystem } from './PowerUpSystem';
 import { createFloatingScore } from '../entities/FloatingScoreEntity';
 
 /**
@@ -22,6 +23,7 @@ export class CollisionSystem implements System {
   private world: World;
   private collisionMatrix: Map<string, string[]>;
   private animationSystem: AnimationSystem | null = null;
+  private powerUpSystem: PowerUpSystem | null = null;
 
   constructor(world: World) {
     this.world = world;
@@ -30,14 +32,19 @@ export class CollisionSystem implements System {
     this.collisionMatrix = new Map();
     this.collisionMatrix.set('projectile', ['enemy', 'dysonSphere', 'player', 'shield']);
     this.collisionMatrix.set('enemy', ['player', 'projectile', 'dysonSphere']);
-    this.collisionMatrix.set('player', ['enemy', 'projectile']);
+    this.collisionMatrix.set('player', ['enemy', 'projectile', 'powerUp']);
     this.collisionMatrix.set('dysonSphere', ['enemy']);
     this.collisionMatrix.set('shield', ['projectile']);
+    this.collisionMatrix.set('powerUp', ['player']);
   }
 
   // Method to set the animation system reference
   public setAnimationSystem(animationSystem: AnimationSystem): void {
     this.animationSystem = animationSystem;
+  }
+
+  public setPowerUpSystem(powerUpSystem: PowerUpSystem): void {
+    this.powerUpSystem = powerUpSystem;
   }
 
   update(deltaTime: number): void {
@@ -129,6 +136,22 @@ export class CollisionSystem implements System {
     
     // Calculate distance between entities
     const distance = positionA.distanceTo(positionB);
+    
+    // Special case for power-up collision - be extremely generous with collision detection
+    if (colliderA.layer === 'powerUp' || colliderB.layer === 'powerUp') {
+      const powerUpRadius = colliderA.layer === 'powerUp' ? (colliderA.radius || 10.0) : (colliderB.radius || 10.0);
+      const otherRadius = 10.0; // Give player a very generous collision radius for power-ups
+      const collisionDistance = powerUpRadius + otherRadius;
+      const isColliding = distance < collisionDistance;
+      
+      // Log distance data for debugging power-up collisions
+      if (distance < 20) { // Only log when getting close to avoid console spam
+        console.log(`Power-up distance check: ${distance.toFixed(2)} < ${collisionDistance}? ${isColliding}`);
+        console.log(`Entity positions: A(${posA.x.toFixed(1)}, ${posA.y.toFixed(1)}, ${posA.z.toFixed(1)}) - B(${posB.x.toFixed(1)}, ${posB.y.toFixed(1)}, ${posB.z.toFixed(1)})`);
+      }
+      
+      return isColliding;
+    }
     
     if (colliderA.type === 'sphere' && colliderB.type === 'sphere') {
       // Sphere-sphere collision
@@ -225,6 +248,13 @@ export class CollisionSystem implements System {
       this.handlePlayerEnemyCollision(entityA, entityB);
     } else if (colliderB.layer === 'player' && colliderA.layer === 'enemy') {
       this.handlePlayerEnemyCollision(entityB, entityA);
+    }
+    
+    // Handle player-powerUp collision
+    if (colliderA.layer === 'player' && colliderB.layer === 'powerUp') {
+      this.handlePlayerPowerUpCollision(entityA, entityB);
+    } else if (colliderB.layer === 'player' && colliderA.layer === 'powerUp') {
+      this.handlePlayerPowerUpCollision(entityB, entityA);
     }
   }
   
@@ -389,6 +419,22 @@ export class CollisionSystem implements System {
                 
                 // Still update the score in HUD
                 hudSystem.incrementScore(scoreValue);
+                
+                // Spawn a power-up at the enemy's position (100% chance)
+                if (this.powerUpSystem) {
+                  // Debug enemy position before spawning
+                  console.log(`CollisionSystem: About to spawn power-up at position X=${enemyPosition.x.toFixed(2)}, Y=${enemyPosition.y.toFixed(2)}, Z=${enemyPosition.z.toFixed(2)}`);
+                  console.log(`Enemy type: ${enemy.type}, ID: ${targetEntity}`);
+                  
+                  // Create a fresh copy of the enemy position to avoid reference issues
+                  const powerUpPosition = {
+                    x: enemyPosition.x,
+                    y: enemyPosition.y,
+                    z: enemyPosition.z
+                  };
+                  
+                  this.powerUpSystem.spawnPowerUpAtPosition(powerUpPosition);
+                }
               }
             }
             
@@ -593,5 +639,40 @@ export class CollisionSystem implements System {
     
     // Remove the projectile
     this.world.removeEntity(projectileEntity);
+  }
+
+  // Make this public for debugging
+  public handlePlayerPowerUpCollision(playerEntity: number, powerUpEntity: number): void {
+    // Debug logging
+    console.log(`Collision detected between player ${playerEntity} and power-up ${powerUpEntity}`);
+    
+    // Make sure we have access to the power-up system
+    if (!this.powerUpSystem) {
+      // Try to find the power-up system in the world
+      const systems = this.world.getSystems();
+      for (const system of systems) {
+        if (system instanceof PowerUpSystem) {
+          this.powerUpSystem = system;
+          break;
+        }
+      }
+      
+      // If still not found, we can't handle power-ups
+      if (!this.powerUpSystem) {
+        console.error("PowerUpSystem not found!");
+        return;
+      }
+    }
+    
+    // Apply the power-up effect
+    this.powerUpSystem.applyPowerUp(powerUpEntity, playerEntity);
+    console.log("Power-up applied successfully");
+    
+    // Get HUD system for notifications
+    const hudSystem = this.getHUDSystem();
+    if (hudSystem) {
+      // Display message about collecting power-up
+      hudSystem.displayMessage("Double Fire Rate Power-Up Collected!", 2);
+    }
   }
 } 

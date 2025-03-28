@@ -20,10 +20,15 @@ export class RenderingSystem implements System {
   private world: World;
   private meshes: Map<number, THREE.Object3D> = new Map();
   private scene: THREE.Scene;
+  private camera: THREE.Camera | null = null;
 
   constructor(world: World, scene: THREE.Scene) {
     this.world = world;
     this.scene = scene;
+  }
+
+  public setCamera(camera: THREE.Camera): void {
+    this.camera = camera;
   }
 
   public update(deltaTime: number): void {
@@ -85,6 +90,11 @@ export class RenderingSystem implements System {
         mesh.rotation.order = 'YXZ'; // Set rotation order to match our ECS calculations
         mesh.rotation.set(rotation.x, rotation.y, rotation.z);
       }
+      
+      // Special case for powerup orbs: Handle custom auto-rotation
+      if (renderable.modelId === 'powerUpOrb') {
+        this.updatePowerUpVisuals(mesh, deltaTime);
+      }
     }
 
     // Clean up meshes for entities that no longer exist
@@ -93,6 +103,105 @@ export class RenderingSystem implements System {
         mesh.parent?.remove(mesh);
         this.meshes.delete(entityId);
       }
+    }
+  }
+
+  /**
+   * Updates custom rotation and effects for power-up orbs
+   */
+  private updatePowerUpVisuals(mesh: THREE.Object3D, deltaTime: number): void {
+    // Directly look for the rings by name
+    const horizontalRing = mesh.getObjectByName('horizontalRing');
+    const verticalRing = mesh.getObjectByName('verticalRing');
+    
+    // Apply rotations to rings
+    if (horizontalRing) {
+      const autoRotate = horizontalRing.userData.autoRotate || (horizontalRing as any).autoRotate;
+      if (autoRotate) {
+        horizontalRing.rotation.y += autoRotate.speed * deltaTime;
+      }
+    }
+    
+    if (verticalRing) {
+      const autoRotate = verticalRing.userData.autoRotate || (verticalRing as any).autoRotate;
+      if (autoRotate) {
+        verticalRing.rotation.z += autoRotate.speed * deltaTime;
+      }
+    }
+    
+    // Apply custom rotations to any other parts that might have autoRotate
+    mesh.traverse((child) => {
+      if (child === horizontalRing || child === verticalRing) {
+        // Skip rings as we've already handled them directly
+        return;
+      }
+      
+      // Handle autoRotate for other objects
+      const autoRotate = child.userData?.autoRotate || (child as any).autoRotate;
+      if (autoRotate) {
+        const axis = autoRotate.axis || 'y';
+        const speed = autoRotate.speed || Math.PI * 0.5;
+        
+        if (axis === 'x') {
+          child.rotation.x += speed * deltaTime;
+        } else if (axis === 'y') {
+          child.rotation.y += speed * deltaTime;
+        } else if (axis === 'z') {
+          child.rotation.z += speed * deltaTime;
+        }
+      }
+    });
+    
+    // Handle fade-out effect for expiring power-ups
+    const renderable = this.world.getEntitiesWith(['Renderable', 'PowerUp'])
+      .find(entity => this.meshes.get(entity) === mesh);
+    
+    if (renderable) {
+      const renderableComp = this.world.getComponent<any>(renderable, 'Renderable');
+      if (renderableComp && renderableComp.fadeOut) {
+        // Apply fade-out to all materials
+        mesh.traverse((child) => {
+          if (child instanceof THREE.Mesh && child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(mat => {
+                if (mat.transparent) {
+                  mat.opacity = renderableComp.opacity || 0.5;
+                }
+              });
+            } else if (child.material.transparent) {
+              child.material.opacity = renderableComp.opacity || 0.5;
+            }
+          }
+        });
+      }
+    }
+    
+    // Make any billboard elements face the camera
+    if (this.camera) {
+      mesh.traverse((child) => {
+        if (child.name === 'billboard' || (child as any).isBillboard) {
+          child.quaternion.copy(this.camera!.quaternion);
+        }
+      });
+    }
+    
+    // Apply floating motion
+    if ((mesh as any).floatData) {
+      const floatData = (mesh as any).floatData;
+      
+      // Initialize originalY with the actual mesh position first time
+      if (!floatData.initialized) {
+        floatData.originalY = mesh.position.y;
+        floatData.initialized = true;
+      }
+      
+      // Apply floating effect
+      const floatY = floatData.originalY + 
+                    Math.sin((performance.now() - floatData.startTime) / 1000 * floatData.speed) * 
+                    floatData.height;
+      
+      // Only update the Y position, preserving X and Z
+      mesh.position.y = floatY;
     }
   }
 
@@ -131,8 +240,6 @@ export class RenderingSystem implements System {
           child.scale.set(1.1, 1.1, 1.1);
         }
       });
-      
-      // Add optional trail effect here if desired
     } else {
       // Reset visual effect when not boosting
       mesh.traverse((child) => {

@@ -32,6 +32,8 @@ export class MeshFactory {
       return this.createWarpRaiderMesh(renderable);
     } else if (renderable.modelId === 'asteroid') {
       return this.createAsteroidMesh(renderable);
+    } else if (renderable.modelId === 'powerUpOrb') {
+      return this.createPowerUpOrbMesh(renderable);
     } else {
       return this.createDefaultMesh(renderable);
     }
@@ -924,6 +926,200 @@ export class MeshFactory {
       
       group.add(crater);
     }
+    
+    // Apply scale
+    group.scale.set(renderable.scale, renderable.scale, renderable.scale);
+    
+    return group;
+  }
+
+  // Create a glowing orb mesh for power-ups
+  private static createPowerUpOrbMesh(renderable: Renderable): THREE.Object3D {
+    const group = new THREE.Group();
+    
+    // Create multiple layered glowing spheres for a more volumetric 3D effect
+    
+    // Create a radial gradient texture for more realistic glow
+    const gradientCanvas = document.createElement('canvas');
+    gradientCanvas.width = 128;
+    gradientCanvas.height = 128;
+    const ctx = gradientCanvas.getContext('2d');
+    if (ctx) {
+      // Create radial gradient
+      const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      
+      // Extract color components from renderable.color
+      const color = new THREE.Color(renderable.color);
+      const r = Math.floor(color.r * 255);
+      const g = Math.floor(color.g * 255);
+      const b = Math.floor(color.b * 255);
+      
+      gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.9)`);
+      gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, 0.5)`);
+      gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+      
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 128, 128);
+    }
+    
+    const glowTexture = new THREE.CanvasTexture(gradientCanvas);
+    
+    // Outer volumetric glow layers
+    for (let i = 0; i < 4; i++) {
+      const size = 0.9 + i * 0.2; // Increasing sizes
+      const glowGeometry = new THREE.SphereGeometry(size, 32, 32);
+      const glowMaterial = new THREE.MeshPhongMaterial({
+        color: renderable.color,
+        emissive: renderable.color,
+        emissiveIntensity: 0.7 - i * 0.15,
+        transparent: true,
+        opacity: 0.4 - i * 0.08,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending // For better glow effect
+      });
+      
+      const glowSphere = new THREE.Mesh(glowGeometry, glowMaterial);
+      group.add(glowSphere);
+    }
+    
+    // Add a brighter core
+    const coreGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+    const coreMaterial = new THREE.MeshPhongMaterial({
+      color: 0xffffff,
+      emissive: renderable.color,
+      emissiveIntensity: 1.0,
+      transparent: true,
+      opacity: 0.7,
+      blending: THREE.AdditiveBlending
+    });
+    const core = new THREE.Mesh(coreGeometry, coreMaterial);
+    group.add(core);
+    
+    // Add a point light inside for real glow effect
+    const light = new THREE.PointLight(renderable.color, 1.0, 6);
+    light.position.set(0, 0, 0);
+    group.add(light);
+    
+    // Add fire rate symbol in the center (double arrow)
+    const symbolGroup = new THREE.Group();
+    
+    // Create double arrow shape to indicate faster fire rate - larger and more visible
+    // Arrow 1 (top)
+    const arrow1 = new THREE.Group();
+    
+    // Arrow body - thicker
+    const arrowLine1 = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 0.15, 0.15),
+      new THREE.MeshBasicMaterial({ color: 0x000000 })
+    );
+    arrowLine1.position.set(0, 0.18, 0);
+    arrow1.add(arrowLine1);
+    
+    // Arrow head - larger
+    const arrowHead1 = new THREE.Mesh(
+      new THREE.ConeGeometry(0.15, 0.25, 8),
+      new THREE.MeshBasicMaterial({ color: 0x000000 })
+    );
+    arrowHead1.position.set(0.35, 0.18, 0);
+    arrowHead1.rotation.z = -Math.PI / 2;
+    arrow1.add(arrowHead1);
+    
+    // Arrow 2 (bottom)
+    const arrow2 = new THREE.Group();
+    
+    // Arrow body - thicker
+    const arrowLine2 = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 0.15, 0.15),
+      new THREE.MeshBasicMaterial({ color: 0x000000 })
+    );
+    arrowLine2.position.set(0, -0.18, 0);
+    arrow2.add(arrowLine2);
+    
+    // Arrow head - larger
+    const arrowHead2 = new THREE.Mesh(
+      new THREE.ConeGeometry(0.15, 0.25, 8),
+      new THREE.MeshBasicMaterial({ color: 0x000000 })
+    );
+    arrowHead2.position.set(0.35, -0.18, 0);
+    arrowHead2.rotation.z = -Math.PI / 2;
+    arrow2.add(arrowHead2);
+    
+    symbolGroup.add(arrow1);
+    symbolGroup.add(arrow2);
+    
+    // Move symbol slightly forward for better visibility
+    symbolGroup.position.z = 0.2;
+    
+    // Create a billboard effect to make symbol always face camera
+    const billboardGroup = new THREE.Group();
+    billboardGroup.add(symbolGroup);
+    
+    // Mark it as a billboard for the rendering system
+    (billboardGroup as any).isBillboard = true;
+    billboardGroup.name = 'billboard';
+    
+    group.add(billboardGroup);
+    
+    // First ring (horizontal orientation - XZ plane)
+    const ring1Geometry = new THREE.TorusGeometry(1.5, 0.15, 8, 48);
+    const ring1Material = new THREE.MeshPhongMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.5,
+      emissive: renderable.color,
+      emissiveIntensity: 1.0,
+    });
+    const ring1 = new THREE.Mesh(ring1Geometry, ring1Material);
+    ring1.rotation.x = Math.PI / 2; // This makes it lie flat on the XZ plane
+    ring1.name = 'horizontalRing';
+    group.add(ring1);
+    
+    // Second ring (vertical orientation - XY plane)
+    const ring2Geometry = new THREE.TorusGeometry(1.5, 0.15, 8, 48);
+    const ring2Material = new THREE.MeshPhongMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.5,
+      emissive: renderable.color,
+      emissiveIntensity: 1.0,
+    });
+    const ring2 = new THREE.Mesh(ring2Geometry, ring2Material);
+    // No rotation needed, torus is already in XY plane by default
+    ring2.name = 'verticalRing';
+    group.add(ring2);
+    
+    // Add auto-rotation to both rings on orthogonal axes - ensure both rotation properties are properly set
+    ring1.userData = { 
+      autoRotate: {
+        speed: Math.PI * 1.5, // Rotate at 1.5π radians per second (fast)
+        axis: 'y'  // Rotate around Y axis
+      }
+    };
+    
+    ring2.userData = {
+      autoRotate: {
+        speed: Math.PI * 1.2, // Slightly different speed for visual interest
+        axis: 'z'  // Rotate around Z axis - orthogonal to ring1's Y axis
+      }
+    };
+    
+    // Also set using standard property to ensure compatibility
+    (ring1 as any).autoRotate = { ...ring1.userData.autoRotate };
+    (ring2 as any).autoRotate = { ...ring2.userData.autoRotate };
+    
+    // Add slight random motion to the orb position without changing initial Y
+    const floatHeight = 0.2;
+    const floatSpeed = 1.5;
+    
+    // Don't store position.y (which is 0 at mesh creation time)
+    // We'll get the actual position from the entity later in RenderingSystem
+    (group as any).floatData = {
+      startTime: Date.now(),
+      originalY: null, // Will be set the first time the rendering system updates
+      height: floatHeight,
+      speed: floatSpeed,
+      initialized: false // Flag to track if we've initialized with real position
+    };
     
     // Apply scale
     group.scale.set(renderable.scale, renderable.scale, renderable.scale);

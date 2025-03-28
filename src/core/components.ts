@@ -281,3 +281,11 @@ export interface DevMode {
   originalCameraEntity: number; // Reference to the original camera entity
   devCameraEntity: number;  // Reference to the dev camera entity
 }
+
+export interface PowerUp {
+  type: 'fireRate' | 'shield' | 'multiplier';
+  duration: number;
+  timeRemaining: number;
+  active: boolean;
+  lifetime?: number; // Time in seconds before the power-up disappears if not collected
+}
