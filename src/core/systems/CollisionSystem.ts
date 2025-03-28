@@ -490,9 +490,22 @@ export class CollisionSystem implements System {
     // Decrement shield
     shield.currentShield -= 1;
     
-    // If shield is depleted, remove the shield bubble
+    // If shield is depleted, remove the shield bubble and kill the guardian
     if (shield.currentShield <= 0) {
+      // First remove the shield bubble
       this.world.removeEntity(shieldEntity);
+      
+      // Now destroy the guardian itself
+      this.world.removeEntity(guardianEntity);
+      
+      // Create score entity if the HUD system is available
+      const hudSystem = this.getHUDSystem();
+      if (hudSystem && position) {
+        createFloatingScore(this.world, position, 20); // 20 points for killing a Shield Guardian
+        
+        // Update the actual score in the HUD
+        hudSystem.incrementScore(20);
+      }
     }
     
     // Remove the projectile

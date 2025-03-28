@@ -168,8 +168,44 @@ export class WaveSystem implements System {
     this.hasAnnouncedShieldGuardian = false;
     this.hasAnnouncedWarpRaider = false;
     
-    // Spawn the first enemy immediately - always make it a grunt, never a shield guardian
-    this.spawnEnemy(true); // Pass true to force a grunt for first enemy
+    // Spawn the first enemy immediately - always make it a grunt
+    const firstEnemyPosition = this.getRandomPositionOnSphere(160);
+    const wormholeEntity = createWormhole(this.world, firstEnemyPosition, this.dysonSphereEntity);
+    
+    const dysonPosition = this.world.getComponent<Position>(this.dysonSphereEntity, 'Position');
+    if (dysonPosition) {
+      // Calculate direction away from Dyson sphere
+      const direction = new THREE.Vector3(
+        firstEnemyPosition.x - dysonPosition.x,
+        firstEnemyPosition.y - dysonPosition.y,
+        firstEnemyPosition.z - dysonPosition.z
+      ).normalize();
+      
+      // Offset enemy position behind the wormhole
+      const enemyPosition = {
+        x: firstEnemyPosition.x + direction.x * 8,
+        y: firstEnemyPosition.y + direction.y * 8,
+        z: firstEnemyPosition.z + direction.z * 8
+      };
+      
+      // First create a regular grunt
+      createGrunt(this.world, enemyPosition, this.dysonSphereEntity);
+      
+      // For wave 2, spawn a Shield Guardian alongside the first enemy with a 0.5 second delay
+      if (waveInfo.currentWave === 2) {
+        // Use setTimeout to delay the spawn by 0.5 seconds
+        setTimeout(() => {
+          console.log('Spawning guaranteed Shield Guardian in wave 2');
+          const guardianEntity = createShieldGuardian(this.world, enemyPosition, this.dysonSphereEntity);
+          
+          if (this.hudSystem) {
+            this.hudSystem.displayMessage("WARNING: Shield Guardian detected!", 4);
+            this.hasAnnouncedShieldGuardian = true;
+          }
+        }, 500); // 500ms = 0.5 seconds
+      }
+    }
+    
     waveInfo.totalEnemies--;
     this.timeSinceLastSpawn = 0;
   }
@@ -224,8 +260,8 @@ export class WaveSystem implements System {
       }
     }
     
-    // For wave 2+, every 5th enemy can be a Shield Guardian (if not forced to be a grunt)
-    if (waveInfo.currentWave >= 2 && !forceGrunt && waveInfo.totalEnemies % 5 === 0) {
+    // For waves 3+, there's a 5% chance to spawn a Shield Guardian alongside any other enemy
+    if (!forceGrunt && waveInfo.currentWave >= 3 && Math.random() < 0.05) {
       // Create a shield guardian enemy
       enemyEntity = createShieldGuardian(this.world, enemyPosition, this.dysonSphereEntity);
       
