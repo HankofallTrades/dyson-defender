@@ -420,8 +420,8 @@ export class CollisionSystem implements System {
                 // Still update the score in HUD
                 hudSystem.incrementScore(scoreValue);
                 
-                // Spawn a power-up at the enemy's position (10% chance)
-                if (this.powerUpSystem && Math.random() < 0.1) {
+                // Spawn a power-up at the enemy's position (15% chance)
+                if (this.powerUpSystem && Math.random() < 0.15) {
                   // Create a fresh copy of the enemy position to avoid reference issues
                   const powerUpPosition = {
                     x: enemyPosition.x,
