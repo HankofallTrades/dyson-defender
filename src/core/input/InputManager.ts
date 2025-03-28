@@ -29,7 +29,8 @@ export class InputManager {
     up: false,
     down: false,
     shoot: false,
-    boost: false  // Added boost state for shift key
+    boost: false,  // Added boost state for shift key
+    toggleDevMode: false // Toggle for developer mode
   };
   
   private mouseState = {
@@ -66,6 +67,10 @@ export class InputManager {
         case 'q': this.inputState.down = true; break;
         case ' ': this.inputState.shoot = true; break; // Space bar for shooting
         case 'shift': this.inputState.boost = true; break; // Shift for boost
+        case 'p': 
+          this.inputState.toggleDevMode = true; 
+          event.preventDefault();
+          break;
       }
     };
 
@@ -79,6 +84,11 @@ export class InputManager {
         case 'q': this.inputState.down = false; break;
         case ' ': this.inputState.shoot = false; break; // Space bar for shooting
         case 'shift': this.inputState.boost = false; break; // Shift for boost
+        case 'p': 
+          this.inputState.toggleDevMode = false; 
+          // Prevent browser's default behavior
+          event.preventDefault();
+          break;
       }
     };
 

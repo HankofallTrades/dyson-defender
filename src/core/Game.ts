@@ -17,12 +17,13 @@ import { WaveSystem } from './systems/WaveSystem';
 import { EnemySystem } from './systems/EnemySystem';
 import { HUDSystem } from './systems/HUDSystem';
 import { FloatingScoreSystem } from './systems/FloatingScoreSystem';
-import { GameStateDisplay } from './components';
+import { GameStateDisplay, CameraMount, Position, Rotation, DevMode, MouseLook, Velocity } from './components';
 import { InputManager } from './input/InputManager';
 import { AnimationSystem } from './systems/AnimationSystem';
 import { ShieldSystem } from './systems/ShieldSystem';
 import { ShieldBubbleSystem } from './systems/ShieldBubbleSystem';
 import { WaveInfo } from './components';
+import { DevSystem } from './systems/DevSystem';
 
 /**
  * Main Game Controller
@@ -55,6 +56,7 @@ class Game {
   private waveSystem!: WaveSystem; // Use definite assignment assertion
   private floatingScoreSystem!: FloatingScoreSystem; // Use definite assignment assertion
   private animationSystem!: AnimationSystem; // Add reference to AnimationSystem
+  private devSystem!: DevSystem; // Reference to the dev system
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -105,6 +107,10 @@ class Game {
     // Connect the WaveSystem with the AnimationSystem and HUDSystem
     this.waveSystem.setAnimationSystem(this.animationSystem);
     this.waveSystem.setHUDSystem(this.hudSystem);
+    
+    // Create and store reference to Dev system
+    this.devSystem = new DevSystem(this.world, this.sceneManager, this.container);
+    this.world.addSystem(this.devSystem);
     
     // Add the rendering system last
     this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
@@ -221,7 +227,15 @@ class Game {
   private animate = (): void => {
     this.animationFrameId = requestAnimationFrame(this.animate);
     
-    // Check if the game is in a playing state
+    // Always get the current time for consistent timing
+    const currentTime = performance.now();
+    const deltaTime = (currentTime - this.lastFrameTime) / 1000;
+    this.lastFrameTime = currentTime;
+    
+    // Check if in dev mode
+    const isDevMode = this.devSystem && this.devSystem.isActive();
+    
+    // Normal game flow
     let isPlaying = false;
     const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
     
@@ -242,22 +256,38 @@ class Game {
       }
     }
     
-    // Always render, but only update game logic if playing
-    if (isPlaying && this.isRunning) {
-      const currentTime = performance.now();
-      const deltaTime = (currentTime - this.lastFrameTime) / 1000;
-      this.lastFrameTime = currentTime;
-      
-      this.stateManager.updateState({ lastUpdateTime: Date.now() });
-      
-      // Update the game state in the world
-      this.world.setGameState(this.stateManager.getState());
-      
+    // Only update specific systems if in dev mode
+    if (isDevMode) {
+      this.updateFilteredSystems(deltaTime);
+    }
+    // Otherwise, follow normal game update rules
+    else if (isPlaying && this.isRunning) {
+      // Normal game update - all systems
       this.world.update(deltaTime);
+      this.stateManager.updateState({ lastUpdateTime: Date.now() });
     }
     
+    // Render scene
     this.render();
   };
+  
+  /**
+   * Updates only specific systems when in dev mode
+   */
+  private updateFilteredSystems(deltaTime: number): void {
+    // Get all systems and filter to only run certain ones in dev mode
+    const systems = this.world.getSystems();
+    for (const system of systems) {
+      const systemName = system.constructor.name;
+      
+      // Only update specific systems in dev mode
+      if (systemName === 'DevSystem' || 
+          systemName === 'RenderingSystem' ||
+          systemName === 'InputSystem') {
+        system.update(deltaTime);
+      }
+    }
+  }
 
   private render(): void {
     this.sceneManager.render();

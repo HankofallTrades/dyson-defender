@@ -24,7 +24,7 @@ export class EnemySystem implements System {
     if (playerEntities.length > 0) {
       playerEntity = playerEntities[0];
       const pos = this.world.getComponent<Position>(playerEntity, 'Position');
-      if (pos) playerPosition = pos; // Only assign if defined
+      if (pos) playerPosition = pos;
     }
     
     const enemies = this.world.getEntitiesWith(['Enemy', 'Position', 'Velocity']);
@@ -40,11 +40,74 @@ export class EnemySystem implements System {
       
       // Skip movement processing if the enemy can't move
       if (!enemy.canMove) {
-        // Ensure velocity is zero
         velocity.x = 0;
         velocity.y = 0;
         velocity.z = 0;
         continue;
+      }
+      
+      // Special behavior for Warp Raiders - they prioritize attacking the player
+      if (enemy.type === 'warpRaider' && playerPosition) {
+        // Calculate distance to player
+        const distanceToPlayer = Math.sqrt(
+          Math.pow(playerPosition.x - position.x, 2) +
+          Math.pow(playerPosition.y - position.y, 2) +
+          Math.pow(playerPosition.z - position.z, 2)
+        );
+        
+        // Get direction to player
+        const directionToPlayer = new THREE.Vector3(
+          playerPosition.x - position.x,
+          playerPosition.y - position.y,
+          playerPosition.z - position.z
+        ).normalize();
+        
+        // Warp Raiders maintain some distance from the player for strafing attacks
+        const optimalRange = 30;
+        const rangeBuffer = 5;
+        
+        if (distanceToPlayer > optimalRange + rangeBuffer) {
+          // Move towards player if too far
+          velocity.x = directionToPlayer.x * enemy.speed;
+          velocity.y = directionToPlayer.y * enemy.speed;
+          velocity.z = directionToPlayer.z * enemy.speed;
+        } else if (distanceToPlayer < optimalRange - rangeBuffer) {
+          // Back away if too close
+          velocity.x = -directionToPlayer.x * enemy.speed * 0.5;
+          velocity.y = -directionToPlayer.y * enemy.speed * 0.5;
+          velocity.z = -directionToPlayer.z * enemy.speed * 0.5;
+        } else {
+          // Strafe around player at optimal range
+          const strafeDirection = new THREE.Vector3(
+            -directionToPlayer.z,
+            0,
+            directionToPlayer.x
+          ).normalize();
+          
+          velocity.x = strafeDirection.x * enemy.speed;
+          velocity.y = strafeDirection.y * enemy.speed * 0.2; // Reduced vertical movement
+          velocity.z = strafeDirection.z * enemy.speed;
+        }
+        
+        // Always face the player
+        this.smoothFaceTarget(rotation, position, playerPosition, deltaTime);
+        
+        // Aggressive shooting at player
+        if (enemy.canShoot && enemy.currentLaserCooldown <= 0) {
+          this.fireEnemyLaser(entity, position, {
+            x: directionToPlayer.x,
+            y: directionToPlayer.y,
+            z: directionToPlayer.z
+          });
+          enemy.currentLaserCooldown = enemy.laserCooldown;
+        }
+        
+        // Update laser cooldown
+        if (enemy.currentLaserCooldown > 0) {
+          enemy.currentLaserCooldown -= deltaTime;
+        }
+        
+        continue; // Skip regular enemy behavior
       }
       
       // Special behavior for Shield Guardian
@@ -227,6 +290,9 @@ export class EnemySystem implements System {
     // Create a spawn position slightly in front of the enemy
     const forward = new THREE.Vector3(direction.x, direction.y, direction.z).normalize();
     
+    // Get enemy type to determine laser properties
+    const enemy = this.world.getComponent<Enemy>(entity, 'Enemy');
+    
     // Spawn position (3 units in front of the enemy)
     const spawnPos = {
       x: position.x + forward.x * 3,
@@ -234,8 +300,25 @@ export class EnemySystem implements System {
       z: position.z + forward.z * 3
     };
     
-    // Create the laser entity with red color for enemy lasers
-    createLaser(this.world, this.scene, spawnPos, direction, entity, COLORS.GRUNT_EYES_SIEGE);
+    // Create the laser entity with appropriate color
+    const laserEntity = enemy?.type === 'warpRaider'
+      ? createLaser(this.world, this.scene, spawnPos, direction, entity, COLORS.WARP_RAIDER_LASER)
+      : createLaser(this.world, this.scene, spawnPos, direction, entity, COLORS.GRUNT_EYES_SIEGE);
+
+    // For Warp Raiders, make the laser thicker
+    if (enemy?.type === 'warpRaider') {
+      const renderable = this.world.getComponent<Renderable>(laserEntity, 'Renderable');
+      if (renderable) {
+        renderable.scale = 1.5; // Thicker laser
+      }
+      
+      // Also make the collider bigger
+      const collider = this.world.getComponent<Collider>(laserEntity, 'Collider');
+      if (collider) {
+        collider.width = 0.5;
+        collider.height = 0.5;
+      }
+    }
   }
   
   // Helper method to make an entity face a target position

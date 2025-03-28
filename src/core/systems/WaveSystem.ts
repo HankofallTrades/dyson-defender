@@ -3,6 +3,7 @@ import { WaveInfo, Enemy, Renderable, GameStateDisplay, Position } from '../comp
 import { createGrunt } from '../entities/GruntEntity';
 import { createWormhole } from '../entities/WormholeEntity';
 import { createShieldGuardian } from '../entities/ShieldGuardianEntity';
+import { createWarpRaider } from '../entities/WarpRaiderEntity';
 import { AnimationSystem } from './AnimationSystem';
 import { HUDSystem } from './HUDSystem';
 import * as THREE from 'three';
@@ -18,6 +19,7 @@ export class WaveSystem implements System {
   private hasAnnouncedWave: boolean = false;
   private hasAnnouncedCompletion: boolean = false;
   private hasAnnouncedShieldGuardian: boolean = false;
+  private hasAnnouncedWarpRaider: boolean = false;
   
   constructor(private world: World) {
     // Create a special entity just to hold the wave information
@@ -164,6 +166,7 @@ export class WaveSystem implements System {
     
     // Reset announcement flags for the new wave
     this.hasAnnouncedShieldGuardian = false;
+    this.hasAnnouncedWarpRaider = false;
     
     // Spawn the first enemy immediately - always make it a grunt, never a shield guardian
     this.spawnEnemy(true); // Pass true to force a grunt for first enemy
@@ -190,7 +193,7 @@ export class WaveSystem implements System {
       position.z - dysonPosition.z
     ).normalize();
     
-    // Offset enemy position 8 units behind the wormhole opening (increased from 4)
+    // Offset enemy position 8 units behind the wormhole opening
     const enemyPosition = {
       x: position.x + direction.x * 8,
       y: position.y + direction.y * 8,
@@ -199,44 +202,49 @@ export class WaveSystem implements System {
     
     // Get current wave info
     const waveInfo = this.world.getComponent<WaveInfo>(this.waveEntity, 'WaveInfo');
+    if (!waveInfo) return wormholeEntity;
+    
     let enemyEntity: number;
-    
-    // If we're forcing a grunt (first enemy in wave) or we're before wave 3, spawn a grunt
-    if (forceGrunt || (waveInfo && waveInfo.currentWave < 3)) {
-      // Default to grunt
-      enemyEntity = createGrunt(this.world, enemyPosition, this.dysonSphereEntity);
-      return wormholeEntity;
-    }
-    
-    // Shield Guardians start spawning at wave 3
-    if (waveInfo && waveInfo.currentWave >= 3) {
-      // Guarantee at least one shield guardian for all waves 3+
-      if (!this.hasAnnouncedShieldGuardian) {
-        // Spawn Shield Guardian
-        enemyEntity = createShieldGuardian(this.world, enemyPosition, this.dysonSphereEntity);
+
+    // First, handle the guaranteed Warp Raider spawn in wave 4
+    if (!forceGrunt && waveInfo.currentWave === 4) {
+      // Calculate total enemies for wave 4 (should be 5 + (4-1) * 3 = 14)
+      const totalEnemiesInWave = 5 + (waveInfo.currentWave - 1) * 3;
+      
+      // Spawn Warp Raider as the third enemy in wave 4
+      if (totalEnemiesInWave - waveInfo.totalEnemies === 2) {
+        console.log('Spawning guaranteed Warp Raider in wave 4');
+        enemyEntity = createWarpRaider(this.world, enemyPosition, this.dysonSphereEntity);
         
-        // Announce the shield guardian
-        if (this.hudSystem) {
-          this.hudSystem.displayMessage("SHIELD GUARDIAN DETECTED!", 3);
+        if (!this.hasAnnouncedWarpRaider && this.hudSystem) {
+          this.hudSystem.displayMessage("ALERT: Fast Warp Raider incoming!", 4);
+          this.hasAnnouncedWarpRaider = true;
         }
-        this.hasAnnouncedShieldGuardian = true;
-        
-        return wormholeEntity;
-      }
-      
-      // 5% chance to spawn additional shield guardians
-      const shieldGuardianChance = 0.05;
-      
-      if (Math.random() < shieldGuardianChance) {
-        // Spawn Shield Guardian
-        enemyEntity = createShieldGuardian(this.world, enemyPosition, this.dysonSphereEntity);
-        return wormholeEntity;
+        return enemyEntity;
       }
     }
     
-    // Default to grunt
-    enemyEntity = createGrunt(this.world, enemyPosition, this.dysonSphereEntity);
-    return wormholeEntity;
+    // For wave 2+, every 5th enemy can be a Shield Guardian (if not forced to be a grunt)
+    if (waveInfo.currentWave >= 2 && !forceGrunt && waveInfo.totalEnemies % 5 === 0) {
+      // Create a shield guardian enemy
+      enemyEntity = createShieldGuardian(this.world, enemyPosition, this.dysonSphereEntity);
+      
+      // Only show the message once per wave
+      if (!this.hasAnnouncedShieldGuardian && this.hudSystem) {
+        this.hudSystem.displayMessage("WARNING: Shield Guardian detected!", 4);
+        this.hasAnnouncedShieldGuardian = true;
+      }
+    } 
+    // Random chance for Warp Raiders in waves 5+
+    else if (!forceGrunt && waveInfo.currentWave >= 5 && Math.random() < 0.05) {
+      enemyEntity = createWarpRaider(this.world, enemyPosition, this.dysonSphereEntity);
+    }
+    else {
+      // Create a regular grunt enemy
+      enemyEntity = createGrunt(this.world, enemyPosition, this.dysonSphereEntity);
+    }
+    
+    return enemyEntity;
   }
   
   private getRandomPositionOnSphere(radius: number): { x: number, y: number, z: number } {
@@ -271,5 +279,6 @@ export class WaveSystem implements System {
     this.hasAnnouncedWave = false;
     this.hasAnnouncedCompletion = false;
     this.hasAnnouncedShieldGuardian = false;
+    this.hasAnnouncedWarpRaider = false;
   }
 } 

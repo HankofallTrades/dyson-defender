@@ -61,6 +61,14 @@ export class World {
     this.systems.push(system);
   }
 
+  /**
+   * Get all systems currently registered with the world
+   * @returns Array of all systems
+   */
+  public getSystems(): System[] {
+    return this.systems;
+  }
+
   public update(deltaTime: number): void {
     for (const system of this.systems) {
       try {

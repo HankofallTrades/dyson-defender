@@ -15,21 +15,23 @@ export class MeshFactory {
    * Creates a mesh based on the provided renderable component
    */
   public static createMesh(renderable: Renderable): THREE.Object3D {
-    switch (renderable.modelId) {
-      case 'dysonSphere':
-        return this.createDysonSphereMesh(renderable);
-      case 'playerShip':
-        return this.createPlayerShipMesh(renderable);
-      case 'laser':
-        return this.createLaserMesh(renderable);
-      case 'grunt':
-        return this.createGruntMesh(renderable);
-      case 'shieldGuardian':
-        return this.createShieldGuardianMesh(renderable);
-      case 'shieldBubble':
-        return this.createShieldBubbleMesh(renderable);
-      default:
-        return this.createDefaultMesh(renderable);
+    // Create the appropriate mesh based on the model type
+    if (renderable.modelId === 'player') {
+      return this.createPlayerShipMesh(renderable);
+    } else if (renderable.modelId === 'dysonSphere') {
+      return this.createDysonSphereMesh(renderable);
+    } else if (renderable.modelId === 'laser') {
+      return this.createLaserMesh(renderable);
+    } else if (renderable.modelId === 'grunt') {
+      return this.createGruntMesh(renderable);
+    } else if (renderable.modelId === 'shieldGuardian') {
+      return this.createShieldGuardianMesh(renderable);
+    } else if (renderable.modelId === 'shieldBubble') {
+      return this.createShieldBubbleMesh(renderable);
+    } else if (renderable.modelId === 'warpRaider') {
+      return this.createWarpRaiderMesh(renderable);
+    } else {
+      return this.createDefaultMesh(renderable);
     }
   }
 
@@ -549,6 +551,273 @@ export class MeshFactory {
     group.add(arcGroup);
     
     // Apply scale
+    group.scale.set(renderable.scale, renderable.scale, renderable.scale);
+    
+    return group;
+  }
+
+  private static createWarpRaiderMesh(renderable: Renderable): THREE.Object3D {
+    // Create a main group for the entire ship
+    const group = new THREE.Group();
+    
+    // ==========================================
+    // BODY CREATION - Angular prism-shaped hull
+    // ==========================================
+    // Create an angular prism body instead of the capsule
+    const bodyGroup = new THREE.Group();
+    
+    // Main angular fuselage using BoxGeometry
+    const mainBodyGeometry = new THREE.BoxGeometry(1.4, 0.8, 3.0);
+    const mainBodyMaterial = new THREE.MeshPhongMaterial({
+      color: renderable.color || COLORS.WARP_RAIDER_BASE,
+      shininess: 90,
+      specular: 0x666666,
+      emissive: COLORS.WARP_RAIDER_BASE,
+      emissiveIntensity: 0.2
+    });
+    
+    // Taper the box vertices to create an angular fighter shape
+    const positions = mainBodyGeometry.attributes.position.array;
+    for (let i = 0; i < positions.length; i += 3) {
+      // Get vertex position
+      const z = positions[i + 2];
+      
+      // Taper front to a point (vertices at the front/positive Z get narrower)
+      if (z > 0) {
+        const taperFactor = 1 - (z / 1.5) * 0.7; // Taper more aggressively toward the front
+        positions[i] *= taperFactor; // Scale X
+        positions[i + 1] *= taperFactor; // Scale Y
+      }
+      
+      // Taper rear slightly
+      if (z < -0.5) {
+        const rearTaper = 0.9;
+        positions[i] *= rearTaper;
+        positions[i + 1] *= rearTaper;
+      }
+    }
+    mainBodyGeometry.computeVertexNormals();
+    
+    const mainBody = new THREE.Mesh(mainBodyGeometry, mainBodyMaterial);
+    bodyGroup.add(mainBody);
+    
+    // Add angular cockpit canopy on top
+    const canopyGeometry = new THREE.BoxGeometry(0.6, 0.3, 1.2);
+    // Modify canopy to be angular and sleek
+    const canopyPositions = canopyGeometry.attributes.position.array;
+    for (let i = 0; i < canopyPositions.length; i += 3) {
+      const z = canopyPositions[i + 2];
+      if (z > 0) {
+        // Taper front of canopy to a point
+        const taperFactor = 1 - (z / 0.6) * 0.8;
+        canopyPositions[i] *= taperFactor;
+      }
+    }
+    canopyGeometry.computeVertexNormals();
+    
+    const canopyMaterial = new THREE.MeshPhongMaterial({
+      color: COLORS.WARP_RAIDER_ACCENT,
+      shininess: 100,
+      specular: 0x999999,
+      emissive: COLORS.WARP_RAIDER_ACCENT,
+      emissiveIntensity: 0.3
+    });
+    
+    const canopy = new THREE.Mesh(canopyGeometry, canopyMaterial);
+    canopy.position.set(0, 0.5, 0.5); // Position on top front of main body
+    bodyGroup.add(canopy);
+    
+    // Add angular nose section
+    const noseGeometry = new THREE.ConeGeometry(0.3, 0.8, 4); // Fewer segments for angular look
+    const noseMaterial = new THREE.MeshPhongMaterial({
+      color: COLORS.WARP_RAIDER_DETAIL,
+      shininess: 90,
+      specular: 0x666666
+    });
+    const nose = new THREE.Mesh(noseGeometry, noseMaterial);
+    nose.rotation.x = -Math.PI / 2; // Rotate to point forward
+    nose.position.z = 1.5; // Position at front of the ship
+    bodyGroup.add(nose);
+    
+    // Add angular body panels and details
+    const addBodyPanel = (width: number, height: number, depth: number, x: number, y: number, z: number, rotY: number = 0) => {
+      const panelGeom = new THREE.BoxGeometry(width, height, depth);
+      const panelMat = new THREE.MeshPhongMaterial({
+        color: COLORS.WARP_RAIDER_DETAIL,
+        shininess: 80,
+        specular: 0x444444
+      });
+      const panel = new THREE.Mesh(panelGeom, panelMat);
+      panel.position.set(x, y, z);
+      panel.rotation.y = rotY;
+      bodyGroup.add(panel);
+      return panel;
+    };
+    
+    // Add angular side panels
+    addBodyPanel(0.1, 0.5, 1.8, 0.7, 0, 0, 0);
+    addBodyPanel(0.1, 0.5, 1.8, -0.7, 0, 0, 0);
+    
+    // Add bottom hull extension
+    addBodyPanel(0.8, 0.2, 1.5, 0, -0.5, -0.5, 0);
+    
+    // Add the body group to the main group
+    group.add(bodyGroup);
+
+    // ==========================================
+    // WING CREATION - Horizontal wings
+    // ==========================================
+    // Wing design - angular and aggressive
+    const wingShape = new THREE.Shape();
+    wingShape.moveTo(0, 0);
+    wingShape.lineTo(2.5, -0.5);
+    wingShape.lineTo(3.0, -0.3);
+    wingShape.lineTo(3.2, 0.2);
+    wingShape.lineTo(1.5, 0.4);
+    wingShape.lineTo(0, 0);
+
+    const wingExtrudeSettings = {
+      steps: 1,
+      depth: 0.05,
+      bevelEnabled: true,
+      bevelThickness: 0.02,
+      bevelSize: 0.02,
+      bevelSegments: 3
+    };
+
+    const wingGeometry = new THREE.ExtrudeGeometry(wingShape, wingExtrudeSettings);
+    const wingMaterial = new THREE.MeshPhongMaterial({
+      color: COLORS.WARP_RAIDER_ACCENT,
+      shininess: 80,
+      specular: 0x666666
+    });
+
+    // Create wings on left and right sides of the ship
+    [-1, 1].forEach(side => {
+      const wing = new THREE.Mesh(wingGeometry, wingMaterial);
+      
+      // Position wings on the sides, slightly toward the back of the ship
+      wing.position.set(side * 0.8, 0, -0.5);
+      
+      // Rotate wings to be horizontal from the sides
+      wing.rotation.z = side * 0.2; // Slight upward angle for aggression
+      wing.rotation.y = -side * Math.PI/2; // Rotate to point outward from sides
+      
+      group.add(wing);
+
+      // Add wing accent lights
+      const accentGeometry = new THREE.BoxGeometry(1.8, 0.05, 0.05);
+      const accentMaterial = new THREE.MeshPhongMaterial({
+        color: COLORS.WARP_RAIDER_ENGINE,
+        emissive: COLORS.WARP_RAIDER_ENGINE,
+        emissiveIntensity: 0.5,
+        transparent: true,
+        opacity: 0.8
+      });
+      const accent = new THREE.Mesh(accentGeometry, accentMaterial);
+      accent.position.set(1.2, 0, 0);
+      wing.add(accent);
+    });
+
+    // ==========================================
+    // ENGINE CREATION - Pointing backward
+    // ==========================================
+    // Engine group positioned at the back of the ship
+    const engineGroup = new THREE.Group();
+    engineGroup.position.set(0, 0, -1.3); // Position at the back of the ship
+    group.add(engineGroup);
+
+    // Main engine housing - make it more angular
+    const engineHousingGeometry = new THREE.CylinderGeometry(0.4, 0.5, 0.8, 6); // Fewer segments for angular look
+    const engineHousingMaterial = new THREE.MeshPhongMaterial({
+      color: COLORS.WARP_RAIDER_DETAIL,
+      shininess: 90,
+      specular: 0x666666
+    });
+    const engineHousing = new THREE.Mesh(engineHousingGeometry, engineHousingMaterial);
+    
+    // Rotate cylinder to point backward (along negative Z)
+    engineHousing.rotation.x = Math.PI / 2;
+    engineGroup.add(engineHousing);
+
+    // Engine glow - multiple layers for more intense effect
+    [0.3, 0.35, 0.4].forEach((radius, i) => {
+      const glowGeometry = new THREE.CylinderGeometry(radius, radius * 1.2, 0.3, 16);
+      const glowMaterial = new THREE.MeshPhongMaterial({
+        color: COLORS.WARP_RAIDER_ENGINE,
+        emissive: COLORS.WARP_RAIDER_ENGINE,
+        emissiveIntensity: 1 - i * 0.2,
+        transparent: true,
+        opacity: 0.7 - i * 0.15
+      });
+      const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+      
+      // Position the glow at the back end of the engine housing
+      glow.position.z = -0.5;
+      glow.rotation.x = Math.PI / 2; // Align with engine direction
+      engineGroup.add(glow);
+    });
+
+    // Engine trail - multiple layers for more dynamic effect
+    [0.3, 0.4, 0.5].forEach((radius, i) => {
+      const trailGeometry = new THREE.ConeGeometry(radius, 2 + i * 0.5, 16);
+      const trailMaterial = new THREE.MeshPhongMaterial({
+        color: COLORS.WARP_RAIDER_ENGINE,
+        emissive: COLORS.WARP_RAIDER_ENGINE,
+        emissiveIntensity: 0.8 - i * 0.2,
+        transparent: true,
+        opacity: 0.4 - i * 0.1
+      });
+      const trail = new THREE.Mesh(trailGeometry, trailMaterial);
+      
+      // Position trail behind the engine
+      trail.position.z = -1.5 - i * 0.2;
+      
+      // Rotate cone to point backward (along negative Z)
+      trail.rotation.x = -Math.PI / 2;
+      engineGroup.add(trail);
+    });
+
+    // ==========================================
+    // WEAPON SYSTEMS - Front-mounted cannons
+    // ==========================================
+    // Dual heavy laser cannons
+    [-0.4, 0.4].forEach(x => {
+      const cannonGroup = new THREE.Group();
+      // Position cannons on front sides
+      cannonGroup.position.set(x, 0, 1.0);
+      group.add(cannonGroup);
+
+      // Main cannon barrel
+      const barrelGeometry = new THREE.CylinderGeometry(0.08, 0.12, 1.2, 8);
+      const barrelMaterial = new THREE.MeshPhongMaterial({
+        color: COLORS.WARP_RAIDER_DETAIL,
+        shininess: 90
+      });
+      const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
+      
+      // Rotate barrel to point forward (along positive Z)
+      barrel.rotation.x = Math.PI / 2;
+      cannonGroup.add(barrel);
+
+      // Energy coils around barrel
+      for (let i = 0; i < 3; i++) {
+        const coilGeometry = new THREE.TorusGeometry(0.15, 0.02, 8, 16);
+        const coilMaterial = new THREE.MeshPhongMaterial({
+          color: COLORS.WARP_RAIDER_ENGINE,
+          emissive: COLORS.WARP_RAIDER_ENGINE,
+          emissiveIntensity: 0.5,
+          transparent: true,
+          opacity: 0.8
+        });
+        const coil = new THREE.Mesh(coilGeometry, coilMaterial);
+        coil.position.z = 0.3 + i * 0.3; // Position along the barrel
+        coil.rotation.y = Math.PI / 2; // Orient properly around barrel
+        cannonGroup.add(coil);
+      }
+    });
+
+    // Apply scale to the whole ship
     group.scale.set(renderable.scale, renderable.scale, renderable.scale);
     
     return group;

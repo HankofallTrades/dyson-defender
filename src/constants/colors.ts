@@ -24,6 +24,13 @@ export const COLORS = {
   SHIELD_BUBBLE: 0x0088ff,           // Vibrant blue for shield bubble (changed from green-cyan)
   SHIELD_BUBBLE_INNER: 0x66aaff,     // Brighter blue inner glow
   
+  // Warp Raider colors
+  WARP_RAIDER_BASE: 0x1a0026, // Very dark purple for the main body
+  WARP_RAIDER_ACCENT: 0x4d0066, // Darker purple for accents
+  WARP_RAIDER_ENGINE: 0x00ffff, // Bright cyan for engine glow
+  WARP_RAIDER_LASER: 0x00ffff, // Bright cyan for its laser
+  WARP_RAIDER_DETAIL: 0x330044, // Mid-dark purple for surface details
+  
   // Projectile colors
   LASER_GREEN: 0x00ff00,
   

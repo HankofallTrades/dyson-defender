@@ -265,3 +265,10 @@ export interface ShieldBarComponent {
   height: number;         // Height of the shield bar
   visible: boolean;       // Whether the shield bar is visible
 }
+
+// Developer mode component for debugging and inspection
+export interface DevMode {
+  isActive: boolean;        // Whether dev mode is active
+  originalCameraEntity: number; // Reference to the original camera entity
+  devCameraEntity: number;  // Reference to the dev camera entity
+}
