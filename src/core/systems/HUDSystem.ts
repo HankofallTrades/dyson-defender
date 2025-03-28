@@ -324,65 +324,63 @@ export class HUDSystem implements System {
       
       const distance = distanceVector.length();
       
-      // Check if within radar range - asteroids are always visible regardless of distance
-      if (distance <= radar.range || enemy.type === 'asteroid') {
-        // Calculate normalized direction vector for the radar
-        const rawDirection = distanceVector.clone().normalize();
-        
-        // Project the enemy position onto the player's local space
-        // Forward (z) will be mapped to y-axis on radar (up/down)
-        // Right (x) will be mapped to x-axis on radar (left/right)
-        const forwardProjection = playerForward.dot(rawDirection);
-        const rightProjection = playerRight.dot(rawDirection);
-        
-        // Calculate relative vertical position (how much higher/lower the enemy is)
-        const verticalDifference = position.y - playerPos.y;
-        
-        // Calculate threat level based on enemy type or siege mode
-        let threatLevel = 0.5; // Default threat level
-        
-        // Higher threat level for enemies in siege mode
-        if (enemy.inSiegeMode) {
-          threatLevel = 0.9;
-        } else {
-          // Threat level based on enemy type
-          switch (enemy.type) {
-            case 'grunt':
-              threatLevel = 0.6;
-              break;
-            case 'bomber':
-              threatLevel = 0.8;
-              break;
-            case 'asteroid':
-              threatLevel = 1.0; // Highest threat level for asteroids
-              break;
-            case 'warpRaider':
-              threatLevel = 0.8;
-              break;
-            case 'shieldGuardian':
-              threatLevel = 0.7;
-              break;
-            default:
-              threatLevel = 0.5;
-          }
+      // Track all enemies regardless of distance since we clamp in UI
+      // Calculate normalized direction vector for the radar
+      const rawDirection = distanceVector.clone().normalize();
+      
+      // Project the enemy position onto the player's local space
+      // Forward (z) will be mapped to y-axis on radar (up/down)
+      // Right (x) will be mapped to x-axis on radar (left/right)
+      const forwardProjection = playerForward.dot(rawDirection);
+      const rightProjection = playerRight.dot(rawDirection);
+      
+      // Calculate relative vertical position (how much higher/lower the enemy is)
+      const verticalDifference = position.y - playerPos.y;
+      
+      // Calculate threat level based on enemy type or siege mode
+      let threatLevel = 0.5; // Default threat level
+      
+      // Higher threat level for enemies in siege mode
+      if (enemy.inSiegeMode) {
+        threatLevel = 0.9;
+      } else {
+        // Threat level based on enemy type
+        switch (enemy.type) {
+          case 'grunt':
+            threatLevel = 0.6;
+            break;
+          case 'bomber':
+            threatLevel = 0.8;
+            break;
+          case 'asteroid':
+            threatLevel = 1.0; // Highest threat level for asteroids
+            break;
+          case 'warpRaider':
+            threatLevel = 0.8;
+            break;
+          case 'shieldGuardian':
+            threatLevel = 0.7;
+            break;
+          default:
+            threatLevel = 0.5;
         }
-        
-        // Add to tracked entities - with directions relative to player's orientation
-        radar.trackedEntities.push({
-          entityId: enemyEntity,
-          entityType: enemy.type,
-          distance: distance,
-          direction: {
-            // X is left/right relative to player
-            x: rightProjection,
-            // Original Y (vertical axis in 3D) preserved for elevation indicators
-            y: verticalDifference,
-            // Z becomes Y in radar (up/down) - forward is positive, backward is negative
-            z: forwardProjection
-          },
-          threatLevel: threatLevel
-        });
       }
+      
+      // Add to tracked entities - with directions relative to player's orientation
+      radar.trackedEntities.push({
+        entityId: enemyEntity,
+        entityType: enemy.type,
+        distance: distance,
+        direction: {
+          // X is left/right relative to player
+          x: rightProjection,
+          // Original Y (vertical axis in 3D) preserved for elevation indicators
+          y: verticalDifference,
+          // Z becomes Y in radar (up/down) - forward is positive, backward is negative
+          z: forwardProjection
+        },
+        threatLevel: threatLevel
+      });
     }
     
     // Find and add Dyson Sphere to radar

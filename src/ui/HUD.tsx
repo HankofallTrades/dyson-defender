@@ -1284,11 +1284,11 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           }}>
             <span style={{ color: '#ff00ff', fontSize: '0.7rem' }}>RADAR</span>
             <span style={{ 
-              color: radarData.trackedEntities.length > 0 ? '#ff5555' : '#00ffff', 
+              color: radarData.trackedEntities.filter(entity => entity.entityType !== 'dysonSphere').length > 0 ? '#ff5555' : '#00ffff', 
               fontSize: '0.6rem',
               animation: 'pulse-opacity 1s infinite alternate'
             }}>
-              {radarData.trackedEntities.length > 0 ? 'HOSTILES DETECTED' : 'SCANNING'}
+              {radarData.trackedEntities.filter(entity => entity.entityType !== 'dysonSphere').length > 0 ? 'THREATS DETECTED' : 'SCANNING'}
             </span>
           </div>
           
@@ -1391,22 +1391,29 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
               
               {/* Enemy blips - use actual enemy positions from radar data */}
               {radarData.trackedEntities.map((entity, index) => {
-                // Calculate blip position based on direction vector and normalized distance
-                // Forward (z) maps to y-axis (up/down) on radar
-                // Right (x) maps to x-axis (left/right) on radar
-                const normalizedDistance = Math.min(entity.distance / 500, 1); // Normalize to 0-1
+                // Using fixed 250 unit radius for the radar
+                const radarRadius = 250;
                 
-                // Use square root to spread out dots more (clusters less in the center)
-                const scaleFactor = Math.sqrt(normalizedDistance);
-                const scaledDistance = scaleFactor * 55; // Scale to slightly smaller than radar size
+                // Calculate direction vector components
+                let dirX = entity.direction.x;
+                let dirZ = entity.direction.z;
                 
-                // Map the direction to the radar
-                // x component: right/left of player (stays the same)
-                // z component: forward/backward of player (maps to y coordinate on radar)
-                // Forward is positive Z, so it goes up on the radar
-                // Backward is negative Z, so it goes down on the radar
-                const x = entity.direction.x * scaledDistance;
-                const y = -entity.direction.z * scaledDistance; // Negative because screen Y is inverted
+                // Calculate actual distance in X-Z plane (ignoring Y/elevation)
+                const xzDistance = Math.sqrt(
+                  Math.pow(entity.direction.x * entity.distance, 2) + 
+                  Math.pow(entity.direction.z * entity.distance, 2)
+                );
+                
+                // Scale the direction by the distance - closer to max distance = closer to edge
+                // This creates the correct relationship: further entities are toward the edge
+                const distanceRatio = Math.min(xzDistance / radarRadius, 1);
+                dirX *= distanceRatio;
+                dirZ *= distanceRatio;
+                
+                // Map to radar display coordinates (55px is visual radar radius)
+                const radarDisplayRadius = 55;
+                const x = dirX * radarDisplayRadius;
+                const y = -dirZ * radarDisplayRadius; // Negative because screen Y is inverted
                 
                 // Check vertical position (y-coordinate in 3D space)
                 // If significantly above or below player, show triangle instead of dot
@@ -1439,7 +1446,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
 
                 // Special case for asteroids
                 if (entity.entityType === 'asteroid') {
-                  const asteroidSize = Math.max(3, 6 - (normalizedDistance * 2));
+                  const asteroidSize = Math.max(3, 6 - (xzDistance / 500)); // Adjusted scale for new radius
                   
                   // If asteroid is above or below, render triangle with asteroid color
                   if (isAbove || isBelow) {
@@ -1490,7 +1497,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
                 const color = '#ff0000';
                 
                 // Size based on distance - closer = larger, with minimum size
-                const size = Math.max(2, 4 - (normalizedDistance * 2));
+                const size = Math.max(2, 4 - (xzDistance / 500)); // Adjusted scale for new radius
                 
                 // Fixed pulse speed
                 const pulseSpeed = 0.8;
@@ -1544,9 +1551,9 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
               bottom: '10px',
               right: '15px',
               fontSize: '0.6rem',
-              color: radarData.trackedEntities.length > 0 ? '#ff5555' : '#44ff44'
+              color: radarData.trackedEntities.filter(entity => entity.entityType !== 'dysonSphere').length > 0 ? '#ff5555' : '#44ff44'
             }}>
-              HOSTILES: {radarData.trackedEntities.length}
+              THREATS: {radarData.trackedEntities.filter(entity => entity.entityType !== 'dysonSphere').length}
             </div>
             <div style={{
               position: 'absolute',
