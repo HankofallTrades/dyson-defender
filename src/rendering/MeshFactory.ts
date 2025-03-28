@@ -1005,6 +1005,7 @@ export class MeshFactory {
     
     // Check power-up type based on color to determine which icon to show
     const isSpeedPowerUp = renderable.color === COLORS.POWERUP_SPEED;
+    const isHealthPowerUp = renderable.color === COLORS.POWERUP_HEALTH;
     
     if (isSpeedPowerUp) {
       // Create lightning bolt shape for speed boost power-up
@@ -1032,10 +1033,32 @@ export class MeshFactory {
       
       const boltMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
       const boltMesh = new THREE.Mesh(boltGeometry, boltMaterial);
-      boltMesh.scale.set(1.5, 1.5, 1.5); // Make it larger
+      boltMesh.scale.set(2.0, 2.0, 2.0); // Increased from 1.5 to 2.0 for better visibility
       lightning.add(boltMesh);
       
       symbolGroup.add(lightning);
+    } else if (isHealthPowerUp) {
+      // Create cross shape for health power-up
+      const cross = new THREE.Group();
+      
+      // Vertical bar of cross
+      const verticalBar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.2, 0.6, 0.15),
+        new THREE.MeshBasicMaterial({ color: 0x000000 })
+      );
+      cross.add(verticalBar);
+      
+      // Horizontal bar of cross
+      const horizontalBar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.6, 0.2, 0.15),
+        new THREE.MeshBasicMaterial({ color: 0x000000 })
+      );
+      cross.add(horizontalBar);
+      
+      // Scale up the cross to make it more visible
+      cross.scale.set(2.0, 2.0, 2.0);
+      
+      symbolGroup.add(cross);
     } else {
       // Create double arrow shape to indicate faster fire rate (default for fireRate power-up)
       // Arrow 1 (top)
@@ -1078,12 +1101,16 @@ export class MeshFactory {
       arrowHead2.rotation.z = -Math.PI / 2;
       arrow2.add(arrowHead2);
       
+      // Increase size of the arrows
+      arrow1.scale.set(1.5, 1.5, 1.5);
+      arrow2.scale.set(1.5, 1.5, 1.5);
+      
       symbolGroup.add(arrow1);
       symbolGroup.add(arrow2);
     }
     
-    // Move symbol slightly forward for better visibility
-    symbolGroup.position.z = 0.2;
+    // Move symbol slightly further forward for better visibility
+    symbolGroup.position.z = 0.3; // Increased from 0.2 to 0.3
     
     // Create a billboard effect to make symbol always face camera
     const billboardGroup = new THREE.Group();

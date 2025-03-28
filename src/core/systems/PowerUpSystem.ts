@@ -1,6 +1,6 @@
 import { World, System } from '../World';
-import { Position, PowerUp, LaserCooldown, InputReceiver, Velocity } from '../components';
-import { createFireRatePowerUp, createSpeedPowerUp, getRandomPowerUpType } from '../entities/PowerUpEntity';
+import { Position, PowerUp, LaserCooldown, InputReceiver, Velocity, Health } from '../components';
+import { createFireRatePowerUp, createSpeedPowerUp, createHealthPowerUp, getRandomPowerUpType } from '../entities/PowerUpEntity';
 import * as THREE from 'three';
 
 /**
@@ -36,6 +36,8 @@ export class PowerUpSystem implements System {
       createFireRatePowerUp(this.world, powerUpPos);
     } else if (powerUpType === 'speed') {
       createSpeedPowerUp(this.world, powerUpPos);
+    } else if (powerUpType === 'health') {
+      createHealthPowerUp(this.world, powerUpPos);
     }
   }
   
@@ -53,6 +55,8 @@ export class PowerUpSystem implements System {
       this.applyFireRatePowerUp(playerEntity, powerUp);
     } else if (powerUp.type === 'speed') {
       this.applySpeedPowerUp(playerEntity, powerUp);
+    } else if (powerUp.type === 'health') {
+      this.applyHealthPowerUp(playerEntity, powerUp);
     }
     
     // Remove the power-up entity after collection
@@ -118,6 +122,33 @@ export class PowerUpSystem implements System {
       type: 'speed',
       duration: powerUp.duration,
       timeRemaining: powerUp.duration,
+      active: true
+    });
+  }
+  
+  /**
+   * Apply health power-up effect to give player 20 hit points
+   */
+  private applyHealthPowerUp(playerEntity: number, powerUp: PowerUp): void {
+    // Get the player's health component
+    const health = this.world.getComponent<Health>(playerEntity, 'Health');
+    if (!health) {
+      return;
+    }
+    
+    // Add 20 hit points, but don't exceed max health
+    health.current = Math.min(health.current + 20, health.max);
+    
+    // The health power-up has an instant effect, so it doesn't need to be tracked
+    // We'll still set a very short duration just to show a notification briefly
+    powerUp.active = true;
+    powerUp.timeRemaining = powerUp.duration;
+    
+    // Add a short-lived PowerUp component to the player just for notification
+    this.world.addComponent(playerEntity, 'PowerUp', {
+      type: 'health',
+      duration: 0.1,
+      timeRemaining: 0.1,
       active: true
     });
   }
@@ -192,6 +223,7 @@ export class PowerUpSystem implements System {
         }
       }
     }
+    // Health power-up doesn't need any cleanup as it's an instant effect
     
     // If this is a power-up entity (not the player), remove it
     if (!this.world.hasComponent(entity, 'InputReceiver')) {

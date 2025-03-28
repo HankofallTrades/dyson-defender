@@ -42,8 +42,10 @@ export const COLORS = {
   // Power-up colors
   POWERUP_FIRE_RATE: 0xff0000, // Bright red for fire rate power-up
   POWERUP_FIRE_RATE_GLOW: 0xff4444, // Lighter red for glow effect
-  POWERUP_SPEED: 0x00ff00, // Bright green for speed boost power-up
-  POWERUP_SPEED_GLOW: 0x44ff44, // Lighter green for glow effect
+  POWERUP_SPEED: 0xffff00, // Bright yellow for speed boost power-up (changed from green)
+  POWERUP_SPEED_GLOW: 0xffff44, // Lighter yellow for glow effect (changed from green)
+  POWERUP_HEALTH: 0x00ff00, // Bright green for health power-up
+  POWERUP_HEALTH_GLOW: 0x44ff44, // Lighter green for glow effect
   
   // UI colors
   UI_TEXT: 0xffffff,

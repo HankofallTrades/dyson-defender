@@ -681,6 +681,8 @@ export class CollisionSystem implements System {
         hudSystem.displayMessage("Double Fire Rate Power-Up Collected!", 2);
       } else if (powerUp.type === 'speed') {
         hudSystem.displayMessage("1.5x Speed Boost Power-Up Collected!", 2);
+      } else if (powerUp.type === 'health') {
+        hudSystem.displayMessage("Health Power-Up Collected! +20 HP", 2);
       }
     }
   }
