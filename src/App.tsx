@@ -6,12 +6,31 @@ import { World } from './core/World'
 import { Camera } from 'three'
 import { MobileControls } from './ui/MobileControls'
 import { isMobileDevice } from './utils/deviceDetection'
+import styled from '@emotion/styled'
+
+const LoadingOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  font-family: monospace;
+`;
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
   const [world, setWorld] = useState<World | null>(null);
   const [camera, setCamera] = useState<Camera | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const isMobile = isMobileDevice();
 
   useEffect(() => {
@@ -44,6 +63,15 @@ function App() {
     };
   }, []);
   
+  useEffect(() => {
+    // Add loading state management
+    const timeout = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000); // Give enough time for initialization
+
+    return () => clearTimeout(timeout);
+  }, []);
+
   const handleStartGame = () => {
     if (gameRef.current) {
       gameRef.current.startGame();
@@ -93,20 +121,40 @@ function App() {
   };
 
   return (
-    <div className="app">
-      <div id="game-container" className="game-container" ref={containerRef}></div>
-      {world && (
-        <HUD 
-          world={world} 
-          camera={camera as Camera | undefined}
-          onStartGame={handleStartGame}
-          onRestartGame={handleRestartGame}
-          onResumeGame={handleResumeGame}
-          onRestartAtWave={handleRestartAtWave}
-        />
+    <>
+      <div className="app">
+        <div id="game-container" className="game-container" ref={containerRef}></div>
+        {world && (
+          <HUD 
+            world={world} 
+            camera={camera as Camera | undefined}
+            onStartGame={handleStartGame}
+            onRestartGame={handleRestartGame}
+            onResumeGame={handleResumeGame}
+            onRestartAtWave={handleRestartAtWave}
+          />
+        )}
+        {isMobile && <MobileControls />}
+      </div>
+      
+      {(isLoading || error) && (
+        <LoadingOverlay>
+          {isLoading ? (
+            <>
+              <div>Loading game...</div>
+              <div style={{ fontSize: '12px', marginTop: '10px' }}>
+                Screen: {window.innerWidth}x{window.innerHeight}
+              </div>
+              <div style={{ fontSize: '12px' }}>
+                Device: {isMobile ? 'Mobile' : 'Desktop'}
+              </div>
+            </>
+          ) : (
+            <div style={{ color: 'red' }}>{error}</div>
+          )}
+        </LoadingOverlay>
       )}
-      {isMobile && <MobileControls />}
-    </div>
+    </>
   )
 }
 

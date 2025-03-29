@@ -34,18 +34,35 @@ export class SceneManager {
    * @param container The HTML element where the scene will be rendered
    */
   private constructor(container: HTMLElement) {
-    this.container = container;
-    
-    // Initialize in specific order
-    this.initScene();
-    this.initRenderer();
-    this.initLights();
-    
-    // Handle initial resize
-    this.handleResize();
-    
-    // Set up resize listener
-    window.addEventListener('resize', this.handleResize);
+    console.log('SceneManager initializing...', {
+      containerSize: {
+        width: container.clientWidth,
+        height: container.clientHeight
+      },
+      window: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      }
+    });
+
+    try {
+      this.container = container;
+      
+      // Initialize in specific order
+      this.initScene();
+      this.initRenderer();
+      this.initLights();
+      
+      // Handle initial resize
+      this.handleResize();
+      
+      // Set up resize listener
+      window.addEventListener('resize', this.handleResize);
+
+      console.log('SceneManager initialized successfully');
+    } catch (error) {
+      console.error('Error initializing SceneManager:', error);
+    }
   }
   
   /**
@@ -101,6 +118,22 @@ export class SceneManager {
    * Handle window resize events
    */
   private handleResize = (): void => {
+    if (!this.activeCamera || !this.renderer) return;
+
+    const container = this.renderer.domElement.parentElement;
+    if (!container) return;
+
+    console.log('Handling resize...', {
+      container: {
+        width: container.clientWidth,
+        height: container.clientHeight
+      },
+      window: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      }
+    });
+
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
     
