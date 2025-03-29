@@ -97,10 +97,9 @@ export class InputSystem implements System {
         // Use Joystick input
         inputSource = 'joystick';
         inputX = joystick.x;
-        inputY = -joystick.y;
+        inputY = joystick.y;
         inputVertical = 0;
         inputMagnitude = 1.0;
-        console.log(`[InputSystem] Using Joystick: x=${inputX.toFixed(3)}, y=${inputY.toFixed(3)}, FORCING mag=1.0 (raw mag was ${joystick.magnitude.toFixed(3)})`);
       } else {
         // Use Keyboard input
         const keyX = (inputState.right ? 1 : 0) - (inputState.left ? 1 : 0);
@@ -109,34 +108,20 @@ export class InputSystem implements System {
 
         if (keyX !== 0 || keyY !== 0 || inputVertical !== 0) {
           inputSource = 'keyboard';
-          const keyHorizontalVec = new THREE.Vector2(keyX, keyY);
-          if (keyHorizontalVec.lengthSq() > 0.001) {
-            keyHorizontalVec.normalize();
-          }
-          inputX = keyHorizontalVec.x;
-          inputY = keyHorizontalVec.y;
+          inputX = keyX;
+          inputY = keyY;
           inputMagnitude = 1.0;
-          console.log(`[InputSystem] Using Keyboard: x=${inputX.toFixed(3)}, y=${inputY.toFixed(3)}, vert=${inputVertical.toFixed(3)}`);
         } else {
           inputSource = 'none';
-          // console.log(`[InputSystem] No input detected.`); // Reduce noise
         }
       }
 
       // Calculate movement based on determined input
       if (inputSource !== 'none') {
-        // --- DIAGNOSTIC LOG --- 
-        console.log(`[InputSystem] Entity ${entity}, Rotation Y: ${rotation.y.toFixed(3)}`);
-        // ----------------------
-        
         const shipQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rotation.y, 0));
         const worldForward = new THREE.Vector3(0, 0, -1).applyQuaternion(shipQuaternion);
         const worldRight = new THREE.Vector3(1, 0, 0).applyQuaternion(shipQuaternion);
         const worldUp = new THREE.Vector3(0, 1, 0);
-
-        // --- DIAGNOSTIC LOG --- 
-        console.log(`[InputSystem] worldForward: (${worldForward.x.toFixed(2)}, ${worldForward.y.toFixed(2)}, ${worldForward.z.toFixed(2)}), worldRight: (${worldRight.x.toFixed(2)}, ${worldRight.y.toFixed(2)}, ${worldRight.z.toFixed(2)})`);
-        // ----------------------
 
         const finalVelocity = new THREE.Vector3(0, 0, 0);
 
@@ -149,10 +134,7 @@ export class InputSystem implements System {
           finalVelocity.addScaledVector(worldUp, inputVertical);
         }
 
-        console.log(`[InputSystem] Processing movement. Input: x=${inputX.toFixed(3)}, y=${inputY.toFixed(3)}, vert=${inputVertical.toFixed(3)}`);
-        
         const beforeLength = finalVelocity.length();
-        // console.log(`[InputSystem] Final velocity before normalization: length=${beforeLength.toFixed(3)}`); // Reduce noise
         
         if (beforeLength > 0.001) {
           finalVelocity.normalize();
@@ -161,10 +143,8 @@ export class InputSystem implements System {
           velocity.x = finalVelocity.x * speed;
           velocity.y = finalVelocity.y * speed;
           velocity.z = finalVelocity.z * speed;
-          console.log(`[Movement] Final: speed=${speed.toFixed(1)}, velocity=(${velocity.x.toFixed(2)},${velocity.y.toFixed(2)},${velocity.z.toFixed(2)})`);
         } else {
           velocity.x = 0; velocity.y = 0; velocity.z = 0;
-          // console.log('[Movement] No movement - velocity zeroed due to small length'); // Reduce noise
         }
       } else {
         // No input, stop all movement

@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { JoystickStateHolder } from '../core/input/JoystickStateHolder';
 import styled from '@emotion/styled';
 import { InputManager } from '../core/input/InputManager';
+import nipplejs, { EventData, JoystickManager } from 'nipplejs';
 
 // Make sure nipplejs types are available globally if using CDN
 declare global {
@@ -11,15 +12,14 @@ declare global {
 }
 
 interface JoystickEventData {
-  identifier: number;
-  position: { x: number; y: number };
+  angle: {
+    radian: number;
+  };
   force: number;
-  pressure: number;
-  distance: number;
-  angle: { radian: number; degree: number };
-  direction: { x: 'left' | 'right' | 'center'; y: 'up' | 'down' | 'center'; angle: string };
-  instance: any;
-  // Add other properties if needed
+  vector: {
+    x: number;
+    y: number;
+  };
 }
 
 const MobileControlsContainer = styled.div`
@@ -86,8 +86,6 @@ export const MobileControls: React.FC = () => {
     }
 
     try {
-      console.log('Initializing joystick...');
-      
       const manager = window.nipplejs.create({
         zone: joystickZoneRef.current,
         mode: "static",
@@ -101,25 +99,20 @@ export const MobileControls: React.FC = () => {
       
       joystickRef.current = manager;
 
-      manager.on('move', (evt: any, data: JoystickEventData) => {
-        const force = Math.min(data.force / 5, 1);
+      manager.on('move', (_: Event, data: JoystickEventData) => {
+        if (!data || !data.vector || !data.force) return;
+
         const angle = data.angle.radian;
-        const rawX = Math.cos(angle);
-        const rawY = Math.sin(angle);
-        const x = rawX * force;
-        const y = -rawY * force;
-        
-        console.log(`Joystick movement: angle=${angle.toFixed(2)}, x=${x.toFixed(2)}, y=${y.toFixed(2)}, force=${force.toFixed(2)}`);
-        
-        joystickStateHolder.update(x, y, force);
+        const x = Math.cos(angle);
+        const y = Math.sin(angle);
+        const force = Math.min(data.force / 5, 1);
+
+        JoystickStateHolder.getInstance().update(x, y, force);
       });
 
       manager.on('end', () => {
-        console.log('Joystick end event fired - resetting state holder');
         joystickStateHolder.reset();
       });
-
-      console.log('Joystick initialized successfully');
     } catch (error) {
       console.error('Failed to initialize joystick:', error);
     }
@@ -129,7 +122,6 @@ export const MobileControls: React.FC = () => {
       if (joystickRef.current) {
         joystickRef.current.destroy();
         joystickRef.current = null;
-        console.log('Joystick destroyed');
       }
     };
   }, [joystickStateHolder]); // Add joystickStateHolder to dependencies

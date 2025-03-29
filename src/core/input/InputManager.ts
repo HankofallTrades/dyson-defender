@@ -197,7 +197,6 @@ export class InputManager {
   }
 
   public setMobileFiring(firing: boolean): void {
-    console.log(`[InputManager] Setting mobile firing to: ${firing}`);
     this.isMobileFiring = firing;
   }
 } 

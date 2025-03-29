@@ -83,7 +83,6 @@ export class WeaponSystem implements System {
       
       // Check if shooting and can fire
       if (laserCooldown && (inputState.shoot || isFiring || laserCooldown.readyToFire) && laserCooldown.canFire) {
-        console.log('Firing weapon - shoot:', inputState.shoot, 'isFiring:', isFiring, 'readyToFire:', laserCooldown.readyToFire);
         this.fireWeapon(entity, position, rotation);
         
         // Reset cooldown and ready state
