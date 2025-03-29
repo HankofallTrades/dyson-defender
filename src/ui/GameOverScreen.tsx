@@ -75,10 +75,17 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ stats, onRestart }) => 
       <button 
         className="retro-button"
         onClick={onRestart}
+        onTouchStart={(e) => {
+          e.preventDefault(); // Prevent double-firing with click event
+          onRestart();
+        }}
         style={{
           fontSize: '1.5rem',
           padding: '1.5rem 3rem',
-          letterSpacing: '2px'
+          letterSpacing: '2px',
+          cursor: 'pointer', // Add cursor pointer for desktop
+          touchAction: 'manipulation', // Optimize for touch
+          WebkitTapHighlightColor: 'transparent', // Remove tap highlight on iOS
         }}
       >
         Restart

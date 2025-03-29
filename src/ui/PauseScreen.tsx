@@ -72,11 +72,18 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, currentW
         <button 
           className="retro-button"
           onClick={onResume}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            onResume();
+          }}
           style={{
             fontSize: '1.5rem',
             padding: '1rem 2rem',
             letterSpacing: '2px',
-            color: 'white'
+            color: 'white',
+            cursor: 'pointer',
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
           }}
         >
           Resume Game
@@ -85,11 +92,18 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, currentW
         <button 
           className="retro-button"
           onClick={onRestart}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            onRestart();
+          }}
           style={{
             fontSize: '1.5rem',
             padding: '1rem 2rem',
             letterSpacing: '2px',
-            color: 'white'
+            color: 'white',
+            cursor: 'pointer',
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
           }}
         >
           Restart Game
@@ -134,12 +148,19 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, currentW
               key={wave}
               className="retro-button"
               onClick={() => handleWaveSelect(wave)}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                handleWaveSelect(wave);
+              }}
               style={{
                 fontSize: '1rem',
                 padding: '0.5rem 0.75rem',
                 color: 'white',
                 background: selectedWave === wave ? 'rgba(255, 0, 255, 0.5)' : 'transparent',
-                minWidth: '40px'
+                minWidth: '40px',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
               }}
             >
               {wave}

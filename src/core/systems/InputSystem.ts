@@ -4,6 +4,7 @@ import { World, System } from '../World';
 import { Velocity, InputReceiver, MouseLook, Rotation, LaserCooldown } from '../components';
 import { InputManager } from '../input/InputManager';
 import { JoystickStateHolder } from '../input/JoystickStateHolder';
+import { AimingJoystickStateHolder } from '../input/AimingJoystickStateHolder';
 import { SceneManager } from '../../rendering/SceneManager';
 
 /**
@@ -23,9 +24,11 @@ export class InputSystem implements System {
   private world: World;
   private inputManager: InputManager;
   private joystickStateHolder: JoystickStateHolder;
+  private aimingJoystickStateHolder: AimingJoystickStateHolder;
   private sceneManager: SceneManager;
   private readonly BASE_SPEED = 40.0;
   private readonly JOYSTICK_SPEED_MULTIPLIER = 1.0;
+  private readonly AIM_ROTATION_SPEED = Math.PI * 0.2; // Radians per second - Significantly reduced sensitivity
 
   constructor(world: World, sceneManager: SceneManager) {
     this.world = world;
@@ -38,6 +41,7 @@ export class InputSystem implements System {
     }
     this.inputManager = InputManager.getInstance(rendererElement);
     this.joystickStateHolder = JoystickStateHolder.getInstance();
+    this.aimingJoystickStateHolder = AimingJoystickStateHolder.getInstance();
   }
 
   update(deltaTime: number): void {
@@ -47,6 +51,7 @@ export class InputSystem implements System {
     
     // Get joystick state directly
     const joystick = this.joystickStateHolder;
+    const aimingJoystick = this.aimingJoystickStateHolder;
 
     // Get all entities with InputReceiver and Velocity components
     const entities = this.world.getEntitiesWith(['InputReceiver', 'Velocity', 'Rotation']);
@@ -60,18 +65,40 @@ export class InputSystem implements System {
 
       if (!rotation || !mouseLook) continue;
 
-      // Handle mouse movement for rotation
-      if (mouseState.isPointerLocked) {
-        // Horizontal mouse movement (left/right) updates yaw (looking left/right)
+      const aimingThreshold = 0.1;
+      if (aimingJoystick.active && aimingJoystick.magnitude > aimingThreshold) {
+        // --- Aiming Joystick Rotation (Velocity-Based) ---
+        const aimX = aimingJoystick.x;
+        const aimY = aimingJoystick.y;
+
+        // --- Yaw Control (Left/Right Rotation) ---
+        // Positive X = turn right, so negate aimX to get correct direction
+        const angularVelocityYaw = -aimX * this.AIM_ROTATION_SPEED;
+        rotation.y += angularVelocityYaw * deltaTime;
+
+        // --- Pitch Control (Up/Down Rotation) ---
+        // Positive Y = joystick pushed up = pitch up (non-inverted)
+        // Negative Y = joystick pulled down = pitch down (non-inverted)
+        // Use direct aimY value for non-inverted pitch control
+        const angularVelocityPitch = aimY * this.AIM_ROTATION_SPEED; // Removed negative sign
+        rotation.x += angularVelocityPitch * deltaTime;
+
+        // --- Clamp Pitch ---
+        // Ensure pitch stays within the limits defined in MouseLook component
+        if (mouseLook) { // Make sure mouseLook component exists for limits
+          rotation.x = Math.max(mouseLook.pitchMin, Math.min(mouseLook.pitchMax, rotation.x));
+        }
+        
+        // Keep roll level
+        rotation.z = 0;
+
+      } else if (mouseState.isPointerLocked) {
         mouseLook.yaw -= mouseState.movementX * mouseLook.sensitivity;
         
-        // Vertical mouse movement (up/down) updates pitch (looking up/down)
         mouseLook.pitch -= mouseState.movementY * mouseLook.sensitivity;
         
-        // Constrain pitch to prevent camera flipping
         mouseLook.pitch = Math.max(mouseLook.pitchMin, Math.min(mouseLook.pitchMax, mouseLook.pitch));
         
-        // Apply rotation to entity
         rotation.x = mouseLook.pitch;
         rotation.y = mouseLook.yaw;
         rotation.z = 0;

@@ -47,7 +47,9 @@ export class MovementSystem implements System {
     }
     
     // Get current input state for boost checking
-    const inputState = this.inputManager.getInputState();
+    const inputState = this.inputManager.getInputState(); // Keep this if needed elsewhere
+    // Use the dedicated method from InputManager for combined boost state
+    const isBoostRequested = this.inputManager.isBoosting(); 
     
     for (const entity of entities) {
       const position = this.world.getComponent<Position>(entity, 'Position');
@@ -61,7 +63,7 @@ export class MovementSystem implements System {
       // Update boost state (only for player with InputReceiver)
       const hasInputReceiver = this.world.hasComponent(entity, 'InputReceiver');
       if (hasInputReceiver) {
-        this.updateBoostState(entity, deltaTime, inputState.boost);
+        this.updateBoostState(entity, deltaTime, isBoostRequested);
       }
 
       // Apply boost to velocity if active
@@ -155,9 +157,9 @@ export class MovementSystem implements System {
    * Updates the boost state for an entity
    * @param entity The entity to update boost for
    * @param deltaTime Time since last update
-   * @param boostKeyPressed Whether the boost key is currently pressed
+   * @param isBoostRequested Whether boost is requested (keyboard or mobile)
    */
-  private updateBoostState(entity: number, deltaTime: number, boostKeyPressed: boolean): void {
+  private updateBoostState(entity: number, deltaTime: number, isBoostRequested: boolean): void {
     // Get the Boost component - should already exist from PlayerShipEntity creation
     const boost = this.world.getComponent<Boost>(entity, 'Boost');
     if (!boost) {
@@ -168,9 +170,9 @@ export class MovementSystem implements System {
     const wasActive = boost.active;
     
     // Handle boost activation/deactivation
-    if (boostKeyPressed && boost.cooldown <= 0 && boost.remaining > 0) {
+    if (isBoostRequested && boost.cooldown <= 0 && boost.remaining > 0) {
       boost.active = true;
-    } else if (!boostKeyPressed && boost.active) {
+    } else if (!isBoostRequested && boost.active) {
       // We just released the boost key - enter charging state
       boost.active = false;
       
@@ -179,7 +181,7 @@ export class MovementSystem implements System {
       const boostUsed = boost.maxTime - boost.remaining;
       const maxCooldown = 3.0; // Changed from 5.0 to 3.0
       boost.cooldown = (boostUsed / boost.maxTime) * maxCooldown;
-    } else if (!boostKeyPressed) {
+    } else if (!isBoostRequested) {
       boost.active = false;
     }
     

@@ -45,6 +45,7 @@ export class InputManager {
   
   // Add back mobile firing controls
   private isMobileFiring: boolean = false;
+  private isMobileBoosting: boolean = false;
 
   private constructor(container: HTMLElement | HTMLCanvasElement) {
     this.container = container;
@@ -187,6 +188,11 @@ export class InputManager {
     return this.inputState.shoot || this.isMobileFiring;
   }
 
+  // Added method to check combined boost state
+  public isBoosting(): boolean {
+    return this.inputState.boost || this.isMobileBoosting;
+  }
+
   public isPressed(key: string): boolean {
     return this.pressedKeys.has(key);
   }
@@ -198,5 +204,9 @@ export class InputManager {
 
   public setMobileFiring(firing: boolean): void {
     this.isMobileFiring = firing;
+  }
+
+  public setMobileBoosting(boosting: boolean): void {
+    this.isMobileBoosting = boosting;
   }
 } 
