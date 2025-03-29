@@ -61,8 +61,11 @@ class Game {
   private animationSystem!: AnimationSystem; // Add reference to AnimationSystem
   private devSystem!: DevSystem; // Reference to the dev system
   private inputManager!: InputManager;
+  private isFirstFrameLogged: boolean = false;
 
   constructor(container: HTMLElement) {
+    console.log('[Game] Initializing...');
+    
     this.container = container;
     this.stateManager = new GameStateManager();
     this.stateManager.updateState({ lastUpdateTime: Date.now() });
@@ -82,6 +85,8 @@ class Game {
     this.animationFrameId = requestAnimationFrame(this.animate);
 
     this.inputManager = InputManager.getInstance(this.container);
+
+    console.log('[Game] Game initialized');
   }
 
   private initSystems(): void {
@@ -290,6 +295,11 @@ class Game {
   }
 
   private animate = (): void => {
+    if (!this.isFirstFrameLogged) {
+      console.log('[Game] First animation frame running');
+      this.isFirstFrameLogged = true;
+    }
+
     this.animationFrameId = requestAnimationFrame(this.animate);
     
     // Always get the current time for consistent timing
@@ -355,6 +365,10 @@ class Game {
   }
 
   private render(): void {
+    if (!this.sceneManager) {
+      console.warn('[Game] SceneManager not available for rendering');
+      return;
+    }
     this.sceneManager.render();
   }
 

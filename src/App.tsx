@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import './App.css'
 import Game from './core/Game'
 import HUD from './ui/HUD'
@@ -7,6 +7,7 @@ import { Camera } from 'three'
 import { MobileControls } from './ui/MobileControls'
 import { isMobileDevice } from './utils/deviceDetection'
 import styled from '@emotion/styled'
+import { SceneManager } from './rendering/SceneManager'
 
 const LoadingOverlay = styled.div`
   position: fixed;
@@ -24,6 +25,19 @@ const LoadingOverlay = styled.div`
   font-family: monospace;
 `;
 
+const DebugInfo = styled.div`
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  color: white;
+  font-family: monospace;
+  font-size: 12px;
+  z-index: 1001;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 10px;
+  border-radius: 5px;
+`;
+
 function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
@@ -31,45 +45,64 @@ function App() {
   const [camera, setCamera] = useState<Camera | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const isMobile = isMobileDevice();
 
-  useEffect(() => {
-    if (!containerRef.current) return;
+  const addDebugInfo = (info: string) => {
+    setDebugInfo(prev => [...prev, `[${new Date().toISOString()}] ${info}`]);
+  };
 
-    // Initialize game using Game class
-    const game = new Game(containerRef.current);
-    gameRef.current = game;
-    
-    // Get access to the world for HUD rendering
-    // Access the private field using bracket notation
-    // This is a workaround to access private fields in TypeScript
-    const gameWorld = game.getWorld();
-    if (gameWorld) {
-      setWorld(gameWorld);
+  useEffect(() => {
+    if (!containerRef.current) {
+      setError('Container not found');
+      return;
     }
-    
-    // Get the camera
-    const gameCamera = game.getCamera();
-    if (gameCamera) {
-      setCamera(gameCamera);
-    }
-    
-    // Cleanup
-    return () => {
-      if (gameRef.current) {
-        gameRef.current.dispose();
-        gameRef.current = null;
+
+    try {
+      addDebugInfo('Initializing game...');
+      
+      // Initialize SceneManager
+      const sceneManager = SceneManager.getInstance(containerRef.current);
+      addDebugInfo('SceneManager initialized');
+
+      // Initialize Game
+      const game = new Game(containerRef.current);
+      gameRef.current = game;
+      addDebugInfo('Game initialized');
+      
+      // Get access to the world for HUD rendering
+      // Access the private field using bracket notation
+      // This is a workaround to access private fields in TypeScript
+      const gameWorld = game.getWorld();
+      if (gameWorld) {
+        setWorld(gameWorld);
       }
-    };
-  }, []);
-  
-  useEffect(() => {
-    // Add loading state management
-    const timeout = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000); // Give enough time for initialization
+      
+      // Get the camera
+      const gameCamera = game.getCamera();
+      if (gameCamera) {
+        setCamera(gameCamera);
+      }
+      
+      // Add loading state management
+      const timeout = setTimeout(() => {
+        setIsLoading(false);
+        addDebugInfo('Loading complete');
+      }, 2000);
 
-    return () => clearTimeout(timeout);
+      return () => {
+        clearTimeout(timeout);
+        if (gameRef.current) {
+          gameRef.current.dispose();
+          gameRef.current = null;
+        }
+        addDebugInfo('Game disposed');
+      };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      addDebugInfo(`Error: ${errorMessage}`);
+    }
   }, []);
 
   const handleStartGame = () => {
@@ -154,6 +187,12 @@ function App() {
           )}
         </LoadingOverlay>
       )}
+
+      <DebugInfo>
+        {debugInfo.map((info, index) => (
+          <div key={index}>{info}</div>
+        ))}
+      </DebugInfo>
     </>
   )
 }

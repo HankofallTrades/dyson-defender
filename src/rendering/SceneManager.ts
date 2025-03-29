@@ -36,7 +36,7 @@ export class SceneManager {
   private constructor(container: HTMLElement) {
     this.container = container;
     
-    console.log('SceneManager initializing...', {
+    console.log('[SceneManager] Starting initialization...', {
       containerSize: {
         width: container.clientWidth,
         height: container.clientHeight
@@ -48,20 +48,23 @@ export class SceneManager {
     });
 
     try {
-      // Initialize in specific order
+      console.log('[SceneManager] Initializing scene...');
       this.initScene();
+      
+      console.log('[SceneManager] Initializing renderer...');
       this.initRenderer();
+      
+      console.log('[SceneManager] Initializing lights...');
       this.initLights();
       
-      // Handle initial resize
+      console.log('[SceneManager] Handling initial resize...');
       this.handleResize();
       
-      // Set up resize listener
       window.addEventListener('resize', this.handleResize);
-
-      console.log('SceneManager initialized successfully');
+      console.log('[SceneManager] Initialization complete');
     } catch (error) {
-      console.error('Error initializing SceneManager:', error);
+      console.error('[SceneManager] Error during initialization:', error);
+      throw error;
     }
   }
   
@@ -83,39 +86,55 @@ export class SceneManager {
    * Initialize the Three.js scene
    */
   private initScene(): void {
-    this.scene.background = new THREE.Color(0x000011); // Deep blue background
+    console.log('[SceneManager] Creating scene...');
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x000011);
+    
+    console.log('[SceneManager] Creating camera...');
+    this.activeCamera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    this.activeCamera.position.z = 5;
   }
   
   /**
    * Initialize the renderer
    */
   private initRenderer(): void {
+    console.log('[SceneManager] Creating WebGL renderer...');
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true
     });
     
-    if (!this.renderer) return;
+    if (!this.renderer) {
+      throw new Error('Failed to create WebGL renderer');
+    }
     
+    console.log('[SceneManager] Configuring renderer...');
     this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.container.appendChild(this.renderer.domElement);
+    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
     
-    // Ensure renderer's domElement has the correct styling
-    this.renderer.domElement.style.display = 'block';
-    this.renderer.domElement.style.width = '100%';
-    this.renderer.domElement.style.height = '100%';
+    console.log('[SceneManager] Appending renderer to container...');
+    this.container.appendChild(this.renderer.domElement);
   }
   
   private initLights(): void {
+    console.log('[SceneManager] Setting up lights...');
+    
     // Add ambient light
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+    const ambientLight = new THREE.AmbientLight(0x404040);
     this.scene.add(ambientLight);
     
     // Add directional light
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(10, 20, 15);
-    directionalLight.castShadow = true;
+    directionalLight.position.set(1, 1, 1);
     this.scene.add(directionalLight);
+    
+    console.log('[SceneManager] Lights configured');
   }
   
   /**
