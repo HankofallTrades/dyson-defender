@@ -48,12 +48,12 @@ export class InputManager {
   private joystickMagnitude: number = 0;
   private isMobileFiring: boolean = false;
 
-  private constructor(container: HTMLElement) {
+  private constructor(container: HTMLElement | HTMLCanvasElement) {
     this.container = container;
     this.initInputHandling();
   }
 
-  public static getInstance(container: HTMLElement): InputManager {
+  public static getInstance(container: HTMLElement | HTMLCanvasElement): InputManager {
     if (!InputManager.instance) {
       InputManager.instance = new InputManager(container);
     } else {

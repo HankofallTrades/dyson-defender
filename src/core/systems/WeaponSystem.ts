@@ -44,9 +44,8 @@ export class WeaponSystem implements System {
     // Get input state to check if shoot button is pressed
     const inputState = this.inputManager.getInputState();
     
-    // Get all entities with InputReceiver and Position and Rotation components
-    // These are entities that can fire weapons
-    const entities = this.world.getEntitiesWith(['InputReceiver', 'Position', 'Rotation']);
+    // Process entities with weapon components
+    const entities = this.world.getEntitiesWith(['Weapon', 'Position']);
     
     for (const entity of entities) {
       // Get required components
