@@ -19,6 +19,9 @@ export class MovementSystem implements System {
     
     // Get the renderer DOM element for input handling
     const rendererElement = sceneManager.getRendererDomElement();
+    if (!rendererElement) {
+      throw new Error('Renderer DOM element not available');
+    }
     this.inputManager = InputManager.getInstance(rendererElement);
   }
 
