@@ -22,9 +22,9 @@ export class SceneManager {
   private static instance: SceneManager | null = null;
   
   // Three.js essentials
-  private scene!: THREE.Scene;
+  private scene: THREE.Scene = new THREE.Scene();
+  private renderer: THREE.WebGLRenderer | null = null;
   private activeCamera: THREE.PerspectiveCamera | null = null;
-  private renderer!: THREE.WebGLRenderer;
   
   // Container element
   private container: HTMLElement;
@@ -34,6 +34,8 @@ export class SceneManager {
    * @param container The HTML element where the scene will be rendered
    */
   private constructor(container: HTMLElement) {
+    this.container = container;
+    
     console.log('SceneManager initializing...', {
       containerSize: {
         width: container.clientWidth,
@@ -46,8 +48,6 @@ export class SceneManager {
     });
 
     try {
-      this.container = container;
-      
       // Initialize in specific order
       this.initScene();
       this.initRenderer();
@@ -69,9 +69,12 @@ export class SceneManager {
    * Get the SceneManager instance (creates one if it doesn't exist)
    * @param container The HTML element where the scene will be rendered
    */
-  public static getInstance(container: HTMLElement): SceneManager {
-    if (!SceneManager.instance) {
+  public static getInstance(container?: HTMLElement): SceneManager {
+    if (!SceneManager.instance && container) {
       SceneManager.instance = new SceneManager(container);
+    }
+    if (!SceneManager.instance) {
+      throw new Error('SceneManager not initialized');
     }
     return SceneManager.instance;
   }
@@ -80,7 +83,6 @@ export class SceneManager {
    * Initialize the Three.js scene
    */
   private initScene(): void {
-    this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x000011); // Deep blue background
   }
   
@@ -88,12 +90,14 @@ export class SceneManager {
    * Initialize the renderer
    */
   private initRenderer(): void {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.shadowMap.enabled = true;
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true
+    });
     
-    // Append to container
+    if (!this.renderer) return;
+    
+    this.renderer.setPixelRatio(window.devicePixelRatio);
     this.container.appendChild(this.renderer.domElement);
     
     // Ensure renderer's domElement has the correct styling
@@ -137,10 +141,8 @@ export class SceneManager {
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
     
-    if (this.activeCamera) {
-      this.activeCamera.aspect = width / height;
-      this.activeCamera.updateProjectionMatrix();
-    }
+    this.activeCamera.aspect = width / height;
+    this.activeCamera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
   }
   
@@ -181,7 +183,7 @@ export class SceneManager {
   /**
    * Get the Three.js renderer
    */
-  public getRenderer(): THREE.WebGLRenderer {
+  public getRenderer(): THREE.WebGLRenderer | null {
     return this.renderer;
   }
   
@@ -240,33 +242,12 @@ export class SceneManager {
   /**
    * Clean up resources
    */
-  public dispose(): void {
-    window.removeEventListener('resize', this.handleResize);
-    
-    // Dispose of renderer
-    this.renderer.dispose();
-    
-    // Remove renderer from DOM
-    if (this.container.contains(this.renderer.domElement)) {
+  public destroy(): void {
+    if (this.renderer) {
       this.container.removeChild(this.renderer.domElement);
+      this.renderer.dispose();
     }
-    
-    // Dispose of geometries and materials
-    this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        if (object.geometry) {
-          object.geometry.dispose();
-        }
-        
-        if (object.material instanceof THREE.Material) {
-          object.material.dispose();
-        } else if (Array.isArray(object.material)) {
-          object.material.forEach(material => material.dispose());
-        }
-      }
-    });
-    
-    // Clear singleton instance
+    window.removeEventListener('resize', this.handleResize);
     SceneManager.instance = null;
   }
 } 

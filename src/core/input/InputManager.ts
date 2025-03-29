@@ -208,8 +208,8 @@ export class InputManager {
   // Update existing methods to incorporate mobile input
   public getMovementInput(): { x: number; y: number; magnitude: number } {
     // Check keyboard input first
-    const x = (this.isKeyPressed('KeyD') ? 1 : 0) - (this.isKeyPressed('KeyA') ? 1 : 0);
-    const y = (this.isKeyPressed('KeyW') ? 1 : 0) - (this.isKeyPressed('KeyS') ? 1 : 0);
+    const x = (this.isPressed('KeyD') ? 1 : 0) - (this.isPressed('KeyA') ? 1 : 0);
+    const y = (this.isPressed('KeyW') ? 1 : 0) - (this.isPressed('KeyS') ? 1 : 0);
     
     // If there's keyboard input, use that
     if (x !== 0 || y !== 0) {
@@ -227,5 +227,9 @@ export class InputManager {
 
   public isFiring(): boolean {
     return this.mousePressed || this.isMobileFiring;
+  }
+
+  public isPressed(key: string): boolean {
+    return this.pressedKeys.has(key);
   }
 } 
