@@ -39,6 +39,15 @@ export class InputManager {
     isPointerLocked: false
   };
 
+  private pressedKeys: Set<string> = new Set();
+  private mousePosition: { x: number; y: number } = { x: 0, y: 0 };
+  private mousePressed: boolean = false;
+
+  // Add mobile input state
+  private joystickDirection: { x: number; y: number } = { x: 0, y: 0 };
+  private joystickMagnitude: number = 0;
+  private isMobileFiring: boolean = false;
+
   private constructor(container: HTMLElement) {
     this.container = container;
     this.initInputHandling();
@@ -177,5 +186,46 @@ export class InputManager {
     
     // Clear singleton instance
     InputManager.instance = null;
+  }
+
+  // Add mobile input methods
+  public updateJoystick(x: number, y: number, magnitude: number): void {
+    this.joystickDirection.x = x;
+    this.joystickDirection.y = y;
+    this.joystickMagnitude = Math.min(magnitude, 1); // Normalize to max of 1
+  }
+
+  public setMobileFiring(firing: boolean): void {
+    this.isMobileFiring = firing;
+  }
+
+  public resetJoystick(): void {
+    this.joystickDirection.x = 0;
+    this.joystickDirection.y = 0;
+    this.joystickMagnitude = 0;
+  }
+
+  // Update existing methods to incorporate mobile input
+  public getMovementInput(): { x: number; y: number; magnitude: number } {
+    // Check keyboard input first
+    const x = (this.isKeyPressed('KeyD') ? 1 : 0) - (this.isKeyPressed('KeyA') ? 1 : 0);
+    const y = (this.isKeyPressed('KeyW') ? 1 : 0) - (this.isKeyPressed('KeyS') ? 1 : 0);
+    
+    // If there's keyboard input, use that
+    if (x !== 0 || y !== 0) {
+      const magnitude = Math.min(Math.sqrt(x * x + y * y), 1);
+      return { x, y, magnitude };
+    }
+    
+    // Otherwise use joystick input
+    return {
+      x: this.joystickDirection.x,
+      y: this.joystickDirection.y,
+      magnitude: this.joystickMagnitude
+    };
+  }
+
+  public isFiring(): boolean {
+    return this.mousePressed || this.isMobileFiring;
   }
 } 

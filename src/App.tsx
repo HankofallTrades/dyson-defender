@@ -4,12 +4,15 @@ import Game from './core/Game'
 import HUD from './ui/HUD'
 import { World } from './core/World'
 import { Camera } from 'three'
+import { MobileControls } from './ui/MobileControls'
+import { isMobileDevice } from './utils/deviceDetection'
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
   const [world, setWorld] = useState<World | null>(null);
   const [camera, setCamera] = useState<Camera | null>(null);
+  const isMobile = isMobileDevice();
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -102,6 +105,7 @@ function App() {
           onRestartAtWave={handleRestartAtWave}
         />
       )}
+      {isMobile && <MobileControls />}
     </div>
   )
 }
