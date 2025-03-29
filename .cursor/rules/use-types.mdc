@@ -3,8 +3,14 @@ description:
 globs: 
 alwaysApply: true
 ---
-Description: Define interfaces or types for all game objects, states, events, and significant data structures using TypeScript. Ensure every variable and function has an explicit type where applicable.
+Description: Utilize TypeScript's static typing features robustly throughout the codebase. Define and use interfaces or types for all significant data structures, function signatures, and variables.
 
-Why: Type safety catches errors early, improves code readability, and makes the game logic more robust—crucial for complex systems like ours.
+Why: Improves code clarity, enhances maintainability, and catches potential errors during development, which is crucial for complex game logic.
 
-File Pattern: Applies to src/core/*.ts.
+File Pattern: Applies project-wide (`src/**/*.ts`, `src/**/*.tsx`).
+
+Guidelines:
+    1. Define component interfaces in `src/core/components.ts`.
+    2. Place shared, non-component types/interfaces in `src/types/`.
+    3. Use explicit types for function parameters and return values.
+    4. Avoid using `any` unless absolutely necessary and justified.

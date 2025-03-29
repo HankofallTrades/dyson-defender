@@ -3,10 +3,18 @@ description:
 globs: 
 alwaysApply: true
 ---
-Description: Optimize code for performance:
-In game logic, minimize operations that trigger garbage collection (e.g., avoid frequent object allocations).
-In rendering, use efficient Three.js practices like instancing for repeated objects and proper disposal of unused objects (e.g., mesh.dispose()).
+Description: Prioritize performance in game logic and rendering. Minimize garbage collection, optimize rendering calls, and use efficient algorithms.
 
-Why: Performance is critical in games, especially with 3D rendering, to ensure smooth gameplay and efficient resource use.
+Why: Critical for smooth gameplay (target 60 FPS) and efficient resource use in a real-time 3D game.
 
-File Pattern: Applies to src/core/Mechanics.ts and src/rendering/Scene.ts.
+File Pattern: Applies particularly to `src/core/systems/*.ts`, `src/rendering/SceneManager.ts`, `src/rendering/MeshFactory.ts`, and potentially `src/core/World.ts`.
+
+Practices:
+1. **Reduce GC:** Avoid frequent object/array allocation in `update` loops within systems. Reuse objects (vectors, etc.) where possible.
+2. **Object Pooling:** Implement pooling for frequently created/destroyed entities (e.g., projectiles, enemies, effects) and their associated Three.js meshes.
+3. **Three.js Efficiency:**
+    - Use `THREE.InstancedMesh` via `MeshFactory`/`RenderingSystem` for large numbers of identical objects.
+    - Ensure proper disposal of Three.js resources (`geometry`, `material`, `texture`) in `SceneManager`/`RenderingSystem` when objects are removed.
+    - Consider Level of Detail (`THREE.LOD`) for complex models if needed.
+4. **Efficient Collisions:** Use appropriate collision shapes and algorithms in `CollisionSystem`. Consider spatial partitioning if collision checks become a bottleneck.
+5. **Profile:** Regularly profile the game to identify specific bottlenecks.

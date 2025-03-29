@@ -3,8 +3,8 @@ description:
 globs: 
 alwaysApply: true
 ---
-Description: Structure the game state to be easily serializable (e.g., convertible to JSON). Avoid including non-serializable data like functions or complex objects in the state.
+Description: Manage game state appropriately. Global state (score, wave count, game status) should ideally reside in `src/core/State.ts` or singleton components. Entity state is managed via components. Design state to be easily serializable (e.g., JSON-friendly) where practical.
 
-Why: This prepares the game for future multiplayer integration, allowing the state to be sent over the WebSocket API with minimal refactoring.
+Why: Facilitates saving/loading and potential future multiplayer integration by allowing state transfer with minimal refactoring. Clear separation improves state management logic.
 
-File Pattern: Applies to src/core/State.ts and related state management files.
+File Pattern: Applies primarily to `src/core/State.ts`, `src/core/components.ts`, and systems interacting with global state.

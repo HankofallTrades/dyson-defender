@@ -23,5 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-#
-/Users/hank/Programming/dyson2.0/memory-bank/
+# Project specific
+memory-bank/
+.cursor-rules/

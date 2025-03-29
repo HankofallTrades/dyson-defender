@@ -1,187 +1,190 @@
-# Dyson Sphere Defender - Architecture
+# Dyson Sphere Defender - Architecture (Updated)
 
 ## Project Structure
 
 The game follows a modular architecture separating core game logic, rendering, and UI:
 
 - `src/core/`: Core game logic and state management
-  - `entities/`: Entity factory functions
-  - `systems/`: Entity processing systems
-  - `components.ts`: Component definitions
-  - `World.ts`: ECS manager
-  - `Game.ts`: Main game controller
+  - `entities/`: Entity factory functions (e.g., `PlayerShipEntity.ts`, `GruntEntity.ts`)
+  - `systems/`: Entity processing systems (e.g., `MovementSystem.ts`, `CollisionSystem.ts`)
+  - `input/`: Input handling (`InputManager.ts`)
+  - `components.ts`: Component definitions (pure data interfaces)
+  - `World.ts`: ECS (Entity-Component-System) manager
+  - `Game.ts`: Main game controller, orchestrates the game loop and systems
   - `State.ts`: Game state management
 - `src/rendering/`: Three.js rendering logic
-  - `SceneManager.ts`: Scene management singleton
-  - `MeshFactory.ts`: Factory for creating entity meshes
-- `src/ui/`: React UI components
-- `src/constants/`: Game constants and configurations
-- `src/types/`: TypeScript type definitions
+  - `SceneManager.ts`: Singleton managing the Three.js scene, camera, renderer, and lighting
+  - `MeshFactory.ts`: Factory for creating and caching Three.js meshes for entities
+- `src/ui/`: React UI components (e.g., HUD, menus)
+- `src/constants/`: Game constants and configurations (e.g., `colors.ts`)
+- `src/types/`: Shared TypeScript type definitions (e.g., `meshDefinitions.ts`)
+- `src/assets/`: Static assets like models or textures
 
 ## Core Components
 
-### Game Class
-- Coordinates game loop and integrates components
-- Manages game state and ECS world
-- Provides game control methods
-- Implements frame-rate independent updates
+### Game Class (`src/core/Game.ts`)
+- Initializes and coordinates the main game loop.
+- Integrates core components like `World`, `SceneManager`, `InputManager`.
+- Manages game state transitions (e.g., playing, paused, game over).
+- Orchestrates the execution order of ECS systems.
+- Implements frame-rate independent updates (`deltaTime`).
 
-### SceneManager
-- Singleton managing Three.js scene, camera, and renderer
-- Handles viewport resizing and input state
-- Manages scene objects and lighting
-- Implements resource cleanup
+### World Class (`src/core/World.ts`) (ECS Manager)
+- Manages entities, components, and systems based on the ECS pattern.
+- Provides methods for creating/destroying entities (`createEntity`, `destroyEntity`).
+- Handles adding/removing components from entities (`addComponent`, `removeComponent`).
+- Stores component data efficiently.
+- Provides querying capabilities to retrieve entities based on their components (`getEntitiesWith`).
+- Executes the `update` method of all registered systems in a defined order each frame.
 
-### MeshFactory
-- Creates Three.js meshes for different entity types
-- Implements Factory pattern for mesh generation
-- Centralizes mesh creation logic
-- Supports various entity visual representations
+### SceneManager (`src/rendering/SceneManager.ts`)
+- Singleton responsible for managing the Three.js environment.
+- Handles scene creation, camera setup, renderer configuration, and lighting.
+- Manages adding/removing Three.js objects (meshes, lights) to the scene.
+- Handles viewport resizing and updates the renderer/camera accordingly.
+- Provides access to the core Three.js objects (scene, camera, renderer).
+- Implements resource cleanup for Three.js objects.
 
-### World Class (ECS)
-- Manages entities and components
-- Coordinates system updates in order:
-  1. InputSystem: Processes player input
-  2. MovementSystem: Updates entity positions
-  3. WeaponSystem: Handles weapon firing and cooldowns
-  4. EnemySystem: Controls enemy behavior
-  5. AutoRotateSystem: Handles automatic rotation
-  6. WaveSystem: Manages enemy wave spawning
-  7. CollisionSystem: Detects and resolves collisions
-  8. RenderingSystem: Updates visual representations
-- Provides efficient entity querying
-- Implements component lifecycle management
+### MeshFactory (`src/rendering/MeshFactory.ts`)
+- Responsible for creating and caching Three.js `Object3D` instances (meshes, groups) for different entity types.
+- Uses entity component data (like `Renderable`) to determine the appearance.
+- Implements the Factory pattern to centralize mesh creation logic.
+- Supports various visual representations defined in `src/types/meshDefinitions.ts`.
+- Provides methods to get or create meshes based on a model ID.
 
-## Systems
+### InputManager (`src/core/input/InputManager.ts`)
+- Manages user input from keyboard and mouse.
+- Tracks the state of keys and mouse buttons (pressed, held, released).
+- Provides methods for systems (like `InputSystem`) to query input state.
+- Handles event listener setup and cleanup.
 
-### RenderingSystem
-- Creates and manages Three.js meshes via MeshFactory
-- Updates visual representations based on components
-- Handles mesh cleanup
-- Renders various entity types (player ship, Dyson sphere, lasers, enemies)
+### State (`src/core/State.ts`)
+- Defines and manages the overall game state (e.g., score, wave number, game status).
+- Designed to be serializable for potential future networking.
+- Provides methods or a structure for systems to read and modify game state.
 
-### InputSystem
-- Processes keyboard and mouse input
-- Updates entity velocity based on input
-- Captures shooting input (space key and left mouse button)
-- Implements normalized movement vectors
+## Systems (`src/core/systems/`)
 
-### MovementSystem
-- Applies velocity to position
-- Implements physics-based movement
-- Enforces gameplay boundaries (except for projectiles)
-- Handles smooth acceleration/deceleration
+Systems implement game logic by operating on entities possessing specific components. They are updated by the `World` class each frame.
 
-### AutoRotateSystem
-- Manages automatic entity rotation
-- Updates rotation based on delta time
+- `AnimationSystem`: Manages entity animations defined by the `Animation` component. Handles different animation types like wormholes, explosions, lightning.
+- `AutoRotateSystem`: Rotates entities based on the `AutoRotate` component.
+- `CameraSystem`: Manages camera position and behavior, potentially following the player ship or using cinematic views. Uses `Camera` and `CameraMount` components.
+- `CollisionSystem`: Detects and resolves collisions between entities with `Collider` components. Uses collision layers and types (sphere, box) to determine interactions and triggers events (e.g., damage).
+- `DevSystem`: Provides debugging functionalities, potentially including a free camera controlled by `MouseLook`. Uses the `DevMode` component.
+- `EnemySystem`: Controls AI behavior for entities with the `Enemy` component. Manages movement towards targets, attack patterns, and state changes.
+- `FloatingScoreSystem`: Manages the display and lifecycle of `FloatingScore` entities.
+- `HUDSystem`: Updates UI elements based on game state and entity components (e.g., `ScoreDisplay`, `WaveInfo`, `Reticle`, `Radar`, `DysonSphereStatus`). Interacts with React UI.
+- `HealthBarSystem`: Manages the visibility and position of health bars for entities, using the `HealthBarComponent`.
+- `InputSystem`: Processes player input via `InputManager` and updates relevant components (e.g., `Velocity` for `PlayerShipEntity`). Handles firing actions based on `LaserCooldown`.
+- `MovementSystem`: Updates entity `Position` based on `Velocity` and `deltaTime`. Enforces boundaries. Handles boost logic using the `Boost` component.
+- `PowerUpSystem`: Manages the lifecycle and effects of `PowerUp` entities and applies buffs/effects to the player or other entities.
+- `RenderingSystem`: Creates, updates, and removes Three.js visual representations (meshes) for entities based on components like `Renderable`, `Position`, `Rotation`. Uses `MeshFactory` and `SceneManager`.
+- `ShieldBubbleSystem`: Manages the behavior of shield bubbles, likely linked to `ShieldGuardianEntity`. Uses `ShieldBubbleComponent`.
+- `ShieldSystem`: Manages shield regeneration and state for entities with the `Shield` component.
+- `WaveSystem`: Manages the spawning of enemy waves based on configurations. Tracks wave progress, timing, and triggers new waves. Uses `WaveInfo` component.
+- `WeaponSystem`: Handles weapon firing logic, projectile creation (`LaserEntity`), cooldowns (`LaserCooldown`), and projectile lifetime (`Projectile`).
 
-### WeaponSystem
-- Manages weapon firing mechanics
-- Handles cooldown timing
-- Creates projectile entities
-- Updates projectile lifetime
-- Removes expired projectiles
+## Components (`src/core/components.ts`)
 
-### CollisionSystem
-- Detects collisions between entities with Collider components
-- Processes different collision types based on entity layers
-- Applies damage to entities when hit by projectiles
-- Uses efficient collision detection algorithms for different collider shapes
-- Maintains a collision matrix for filtering collision checks
+Components are pure data structures defining the properties of entities.
 
-### EnemySystem
-- Controls enemy movement and behavior
-- Manages enemy targeting and orientation
-- Implements attack positioning and targeting
-- Makes enemies face the player during approach
-- Controls enemy stopping at defined attack distances
+- `Position`: World-space coordinates (x, y, z).
+- `Velocity`: Movement vector (dx, dy, dz) per second.
+- `Rotation`: Orientation (Euler angles or quaternion).
+- `Renderable`: Defines visual appearance (model ID, scale, color, visibility).
+- `Health`: Current and maximum health points.
+- `AutoRotate`: Specifies automatic rotation speeds.
+- `InputReceiver`: Marker for entities that accept player input.
+- `Shield`: Defines shield properties (current, max, regeneration).
+- `Transform`: Combines Position, Rotation, Scale (often used internally).
+- `Camera`: Properties for a camera entity (FOV, near/far planes, offset).
+- `MouseLook`: Controls camera orientation based on mouse movement (for dev/free camera).
+- `CameraMount`: Links a camera entity to a parent entity.
+- `Projectile`: Data for projectiles (speed, damage, lifetime, owner).
+- `LaserCooldown`: Manages weapon firing rate.
+- `Collider`: Defines physics collision shape (type, dimensions, layer, trigger status).
+- `Enemy`: AI-specific data (target, speed, damage, state, cooldowns).
+- `WaveInfo`: Tracks current wave status (number, enemies remaining).
+- `UIDisplay`: Marker/data for entities represented in the UI.
+- `HealthDisplay`: Links an entity to a UI health display element.
+- `ScoreDisplay`: Holds the player's current score.
+- `MessageDisplay`: Data for displaying temporary messages on screen.
+- `DysonSphereStatus`: Tracks health/shield percentage for the Dyson Sphere UI.
+- `DamageEffect`: Data for visual damage indicators.
+- `GameStateDisplay`: Represents the current state of the game for UI.
+- `GameOverStats`: Stores stats for the game over screen.
+- `Reticle`: Properties for the aiming reticle UI.
+- `Radar`: Data for the radar UI, including tracked entities.
+- `FloatingScore`: Data for score popups when enemies are destroyed.
+- `Boost`: Player ship boost properties (active, remaining time, cooldown).
+- `Animation`: Defines an active animation on an entity (type, progress, duration).
+- `WormholeAnimationData`, `ExplosionAnimationData`, `LightningAnimationData`, `GrowthAnimationData`: Specific data for different animation types.
+- `ShieldComponent`: Represents a shield's hit points (distinct from regenerating `Shield`).
+- `ShieldBubbleComponent`: Data for a protective shield bubble effect.
+- `ShieldBarComponent`: Properties for displaying a shield bar UI element above an entity.
+- `HealthBarComponent`: Properties for displaying a health bar UI element above an entity.
+- `DevMode`: State for developer/debug mode.
+- `PowerUp`: Data for collectible power-ups (type, duration, active status).
 
-### WaveSystem
-- Manages enemy wave spawning
-- Controls wave timing and progression
-- Determines enemy types and quantities per wave
-- Handles wave completion and next wave triggering
-- Implements difficulty progression
+## Entities (`src/core/entities/`)
 
-## Components
+Entities are created by factory functions, combining various components.
 
-Components are pure data structures:
+- `AsteroidEntity`: Represents an asteroid obstacle/object. Components likely include Position, Velocity, Rotation, Renderable, Collider, Health.
+- `CameraEntity`: Represents the main game camera. Components: Position, Rotation, Camera, CameraMount.
+- `DevCameraEntity`: A separate camera for debugging/developer mode. Components: Position, Rotation, Camera, MouseLook.
+- `DysonSphereEntity`: The central objective the player defends. Components: Position, Rotation, Renderable, Health, Shield, AutoRotate, Collider, DysonSphereStatus.
+- `FloatingScoreEntity`: Temporary entity displaying score points. Components: Position, FloatingScore.
+- `GruntEntity`: A basic enemy type. Components: Position, Velocity, Rotation, Renderable, Enemy, Target, Health, Collider.
+- `HUDEntity`: An entity representing the Heads-Up Display. Components might include UIDisplay, ScoreDisplay, WaveInfo, Reticle, Radar, etc.
+- `LaserEntity`: Projectile fired by the player ship. Components: Position, Velocity, Rotation, Renderable, Projectile, Collider.
+- `PlayerShipEntity`: The player-controlled ship. Components: Position, Velocity, Rotation, Renderable, InputReceiver, LaserCooldown, Collider, Health, Boost, Reticle?.
+- `PowerUpEntity`: Collectible item providing buffs. Components: Position, Renderable, Collider (as trigger), PowerUp.
+- `ShieldGuardianEntity`: An enemy type that potentially generates shields. Components: Position, Velocity, Rotation, Renderable, Enemy, Health, Collider, ShieldComponent?.
+- `WarpRaiderEntity`: Another enemy type, potentially with unique movement or attack. Components: Position, Velocity, Rotation, Renderable, Enemy, Health, Collider.
+- `WormholeEntity`: Visual effect entity, likely used for spawning enemies. Components: Position, Renderable, Animation (Wormhole type).
 
-- `Position`: Location (x, y, z)
-- `Velocity`: Movement vector
-- `Rotation`: Orientation
-- `Renderable`: Visual properties
-- `Health`: Entity health state
-- `AutoRotate`: Rotation behavior
-- `InputReceiver`: Input handling flag
-- `Projectile`: Projectile behavior and lifetime
-- `LaserCooldown`: Weapon cooldown management
-- `Collider`: Collision shape and properties for physics interactions
-- `Enemy`: Enemy-specific behavior data
-- `Target`: Entity targeting information
-- `CollisionLayer`: Defines collision filtering
-
-## Entities
-
-### DysonSphereEntity
-- Central game object
-- Components: Position, Rotation, Renderable, Health, AutoRotate, Collider
-- Wireframe sphere visualization
-
-### PlayerShipEntity
-- Player-controlled ship
-- Components: Position, Velocity, Rotation, Renderable, InputReceiver, LaserCooldown, Collider
-- Responds to keyboard input
-
-### LaserEntity
-- Player projectile
-- Components: Position, Velocity, Rotation, Renderable, Projectile, Collider
-- Travels in straight line with fixed lifetime
-
-### GruntEntity
-- Basic enemy type
-- Components: Position, Velocity, Rotation, Renderable, Enemy, Target, Health, Collider
-- Features curved tentacles and custom behavior
-- Moves toward Dyson Sphere and stops at attack distance
+*(Note: Component lists for entities are inferred and may need verification)*
 
 ## Technical Implementation
 
 ### State Management
-- GameStateManager for game state
-- React state for UI
-- Serializable state for future multiplayer
+- Core game state (`score`, `wave`, etc.) managed in `src/core/State.ts` or via specific components on singleton entities (like `HUDEntity`).
+- Entity state managed via Components within the `World`.
+- UI state managed by React components in `src/ui/`.
+- Aim for serializable state where possible.
 
 ### Performance Optimization
-- Frame-rate independent movement
-- Efficient entity querying
-- Minimal debug output
-- Optimized input processing
-- Clean component lifecycle management
+- ECS architecture provides efficient entity/component querying.
+- Frame-rate independent logic via `deltaTime`.
+- `MeshFactory` for potential mesh caching/instancing.
+- Minimize object allocations/deallocations in critical loops (systems).
+- Proper resource disposal in `SceneManager` and `RenderingSystem`.
 
 ### Resource Management
-- Proper Three.js resource disposal
-- Event listener cleanup
-- Efficient mesh management
-- Memory leak prevention
+- `SceneManager` handles cleanup of Three.js objects (geometries, materials, textures).
+- `MeshFactory` manages mesh lifecycle.
+- Event listeners managed by `InputManager` are cleaned up.
 
 ### Responsive Design
-- Dynamic viewport resizing
-- Proper aspect ratio maintenance
-- Container-based dimensions
+- `SceneManager` handles viewport resizing, updating camera aspect ratio and renderer size.
+- UI layout potentially uses CSS for responsiveness.
 
 ## Development Guidelines
 
-### Code Organization
-- Keep components as pure data
-- Maintain system independence
-- Use factory functions for entities
-- Implement proper cleanup
-- Follow TypeScript best practices
+### Code Organization (ECS Focus)
+- **Entities**: Created ONLY via factory functions in `src/core/entities/`. Factories assign components.
+- **Components**: MUST be pure data interfaces defined in `src/core/components.ts`. No methods.
+- **Systems**: Implement logic in `src/core/systems/`. Operate on entities based on their components. Should ideally not hold state themselves, but modify components or global state.
+- **World**: Central coordinator for ECS.
 
 ### Best Practices
-- Separate game logic from rendering
-- Maintain serializable state
-- Use efficient data structures
-- Implement proper error handling
-- Follow consistent naming conventions
+- **Separation of Concerns**:
+    - **Core (TS)**: Manages game state and logic via ECS. Does not directly interact with Three.js or React.
+    - **Rendering (TS + Three.js)**: Reads component data (`Position`, `Renderable`, etc.) to update the `SceneManager` and display visuals. Does not modify game logic state.
+    - **UI (React + TSX)**: Reads game state/component data (often via a dedicated system like `HUDSystem`) to display information. Sends user actions (like button clicks) back to the core logic (potentially via events or `InputManager`).
+- **Type Safety**: Use TypeScript interfaces/types extensively (`src/types/`, `src/core/components.ts`).
+- **Modularity**: Keep systems focused on single responsibilities.
+- **Readability**: Follow consistent naming conventions and coding styles.
+- **Immutability**: Prefer updating state by creating new objects/values where feasible, especially for components, although performance considerations in systems might necessitate mutation.
