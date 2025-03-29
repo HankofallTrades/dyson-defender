@@ -60,6 +60,7 @@ class Game {
   private floatingScoreSystem!: FloatingScoreSystem; // Use definite assignment assertion
   private animationSystem!: AnimationSystem; // Add reference to AnimationSystem
   private devSystem!: DevSystem; // Reference to the dev system
+  private inputManager!: InputManager;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -79,6 +80,8 @@ class Game {
     
     // Don't start the game automatically - just render the start screen
     this.animationFrameId = requestAnimationFrame(this.animate);
+
+    this.inputManager = InputManager.getInstance(this.container);
   }
 
   private initSystems(): void {
@@ -376,7 +379,8 @@ class Game {
       this.animationFrameId = null;
     }
     window.removeEventListener('resize', this.handleResize);
-    this.sceneManager.dispose();
+    this.sceneManager.destroy();
+    this.inputManager.dispose();
   }
 
   public restartAtWave(waveNumber: number): void {

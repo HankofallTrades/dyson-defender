@@ -22,10 +22,12 @@ export class WeaponSystem implements System {
   private world: World;
   private scene: THREE.Scene;
   private inputManager: InputManager;
+  private sceneManager: SceneManager;
 
   constructor(world: World, sceneManager: SceneManager) {
     this.world = world;
     this.scene = sceneManager.getScene();
+    this.sceneManager = sceneManager;
     
     // Get the renderer DOM element for input handling
     const rendererElement = sceneManager.getRendererDomElement();
@@ -33,6 +35,12 @@ export class WeaponSystem implements System {
   }
 
   update(deltaTime: number): void {
+    const rendererDomElement = this.sceneManager.getRendererDomElement();
+    if (!rendererDomElement) {
+      console.warn('Renderer DOM element not available');
+      return;
+    }
+
     // Get input state to check if shoot button is pressed
     const inputState = this.inputManager.getInputState();
     

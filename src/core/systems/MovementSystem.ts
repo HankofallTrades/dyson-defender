@@ -23,6 +23,12 @@ export class MovementSystem implements System {
   }
 
   update(deltaTime: number): void {
+    const rendererDomElement = this.sceneManager.getRendererDomElement();
+    if (!rendererDomElement) {
+      console.warn('Renderer DOM element not available');
+      return;
+    }
+
     if (deltaTime === 0) {
       return;
     }

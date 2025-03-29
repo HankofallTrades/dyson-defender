@@ -159,8 +159,8 @@ export class SceneManager {
    * Render the scene
    */
   public render(): void {
-    if (!this.activeCamera) {
-      console.warn('No active camera set in SceneManager');
+    if (!this.activeCamera || !this.renderer) {
+      console.warn('No active camera or renderer set in SceneManager');
       return;
     }
     this.renderer.render(this.scene, this.activeCamera);
@@ -190,8 +190,8 @@ export class SceneManager {
   /**
    * Get the Three.js renderer's DOM element
    */
-  public getRendererDomElement(): HTMLCanvasElement {
-    return this.renderer.domElement;
+  public getRendererDomElement(): HTMLCanvasElement | null {
+    return this.renderer?.domElement || null;
   }
   
   /**
