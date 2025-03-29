@@ -1,5 +1,5 @@
 import { World, System } from '../World';
-import { Position, PowerUp, LaserCooldown, InputReceiver, Velocity, Health } from '../components';
+import { Position, PowerUp, LaserCooldown, InputReceiver, Velocity, Health, ActivePowerUps } from '../components';
 import { createFireRatePowerUp, createSpeedPowerUp, createHealthPowerUp, getRandomPowerUpType } from '../entities/PowerUpEntity';
 import * as THREE from 'three';
 
@@ -83,24 +83,23 @@ export class PowerUpSystem implements System {
     // Reset current cooldown to allow immediate firing
     laserCooldown.current = 0;
     
-    // Activate power-up and set duration
-    powerUp.active = true;
-    powerUp.timeRemaining = powerUp.duration;
+    // Add or update the effect in ActivePowerUps
+    let activePowerUps = this.world.getComponent<ActivePowerUps>(playerEntity, 'ActivePowerUps');
+    if (!activePowerUps) {
+      activePowerUps = { effects: {} };
+      this.world.addComponent(playerEntity, 'ActivePowerUps', activePowerUps);
+    }
     
-    // Add the PowerUp component to the player to track its duration
-    this.world.addComponent(playerEntity, 'PowerUp', {
-      type: 'fireRate',
-      duration: powerUp.duration,
+    activePowerUps.effects['fireRate'] = {
       timeRemaining: powerUp.duration,
-      active: true
-    });
+      duration: powerUp.duration
+    };
   }
   
   /**
    * Apply speed power-up effect to increase player movement speed by 1.5x
    */
   private applySpeedPowerUp(playerEntity: number, powerUp: PowerUp): void {
-    // Get InputSystem's BASE_SPEED indirectly through an InputReceiver entity
     const inputReceiver = this.world.getComponent<InputReceiver>(playerEntity, 'InputReceiver');
     if (!inputReceiver) {
       return;
@@ -113,17 +112,17 @@ export class PowerUpSystem implements System {
       (velocity as any).speedBoostActive = true;
     }
     
-    // Activate power-up and set duration
-    powerUp.active = true;
-    powerUp.timeRemaining = powerUp.duration;
+    // Add or update the effect in ActivePowerUps
+    let activePowerUps = this.world.getComponent<ActivePowerUps>(playerEntity, 'ActivePowerUps');
+    if (!activePowerUps) {
+      activePowerUps = { effects: {} };
+      this.world.addComponent(playerEntity, 'ActivePowerUps', activePowerUps);
+    }
     
-    // Add the PowerUp component to the player to track its duration
-    this.world.addComponent(playerEntity, 'PowerUp', {
-      type: 'speed',
-      duration: powerUp.duration,
+    activePowerUps.effects['speed'] = {
       timeRemaining: powerUp.duration,
-      active: true
-    });
+      duration: powerUp.duration
+    };
   }
   
   /**
@@ -157,80 +156,67 @@ export class PowerUpSystem implements System {
    * Update method called each frame to update power-up timers and effects
    */
   update(deltaTime: number): void {
-    // Update active power-ups
-    const entitiesWithPowerUps = this.world.getEntitiesWith(['PowerUp']);
-    
-    for (const entity of entitiesWithPowerUps) {
+    // Update uncollected power-ups
+    const powerUpEntities = this.world.getEntitiesWith(['PowerUp']);
+    for (const entity of powerUpEntities) {
       const powerUp = this.world.getComponent<PowerUp>(entity, 'PowerUp');
-      if (!powerUp) continue;
+      if (!powerUp || powerUp.active) continue;
       
-      if (powerUp.active) {
-        // Decrease the time remaining for active power-ups
-        powerUp.timeRemaining -= deltaTime;
+      // Handle uncollected power-up lifetime
+      if (powerUp.lifetime !== undefined) {
+        powerUp.lifetime -= deltaTime;
+        if (powerUp.lifetime <= 0) {
+          this.world.removeEntity(entity);
+          continue;
+        }
         
-        // Check if the power-up has expired
-        if (powerUp.timeRemaining <= 0) {
-          this.deactivatePowerUp(entity, powerUp);
-        }
-      } else {
-        // For inactive power-ups (not collected yet), check lifetime
-        if (powerUp.lifetime !== undefined) {
-          // Decrease lifetime
-          powerUp.lifetime -= deltaTime;
-          
-          // If lifetime has expired, remove the power-up
-          if (powerUp.lifetime <= 0) {
-            this.world.removeEntity(entity);
-          }
-          
-          // Add a fade-out effect when nearing expiration
-          if (powerUp.lifetime < 1.0) {
-            const renderable = this.world.getComponent<any>(entity, 'Renderable');
-            if (renderable && renderable.fadeOut !== false) {
-              renderable.fadeOut = true;
-              renderable.opacity = Math.max(0.2, powerUp.lifetime);
-            }
+        // Add fade-out effect when nearing expiration
+        if (powerUp.lifetime < 1.0) {
+          const renderable = this.world.getComponent<any>(entity, 'Renderable');
+          if (renderable && renderable.fadeOut !== false) {
+            renderable.fadeOut = true;
+            renderable.opacity = Math.max(0.2, powerUp.lifetime);
           }
         }
+      }
+    }
+    
+    // Update active power-ups on players
+    const entitiesWithActivePowerUps = this.world.getEntitiesWith(['ActivePowerUps']);
+    for (const entity of entitiesWithActivePowerUps) {
+      const activePowerUps = this.world.getComponent<ActivePowerUps>(entity, 'ActivePowerUps');
+      if (!activePowerUps) continue;
+      
+      // Update each active effect
+      for (const [type, effect] of Object.entries(activePowerUps.effects)) {
+        effect.timeRemaining -= deltaTime;
+        
+        // If effect expired, remove it and deactivate its benefits
+        if (effect.timeRemaining <= 0) {
+          delete activePowerUps.effects[type];
+          this.deactivateEffect(entity, type);
+        }
+      }
+      
+      // Remove ActivePowerUps component if no effects remain
+      if (Object.keys(activePowerUps.effects).length === 0) {
+        this.world.removeComponent(entity, 'ActivePowerUps');
       }
     }
   }
   
-  /**
-   * Deactivate an expired power-up
-   */
-  private deactivatePowerUp(entity: number, powerUp: PowerUp): void {
-    // Set power-up as inactive
-    powerUp.active = false;
-    
-    // Handle different power-up types
-    if (powerUp.type === 'fireRate') {
-      // Only handle if this is the player entity (has LaserCooldown)
-      if (this.world.hasComponent(entity, 'LaserCooldown')) {
-        const laserCooldown = this.world.getComponent<LaserCooldown>(entity, 'LaserCooldown');
-        if (laserCooldown && (laserCooldown as any).originalMax) {
-          // Restore original cooldown
-          laserCooldown.max = (laserCooldown as any).originalMax;
-        }
+  private deactivateEffect(entity: number, type: string): void {
+    if (type === 'fireRate') {
+      const laserCooldown = this.world.getComponent<LaserCooldown>(entity, 'LaserCooldown');
+      if (laserCooldown && (laserCooldown as any).originalMax) {
+        laserCooldown.max = (laserCooldown as any).originalMax;
       }
-    } else if (powerUp.type === 'speed') {
-      // Only handle if this is the player entity (has InputReceiver)
-      if (this.world.hasComponent(entity, 'InputReceiver')) {
-        const velocity = this.world.getComponent<Velocity>(entity, 'Velocity');
-        if (velocity && (velocity as any).speedBoostActive) {
-          // Mark the speed boost as inactive
-          (velocity as any).speedBoostActive = false;
-        }
+    } else if (type === 'speed') {
+      const velocity = this.world.getComponent<Velocity>(entity, 'Velocity');
+      if (velocity && (velocity as any).speedBoostActive) {
+        (velocity as any).speedBoostActive = false;
       }
     }
-    // Health power-up doesn't need any cleanup as it's an instant effect
-    
-    // If this is a power-up entity (not the player), remove it
-    if (!this.world.hasComponent(entity, 'InputReceiver')) {
-      this.world.removeEntity(entity);
-    } else {
-      // If it's the player, just remove the power-up component
-      this.world.removeComponent(entity, 'PowerUp');
-    }
+    // Health power-up doesn't need cleanup as it's instant
   }
 } 

@@ -284,9 +284,18 @@ export interface DevMode {
 }
 
 export interface PowerUp {
-  type: 'fireRate' | 'shield' | 'multiplier' | 'speed' | 'health';
+  type: 'fireRate' | 'speed' | 'health';
   duration: number;
   timeRemaining: number;
   active: boolean;
-  lifetime?: number; // Time in seconds before the power-up disappears if not collected
+  lifetime?: number; // Only used for uncollected power-ups
+}
+
+export interface ActivePowerUps {
+  effects: {
+    [key: string]: {
+      timeRemaining: number;
+      duration: number;
+    }
+  }
 }
