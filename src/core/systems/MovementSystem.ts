@@ -113,12 +113,8 @@ export class MovementSystem implements System {
         if (Math.abs(velocity.y) < this.MIN_VELOCITY) velocity.y = 0;
         if (Math.abs(velocity.z) < this.MIN_VELOCITY) velocity.z = 0;
         
-        // For mobile controls, ensure the player ship stays level by zeroing out vertical velocity
-        // unless explicitly commanded via keyboard up/down keys
-        if (!inputState.up && !inputState.down) {
-          // Zero out any residual vertical velocity that might come from joystick
-          velocity.y = 0;
-        }
+        // Remove vertical velocity clamping to allow natural ship-relative movement
+        // The InputSystem now correctly handles vertical movement via Q/E and ship orientation
       }
 
       // Skip distance constraints for projectiles

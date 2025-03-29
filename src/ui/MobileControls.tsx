@@ -1,41 +1,25 @@
-import React, { useEffect, useRef } from 'react';
-import { InputManager } from '../core/input/InputManager';
+import React, { useRef, useEffect } from 'react';
+import { JoystickStateHolder } from '../core/input/JoystickStateHolder';
 import styled from '@emotion/styled';
+import { InputManager } from '../core/input/InputManager';
 
-// Define the types for nipplejs
-type JoystickEventData = {
-  angle: {
-    radian: number;
-  };
-  force: number;
-  direction: {
-    angle: string;
-    x: string;
-    y: string;
-  };
-};
-
-// Define a type for the global nipplejs variable
+// Make sure nipplejs types are available globally if using CDN
 declare global {
   interface Window {
-    nipplejs: {
-      create: (options: {
-        zone: HTMLElement;
-        mode: "static" | "dynamic" | "semi";
-        position: { left: string; top: string };
-        color: string;
-        size: number;
-        multitouch?: boolean;
-        maxNumberOfNipples?: number;
-        dataOnly?: boolean;
-        threshold?: number;
-        fadeTime?: number;
-      }) => {
-        on: (event: string, callback: (evt: any, data: JoystickEventData) => void) => void;
-        destroy: () => void;
-      }
-    }
+    nipplejs: any;
   }
+}
+
+interface JoystickEventData {
+  identifier: number;
+  position: { x: number; y: number };
+  force: number;
+  pressure: number;
+  distance: number;
+  angle: { radian: number; degree: number };
+  direction: { x: 'left' | 'right' | 'center'; y: 'up' | 'down' | 'center'; angle: string };
+  instance: any;
+  // Add other properties if needed
 }
 
 const MobileControlsContainer = styled.div`
@@ -87,112 +71,82 @@ const FireButton = styled.div`
 
 export const MobileControls: React.FC = () => {
   const joystickZoneRef = useRef<HTMLDivElement>(null);
-  const inputManager = InputManager.getInstance(document.body);
   const joystickRef = useRef<any>(null);
+  const joystickStateHolder = JoystickStateHolder.getInstance(); // Get the singleton instance for joystick state
+  const inputManager = InputManager.getInstance(document.body); // Get InputManager instance for firing
 
   useEffect(() => {
     if (!joystickZoneRef.current) return;
-    
+    if (joystickRef.current) return; // Prevent double initialization
+
+    // Check if nipplejs is loaded
+    if (!window.nipplejs) {
+      console.error('nipplejs not loaded!');
+      return;
+    }
+
     try {
-      console.log('Initializing joystick...', window.nipplejs);
+      console.log('Initializing joystick...');
       
-      // Use the global nipplejs variable from the CDN
       const manager = window.nipplejs.create({
         zone: joystickZoneRef.current,
         mode: "static",
         position: { left: "50%", top: "50%" },
         color: "white",
         size: 100,
-        threshold: 0.05,  // Lower threshold for more sensitivity
-        fadeTime: 100    // Faster fade time for more responsive feel
+        threshold: 0.05,
+        fadeTime: 100,
+        multitouch: false
       });
       
       joystickRef.current = manager;
 
-      // Attach event handlers with debug logging
-      manager.on('start', () => {
-        console.log('Joystick start event fired');
-      });
-
       manager.on('move', (evt: any, data: JoystickEventData) => {
-        console.log('Joystick move event:', data);
-        const force = Math.min(data.force / 50, 1);
-        
-        // Skip very small movements (dead zone)
-        if (force < 0.05) {
-          inputManager.resetJoystick();
-          return;
-        }
-        
-        // DEBUG LOGGING: Log all raw data from nipplejs
-        console.log('Full nipplejs data:', {
-          angle: data.angle,
-          direction: data.direction,
-          force: data.force,
-          raw: data
-        });
-        
-        // Use angle instead of directions to allow for diagonal movement
+        const force = Math.min(data.force / 5, 1);
         const angle = data.angle.radian;
-        
-        // Convert angle to normalized X/Y coordinates
-        // 0 = right, π/2 = down, π = left, 3π/2 = up
         const rawX = Math.cos(angle);
         const rawY = Math.sin(angle);
-        
-        // Y is inverted in nipplejs (up is negative Y)
-        // We want up on joystick to mean forward (W key)
-        // and down to mean backward (S key)
         const x = rawX * force;
-        const y = -rawY * force; // Invert Y so up means forward
+        const y = -rawY * force;
         
         console.log(`Joystick movement: angle=${angle.toFixed(2)}, x=${x.toFixed(2)}, y=${y.toFixed(2)}, force=${force.toFixed(2)}`);
         
-        // Update InputManager with the mapped coordinates
-        inputManager.updateJoystick(x, y, force);
+        joystickStateHolder.update(x, y, force);
       });
 
       manager.on('end', () => {
-        console.log('Joystick end event fired');
-        inputManager.resetJoystick();
+        console.log('Joystick end event fired - resetting state holder');
+        joystickStateHolder.reset();
       });
 
       console.log('Joystick initialized successfully');
     } catch (error) {
       console.error('Failed to initialize joystick:', error);
-      if (error instanceof Error) {
-        console.error('Error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
-        });
-      }
     }
 
+    // Cleanup function
     return () => {
       if (joystickRef.current) {
         joystickRef.current.destroy();
         joystickRef.current = null;
+        console.log('Joystick destroyed');
       }
     };
-  }, []);
+  }, [joystickStateHolder]); // Add joystickStateHolder to dependencies
 
   const handleFireStart = (e: React.TouchEvent) => {
-    console.log('Fire button touch start');
-    e.preventDefault(); // Prevent default touch behavior
-    e.stopPropagation(); // Stop event propagation
-    
+    e.preventDefault();
+    e.stopPropagation();
     if (navigator.vibrate) {
       navigator.vibrate(50);
     }
-    inputManager.setMobileFiring(true);
+    inputManager.setMobileFiring(true); // Use InputManager for firing
   };
 
   const handleFireEnd = (e: React.TouchEvent) => {
-    console.log('Fire button touch end');
     e.preventDefault();
     e.stopPropagation();
-    inputManager.setMobileFiring(false);
+    inputManager.setMobileFiring(false); // Use InputManager for firing
   };
 
   return (

@@ -1,8 +1,9 @@
 // src/core/systems/InputSystem.ts
 import * as THREE from 'three';
 import { World, System } from '../World';
-import { Velocity, InputReceiver, MouseLook, Rotation } from '../components';
+import { Velocity, InputReceiver, MouseLook, Rotation, LaserCooldown } from '../components';
 import { InputManager } from '../input/InputManager';
+import { JoystickStateHolder } from '../input/JoystickStateHolder';
 import { SceneManager } from '../../rendering/SceneManager';
 
 /**
@@ -21,8 +22,10 @@ import { SceneManager } from '../../rendering/SceneManager';
 export class InputSystem implements System {
   private world: World;
   private inputManager: InputManager;
+  private joystickStateHolder: JoystickStateHolder;
   private sceneManager: SceneManager;
-  private readonly BASE_SPEED = 40.0; // Base movement speed (doubled from 20.0)
+  private readonly BASE_SPEED = 40.0;
+  private readonly JOYSTICK_SPEED_MULTIPLIER = 1.0;
 
   constructor(world: World, sceneManager: SceneManager) {
     this.world = world;
@@ -34,15 +37,16 @@ export class InputSystem implements System {
       throw new Error('Renderer DOM element not available');
     }
     this.inputManager = InputManager.getInstance(rendererElement);
+    this.joystickStateHolder = JoystickStateHolder.getInstance();
   }
 
   update(deltaTime: number): void {
-    // Get input states
+    // Get keyboard/mouse input states
     const inputState = this.inputManager.getInputState();
     const mouseState = this.inputManager.getMouseState();
     
-    // Get movement input (handles both keyboard and joystick)
-    const movementInput = this.inputManager.getMovementInput();
+    // Get joystick state directly
+    const joystick = this.joystickStateHolder;
 
     // Get all entities with InputReceiver and Velocity components
     const entities = this.world.getEntitiesWith(['InputReceiver', 'Velocity', 'Rotation']);
@@ -74,81 +78,104 @@ export class InputSystem implements System {
       }
     }
 
-    // Now process input for movement
+    // Now process input for movement (combining joystick and keyboard)
     for (const entity of entities) {
       const velocity = this.world.getComponent<Velocity>(entity, 'Velocity');
       const rotation = this.world.getComponent<Rotation>(entity, 'Rotation');
       
       if (!velocity || !rotation) continue;
 
-      // Create forward vector based on where the camera is looking (includes pitch and yaw)
-      const forward = new THREE.Vector3(0, 0, -1);
-      const pitchMatrix = new THREE.Matrix4().makeRotationX(rotation.x);
-      const yawMatrix = new THREE.Matrix4().makeRotationY(rotation.y);
-      
-      // Apply both rotations to get the true forward direction
-      forward.applyMatrix4(pitchMatrix);
-      forward.applyMatrix4(yawMatrix);
-      
-      // Create a forward vector for movement that only uses yaw (no pitch)
-      // This keeps joystick movement in the horizontal plane regardless of where player is looking
-      const forwardMovement = new THREE.Vector3(0, 0, -1);
-      forwardMovement.applyMatrix4(yawMatrix); // Only apply yaw rotation
-      
-      // Apply right vector (perpendicular to forward, no pitch)
-      const right = new THREE.Vector3(1, 0, 0);
-      right.applyMatrix4(yawMatrix); // Only apply yaw to right vector
-      
-      // Set up/down direction directly
-      const up = new THREE.Vector3(0, 1, 0);
+      // Determine input source and values
+      let inputX = 0;
+      let inputY = 0;
+      let inputVertical = 0;
+      let inputMagnitude = 0;
+      let inputSource: 'joystick' | 'keyboard' | 'none' = 'none';
 
-      // Calculate direction based on input
-      const direction = new THREE.Vector3(0, 0, 0);
-      
-      // Get input state (now includes both keyboard and joystick mapped to WASD)
-      if (inputState.forward) {
-        direction.add(forwardMovement);
-      }
-      if (inputState.backward) {
-        direction.sub(forwardMovement);
-      }
-      if (inputState.right) {
-        direction.add(right);
-      }
-      if (inputState.left) {
-        direction.sub(right);
-      }
-      if (inputState.up) {
-        direction.add(up);
-      }
-      if (inputState.down) {
-        direction.sub(up);
+      const joystickThreshold = 0.05;
+      if (joystick.active && joystick.magnitude > joystickThreshold) {
+        // Use Joystick input
+        inputSource = 'joystick';
+        inputX = joystick.x;
+        inputY = -joystick.y;
+        inputVertical = 0;
+        inputMagnitude = 1.0;
+        console.log(`[InputSystem] Using Joystick: x=${inputX.toFixed(3)}, y=${inputY.toFixed(3)}, FORCING mag=1.0 (raw mag was ${joystick.magnitude.toFixed(3)})`);
+      } else {
+        // Use Keyboard input
+        const keyX = (inputState.right ? 1 : 0) - (inputState.left ? 1 : 0);
+        const keyY = (inputState.forward ? 1 : 0) - (inputState.backward ? 1 : 0);
+        inputVertical = (inputState.up ? 1 : 0) - (inputState.down ? 1 : 0);
+
+        if (keyX !== 0 || keyY !== 0 || inputVertical !== 0) {
+          inputSource = 'keyboard';
+          const keyHorizontalVec = new THREE.Vector2(keyX, keyY);
+          if (keyHorizontalVec.lengthSq() > 0.001) {
+            keyHorizontalVec.normalize();
+          }
+          inputX = keyHorizontalVec.x;
+          inputY = keyHorizontalVec.y;
+          inputMagnitude = 1.0;
+          console.log(`[InputSystem] Using Keyboard: x=${inputX.toFixed(3)}, y=${inputY.toFixed(3)}, vert=${inputVertical.toFixed(3)}`);
+        } else {
+          inputSource = 'none';
+          // console.log(`[InputSystem] No input detected.`); // Reduce noise
+        }
       }
 
-      // If moving, normalize direction to maintain consistent speed
-      if (direction.lengthSq() > 0) {
-        direction.normalize();
+      // Calculate movement based on determined input
+      if (inputSource !== 'none') {
+        // --- DIAGNOSTIC LOG --- 
+        console.log(`[InputSystem] Entity ${entity}, Rotation Y: ${rotation.y.toFixed(3)}`);
+        // ----------------------
         
-        // Apply velocity with magnitude for analog control
-        // Use joystick magnitude if available, otherwise use full speed for keyboard
-        const speedFactor = movementInput.magnitude > 0 ? 
-          movementInput.magnitude : 1.0;
+        const shipQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rotation.y, 0));
+        const worldForward = new THREE.Vector3(0, 0, -1).applyQuaternion(shipQuaternion);
+        const worldRight = new THREE.Vector3(1, 0, 0).applyQuaternion(shipQuaternion);
+        const worldUp = new THREE.Vector3(0, 1, 0);
+
+        // --- DIAGNOSTIC LOG --- 
+        console.log(`[InputSystem] worldForward: (${worldForward.x.toFixed(2)}, ${worldForward.y.toFixed(2)}, ${worldForward.z.toFixed(2)}), worldRight: (${worldRight.x.toFixed(2)}, ${worldRight.y.toFixed(2)}, ${worldRight.z.toFixed(2)})`);
+        // ----------------------
+
+        const finalVelocity = new THREE.Vector3(0, 0, 0);
+
+        // Apply movement relative to ship orientation
+        finalVelocity.addScaledVector(worldRight, inputX);
+        finalVelocity.addScaledVector(worldForward, inputY);
         
-        velocity.x = direction.x * this.BASE_SPEED * speedFactor;
-        velocity.y = direction.y * this.BASE_SPEED * speedFactor;
-        velocity.z = direction.z * this.BASE_SPEED * speedFactor;
+        // Only apply world vertical movement for keyboard Q/E
+        if (inputSource === 'keyboard') {
+          finalVelocity.addScaledVector(worldUp, inputVertical);
+        }
+
+        console.log(`[InputSystem] Processing movement. Input: x=${inputX.toFixed(3)}, y=${inputY.toFixed(3)}, vert=${inputVertical.toFixed(3)}`);
+        
+        const beforeLength = finalVelocity.length();
+        // console.log(`[InputSystem] Final velocity before normalization: length=${beforeLength.toFixed(3)}`); // Reduce noise
+        
+        if (beforeLength > 0.001) {
+          finalVelocity.normalize();
+          const speedMultiplier = inputSource === 'joystick' ? this.JOYSTICK_SPEED_MULTIPLIER : 1.0;
+          const speed = this.BASE_SPEED * inputMagnitude * speedMultiplier;
+          velocity.x = finalVelocity.x * speed;
+          velocity.y = finalVelocity.y * speed;
+          velocity.z = finalVelocity.z * speed;
+          console.log(`[Movement] Final: speed=${speed.toFixed(1)}, velocity=(${velocity.x.toFixed(2)},${velocity.y.toFixed(2)},${velocity.z.toFixed(2)})`);
+        } else {
+          velocity.x = 0; velocity.y = 0; velocity.z = 0;
+          // console.log('[Movement] No movement - velocity zeroed due to small length'); // Reduce noise
+        }
       } else {
         // No input, stop all movement
-        velocity.x = 0;
-        velocity.y = 0;
-        velocity.z = 0;
+        velocity.x = 0; velocity.y = 0; velocity.z = 0;
       }
     }
     
     // Handle firing
     const playerEntities = this.world.getEntitiesWith(['InputReceiver', 'LaserCooldown']);
     for (const entity of playerEntities) {
-      const cooldown = this.world.getComponent<any>(entity, 'LaserCooldown');
+      const cooldown = this.world.getComponent<LaserCooldown>(entity, 'LaserCooldown');
       if (!cooldown) continue;
       
       // Check firing input from keyboard, mouse, or mobile
