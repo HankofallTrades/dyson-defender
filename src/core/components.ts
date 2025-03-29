@@ -84,6 +84,7 @@ export interface LaserCooldown {
   current: number;  // Current cooldown time in seconds
   max: number;      // Maximum cooldown time in seconds
   canFire: boolean; // Whether the entity can fire
+  readyToFire?: boolean; // Whether the entity is ready to fire (set by InputSystem)
 }
 
 export interface Collider {

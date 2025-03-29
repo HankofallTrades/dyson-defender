@@ -219,7 +219,6 @@ export class HUDSystem implements System {
     if (gameStateDisplay) {
       gameStateDisplay.currentState = 'playing';
       this.gameStartTime = Date.now();
-      this.displayMessage('INITIALIZING SYSTEMS', 3);
       
       // Reset all HUD components when starting a game
       this.resetHUD(hudEntity);

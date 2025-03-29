@@ -40,18 +40,23 @@ export class InputSystem implements System {
     // Get input states
     const inputState = this.inputManager.getInputState();
     const mouseState = this.inputManager.getMouseState();
+    
+    // Get movement input (handles both keyboard and joystick)
+    const movementInput = this.inputManager.getMovementInput();
 
     // Get all entities with InputReceiver and Velocity components
-    const entities = this.world.getEntitiesWith(['InputReceiver', 'Velocity', 'Rotation', 'MouseLook']);
-
-    for (const entity of entities) {
-      const velocity = this.world.getComponent<Velocity>(entity, 'Velocity');
+    const entities = this.world.getEntitiesWith(['InputReceiver', 'Velocity', 'Rotation']);
+    
+    // First, process entities with MouseLook for camera rotation
+    const cameraEntities = entities.filter(entity => this.world.hasComponent(entity, 'MouseLook'));
+    
+    for (const entity of cameraEntities) {
       const rotation = this.world.getComponent<Rotation>(entity, 'Rotation');
       const mouseLook = this.world.getComponent<MouseLook>(entity, 'MouseLook');
 
-      if (!velocity || !rotation || !mouseLook) continue;
+      if (!rotation || !mouseLook) continue;
 
-      // Handle mouse movement for rotation only
+      // Handle mouse movement for rotation
       if (mouseState.isPointerLocked) {
         // Horizontal mouse movement (left/right) updates yaw (looking left/right)
         mouseLook.yaw -= mouseState.movementX * mouseLook.sensitivity;
@@ -67,10 +72,15 @@ export class InputSystem implements System {
         rotation.y = mouseLook.yaw;
         rotation.z = 0;
       }
+    }
 
-      // Calculate movement direction based on input
-      const direction = new THREE.Vector3(0, 0, 0);
+    // Now process input for movement
+    for (const entity of entities) {
+      const velocity = this.world.getComponent<Velocity>(entity, 'Velocity');
+      const rotation = this.world.getComponent<Rotation>(entity, 'Rotation');
       
+      if (!velocity || !rotation) continue;
+
       // Create forward vector based on where the camera is looking (includes pitch and yaw)
       const forward = new THREE.Vector3(0, 0, -1);
       const pitchMatrix = new THREE.Matrix4().makeRotationX(rotation.x);
@@ -80,6 +90,11 @@ export class InputSystem implements System {
       forward.applyMatrix4(pitchMatrix);
       forward.applyMatrix4(yawMatrix);
       
+      // Create a forward vector for movement that only uses yaw (no pitch)
+      // This keeps joystick movement in the horizontal plane regardless of where player is looking
+      const forwardMovement = new THREE.Vector3(0, 0, -1);
+      forwardMovement.applyMatrix4(yawMatrix); // Only apply yaw rotation
+      
       // Apply right vector (perpendicular to forward, no pitch)
       const right = new THREE.Vector3(1, 0, 0);
       right.applyMatrix4(yawMatrix); // Only apply yaw to right vector
@@ -87,12 +102,15 @@ export class InputSystem implements System {
       // Set up/down direction directly
       const up = new THREE.Vector3(0, 1, 0);
 
-      // Apply inputs to direction
+      // Calculate direction based on input
+      const direction = new THREE.Vector3(0, 0, 0);
+      
+      // Get input state (now includes both keyboard and joystick mapped to WASD)
       if (inputState.forward) {
-        direction.add(forward);
+        direction.add(forwardMovement);
       }
       if (inputState.backward) {
-        direction.sub(forward);
+        direction.sub(forwardMovement);
       }
       if (inputState.right) {
         direction.add(right);
@@ -111,15 +129,33 @@ export class InputSystem implements System {
       if (direction.lengthSq() > 0) {
         direction.normalize();
         
-        // Apply velocity
-        velocity.x = direction.x * this.BASE_SPEED;
-        velocity.y = direction.y * this.BASE_SPEED;
-        velocity.z = direction.z * this.BASE_SPEED;
+        // Apply velocity with magnitude for analog control
+        // Use joystick magnitude if available, otherwise use full speed for keyboard
+        const speedFactor = movementInput.magnitude > 0 ? 
+          movementInput.magnitude : 1.0;
+        
+        velocity.x = direction.x * this.BASE_SPEED * speedFactor;
+        velocity.y = direction.y * this.BASE_SPEED * speedFactor;
+        velocity.z = direction.z * this.BASE_SPEED * speedFactor;
       } else {
         // No input, stop all movement
         velocity.x = 0;
         velocity.y = 0;
         velocity.z = 0;
+      }
+    }
+    
+    // Handle firing
+    const playerEntities = this.world.getEntitiesWith(['InputReceiver', 'LaserCooldown']);
+    for (const entity of playerEntities) {
+      const cooldown = this.world.getComponent<any>(entity, 'LaserCooldown');
+      if (!cooldown) continue;
+      
+      // Check firing input from keyboard, mouse, or mobile
+      if (this.inputManager.isFiring() && cooldown.current <= 0) {
+        // Handle firing logic...
+        // This is likely handled in WeaponSystem, but we mark it as ready to fire
+        cooldown.readyToFire = true;
       }
     }
   }

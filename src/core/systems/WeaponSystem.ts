@@ -46,9 +46,10 @@ export class WeaponSystem implements System {
 
     // Get input state to check if shoot button is pressed
     const inputState = this.inputManager.getInputState();
+    const isFiring = this.inputManager.isFiring(); // Check both keyboard and mobile firing
     
     // Process entities with weapon components
-    const entities = this.world.getEntitiesWith(['Weapon', 'Position']);
+    const entities = this.world.getEntitiesWith(['InputReceiver', 'Position']);
     
     for (const entity of entities) {
       // Get required components
@@ -65,7 +66,8 @@ export class WeaponSystem implements System {
         laserCooldown = {
           current: 0,
           max: 0.25, // 4 shots per second
-          canFire: true
+          canFire: true,
+          readyToFire: false
         };
         this.world.addComponent(entity, 'LaserCooldown', laserCooldown);
       }
@@ -80,11 +82,13 @@ export class WeaponSystem implements System {
       }
       
       // Check if shooting and can fire
-      if (inputState.shoot && laserCooldown.canFire) {
+      if (laserCooldown && (inputState.shoot || isFiring || laserCooldown.readyToFire) && laserCooldown.canFire) {
+        console.log('Firing weapon - shoot:', inputState.shoot, 'isFiring:', isFiring, 'readyToFire:', laserCooldown.readyToFire);
         this.fireWeapon(entity, position, rotation);
         
-        // Reset cooldown
+        // Reset cooldown and ready state
         laserCooldown.canFire = false;
+        laserCooldown.readyToFire = false;
         laserCooldown.current = laserCooldown.max;
       }
     }

@@ -67,16 +67,20 @@ export class InputManager {
   private initInputHandling(): void {
     // Keyboard input handling
     const keydownHandler = (event: KeyboardEvent) => {
-      switch (event.key.toLowerCase()) {
-        case 'w': this.inputState.forward = true; break;
-        case 's': this.inputState.backward = true; break;
-        case 'a': this.inputState.left = true; break;
-        case 'd': this.inputState.right = true; break;
-        case 'e': this.inputState.up = true; break;
-        case 'q': this.inputState.down = true; break;
-        case ' ': this.inputState.shoot = true; break; // Space bar for shooting
-        case 'shift': this.inputState.boost = true; break; // Shift for boost
-        case 'p': 
+      this.pressedKeys.add(event.code);
+      switch (event.code) {
+        case 'KeyW': this.inputState.forward = true; break;
+        case 'KeyS': this.inputState.backward = true; break;
+        case 'KeyA': this.inputState.left = true; break;
+        case 'KeyD': this.inputState.right = true; break;
+        case 'KeyE': this.inputState.up = true; break;
+        case 'KeyQ': this.inputState.down = true; break;
+        case 'Space': this.inputState.shoot = true; break;
+        case 'ShiftLeft':
+        case 'ShiftRight': 
+          this.inputState.boost = true; 
+          break;
+        case 'KeyP': 
           this.inputState.toggleDevMode = true; 
           event.preventDefault();
           break;
@@ -84,18 +88,21 @@ export class InputManager {
     };
 
     const keyupHandler = (event: KeyboardEvent) => {
-      switch (event.key.toLowerCase()) {
-        case 'w': this.inputState.forward = false; break;
-        case 's': this.inputState.backward = false; break;
-        case 'a': this.inputState.left = false; break;
-        case 'd': this.inputState.right = false; break;
-        case 'e': this.inputState.up = false; break;
-        case 'q': this.inputState.down = false; break;
-        case ' ': this.inputState.shoot = false; break; // Space bar for shooting
-        case 'shift': this.inputState.boost = false; break; // Shift for boost
-        case 'p': 
+      this.pressedKeys.delete(event.code);
+      switch (event.code) {
+        case 'KeyW': this.inputState.forward = false; break;
+        case 'KeyS': this.inputState.backward = false; break;
+        case 'KeyA': this.inputState.left = false; break;
+        case 'KeyD': this.inputState.right = false; break;
+        case 'KeyE': this.inputState.up = false; break;
+        case 'KeyQ': this.inputState.down = false; break;
+        case 'Space': this.inputState.shoot = false; break;
+        case 'ShiftLeft':
+        case 'ShiftRight': 
+          this.inputState.boost = false; 
+          break;
+        case 'KeyP': 
           this.inputState.toggleDevMode = false; 
-          // Prevent browser's default behavior
           event.preventDefault();
           break;
       }
@@ -171,12 +178,11 @@ export class InputManager {
    * Explicitly requests pointer lock on the container element
    */
   public requestPointerLock(): void {
-    if (!this.mouseState.isPointerLocked) {
-      try {
-        this.container.requestPointerLock();
-      } catch (e) {
-        console.warn('Failed to request pointer lock:', e);
-      }
+    // Don't request pointer lock on mobile devices
+    if (this.isMobileDevice()) return;
+
+    if (this.container.requestPointerLock) {
+      this.container.requestPointerLock();
     }
   }
 
@@ -190,9 +196,38 @@ export class InputManager {
 
   // Add mobile input methods
   public updateJoystick(x: number, y: number, magnitude: number): void {
+    // Store raw joystick values for reference
     this.joystickDirection.x = x;
     this.joystickDirection.y = y;
-    this.joystickMagnitude = Math.min(magnitude, 1); // Normalize to max of 1
+    this.joystickMagnitude = Math.min(magnitude, 1);
+    
+    // Fix threshold to be more responsive on mobile
+    const threshold = 0.1; // Lower threshold for more responsive controls
+    
+    // Reset all directional inputs first
+    this.inputState.forward = false;
+    this.inputState.backward = false;
+    this.inputState.left = false;
+    this.inputState.right = false;
+    
+    // Map joystick Y-axis to forward/backward
+    // Y is positive when joystick is pushed UP (away from player) = W key
+    if (y > threshold) {
+      this.inputState.forward = true;
+    } else if (y < -threshold) {
+      this.inputState.backward = true;
+    }
+    
+    // Map joystick X-axis to left/right
+    // X is positive when joystick is pushed RIGHT = D key
+    // X is negative when joystick is pushed LEFT = A key
+    if (x < -threshold) {
+      this.inputState.left = true;
+    } else if (x > threshold) {
+      this.inputState.right = true;
+    }
+    
+    console.log(`Joystick → WASD: W=${this.inputState.forward}, S=${this.inputState.backward}, A=${this.inputState.left}, D=${this.inputState.right}`);
   }
 
   public setMobileFiring(firing: boolean): void {
@@ -203,33 +238,67 @@ export class InputManager {
     this.joystickDirection.x = 0;
     this.joystickDirection.y = 0;
     this.joystickMagnitude = 0;
+    
+    // Also reset the directional input states that were set by the joystick
+    // But don't reset keyboard inputs if keys are still being pressed
+    if (!this.pressedKeys.has('KeyW')) this.inputState.forward = false;
+    if (!this.pressedKeys.has('KeyS')) this.inputState.backward = false;
+    if (!this.pressedKeys.has('KeyA')) this.inputState.left = false;
+    if (!this.pressedKeys.has('KeyD')) this.inputState.right = false;
   }
 
   // Update existing methods to incorporate mobile input
   public getMovementInput(): { x: number; y: number; magnitude: number } {
-    // Check keyboard input first
-    const x = (this.isPressed('KeyD') ? 1 : 0) - (this.isPressed('KeyA') ? 1 : 0);
-    const y = (this.isPressed('KeyW') ? 1 : 0) - (this.isPressed('KeyS') ? 1 : 0);
+    // Check keyboard input first (digital input)
+    const x = (this.inputState.right ? 1 : 0) - (this.inputState.left ? 1 : 0);
+    const y = (this.inputState.forward ? 1 : 0) - (this.inputState.backward ? 1 : 0);
     
-    // If there's keyboard input, use that
+    // Calculate a vector based on keyboard inputs, clamped to magnitude 1
     if (x !== 0 || y !== 0) {
-      const magnitude = Math.min(Math.sqrt(x * x + y * y), 1);
+      // For keyboard, use a fixed magnitude of 1.0 (digital control)
+      const magnitude = 1.0;
+      
+      // But if we also have joystick input, use that magnitude for analog control
+      if (this.joystickMagnitude > 0) {
+        return { 
+          x: x, // Still use WASD direction
+          y: y, // Still use WASD direction
+          magnitude: this.joystickMagnitude // But use joystick magnitude for analog control
+        };
+      }
+      
       return { x, y, magnitude };
     }
     
-    // Otherwise use joystick input
-    return {
-      x: this.joystickDirection.x,
-      y: this.joystickDirection.y,
-      magnitude: this.joystickMagnitude
-    };
+    // No keyboard input, check if we have joystick input (which is now mapped to WASD)
+    if (this.joystickMagnitude > 0) {
+      // We need to derive directional values from the input state since joystick
+      // has been mapped to boolean WASD keys
+      const joyX = (this.inputState.right ? 1 : 0) - (this.inputState.left ? 1 : 0);
+      const joyY = (this.inputState.forward ? 1 : 0) - (this.inputState.backward ? 1 : 0);
+      
+      console.log(`Joystick movement: x=${joyX}, y=${joyY}, mag=${this.joystickMagnitude}`);
+      
+      return {
+        x: joyX,
+        y: joyY,
+        magnitude: this.joystickMagnitude // Use joystick magnitude for analog control
+      };
+    }
+    
+    // No input at all
+    return { x: 0, y: 0, magnitude: 0 };
   }
 
   public isFiring(): boolean {
-    return this.mousePressed || this.isMobileFiring;
+    return this.inputState.shoot || this.isMobileFiring;
   }
 
   public isPressed(key: string): boolean {
     return this.pressedKeys.has(key);
+  }
+
+  private isMobileDevice(): boolean {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   }
 } 
