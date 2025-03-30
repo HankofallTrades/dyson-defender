@@ -6,7 +6,479 @@ import StartScreen from './StartScreen';
 import GameOverScreen from './GameOverScreen';
 import PauseScreen from './PauseScreen';
 import './styles/retro.css';
-import { Vector3, Camera } from 'three';
+import { Vector3, Camera, WebGLRenderer, Scene, PerspectiveCamera, MeshBasicMaterial, BoxGeometry, SphereGeometry, IcosahedronGeometry, EdgesGeometry, LineSegments, LineBasicMaterial, DoubleSide, Group, AmbientLight, MathUtils, TorusGeometry, PointLight, BufferGeometry, Line } from 'three';
+
+// Hologram component for rendering small 3D wireframe models
+const Hologram: React.FC<{
+  modelType: 'ship' | 'dysonSphere';
+  size: number;
+  color?: string;
+  gameIsActive?: boolean;
+}> = ({ modelType, size, color = '#00aaff', gameIsActive = true }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rendererRef = useRef<WebGLRenderer | null>(null);
+  const sceneRef = useRef<Scene | null>(null);
+  const cameraRef = useRef<PerspectiveCamera | null>(null);
+  const modelRef = useRef<Group | null>(null);
+  const animationFrameIdRef = useRef<number | null>(null);
+  
+  // Setup and cleanup the Three.js scene
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    // Create scene
+    const scene = new Scene();
+    sceneRef.current = scene;
+    
+    // Create camera
+    const camera = new PerspectiveCamera(50, 1, 0.1, 1000);
+    camera.position.z = 4;
+    cameraRef.current = camera;
+    
+    // Create renderer
+    const renderer = new WebGLRenderer({
+      antialias: true,
+      alpha: true,
+    });
+    renderer.setSize(size, size);
+    renderer.setClearColor(0x000000, 0); // Transparent background
+    containerRef.current.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
+    
+    // Add lighting
+    const ambientLight = new AmbientLight(0xffffff, 1.5);
+    scene.add(ambientLight);
+    
+    // Add a subtle point light for some depth
+    const pointLight = new PointLight(0xffffff, 1);
+    pointLight.position.set(2, 3, 4);
+    scene.add(pointLight);
+    
+    // Create model based on type
+    const model = new Group();
+    
+    if (modelType === 'ship') {
+      // Create an angular fighter ship wireframe with pointed front and detailed wings
+      // Main body - pointed front
+      const bodyGeometry = new BufferGeometry().setFromPoints([
+        // Left side points
+        new Vector3(-0.4, 0, -1.2),   // back left
+        new Vector3(-0.4, 0.2, -1.2), // back left top
+        new Vector3(-0.4, 0.2, 0),    // middle left top
+        new Vector3(-0.4, 0, 0),      // middle left
+        new Vector3(-0.2, 0, 1.0),    // front left
+        new Vector3(0, 0.15, 1.2),    // nose point
+        
+        // Right side points
+        new Vector3(0.2, 0, 1.0),     // front right
+        new Vector3(0.4, 0, 0),       // middle right
+        new Vector3(0.4, 0.2, 0),     // middle right top
+        new Vector3(0.4, 0.2, -1.2),  // back right top
+        new Vector3(0.4, 0, -1.2),    // back right
+        
+        // Connect back
+        new Vector3(-0.4, 0, -1.2),   // back to start (closing)
+      ]);
+      
+      // Edges for top and bottom to complete the shape
+      const bodyTopGeometry = new BufferGeometry().setFromPoints([
+        new Vector3(-0.4, 0.2, -1.2), // back left top
+        new Vector3(0.4, 0.2, -1.2),  // back right top
+      ]);
+      
+      const bodyMiddleTopGeometry = new BufferGeometry().setFromPoints([
+        new Vector3(-0.4, 0.2, 0),    // middle left top
+        new Vector3(0.4, 0.2, 0),     // middle right top
+      ]);
+      
+      const bodyFrontTopGeometry = new BufferGeometry().setFromPoints([
+        new Vector3(-0.2, 0, 1.0),    // front left
+        new Vector3(0, 0.15, 1.2),    // nose point
+        new Vector3(0.2, 0, 1.0),     // front right
+      ]);
+      
+      const bodyBottomGeometry = new BufferGeometry().setFromPoints([
+        new Vector3(-0.4, 0, -1.2),   // back left bottom
+        new Vector3(0.4, 0, -1.2),    // back right bottom
+      ]);
+      
+      const bodyMiddleBottomGeometry = new BufferGeometry().setFromPoints([
+        new Vector3(-0.4, 0, 0),      // middle left bottom
+        new Vector3(0.4, 0, 0),       // middle right bottom
+      ]);
+      
+      // Add all body parts
+      const bodyMaterial = new LineBasicMaterial({ color, linewidth: 1.5 });
+      model.add(new Line(bodyGeometry, bodyMaterial));
+      model.add(new Line(bodyTopGeometry, bodyMaterial));
+      model.add(new Line(bodyMiddleTopGeometry, bodyMaterial));
+      model.add(new Line(bodyFrontTopGeometry, bodyMaterial));
+      model.add(new Line(bodyBottomGeometry, bodyMaterial));
+      model.add(new Line(bodyMiddleBottomGeometry, bodyMaterial));
+      
+      // Wings - more detailed and angular
+      // Left wing - main structure
+      const leftWingGeometry = new BufferGeometry().setFromPoints([
+        new Vector3(-1.5, -0.1, -0.5),  // outer back
+        new Vector3(-0.4, -0.1, -0.8),  // inner back
+        new Vector3(-0.4, -0.1, 0.3),   // inner front
+        new Vector3(-1.2, -0.1, 0.0),   // outer middle
+        new Vector3(-1.5, -0.1, -0.5),  // outer back (close shape)
+      ]);
+      
+      // Left wing - interior details
+      const leftWingDetailGeometry = new BufferGeometry().setFromPoints([
+        new Vector3(-1.2, -0.1, 0.0),   // outer middle
+        new Vector3(-0.8, -0.1, -0.3),  // middle detail
+        new Vector3(-0.4, -0.1, -0.2),  // inner middle
+      ]);
+      
+      const leftWingDetail2Geometry = new BufferGeometry().setFromPoints([
+        new Vector3(-0.8, -0.1, -0.3),  // middle detail
+        new Vector3(-0.4, -0.1, -0.8),  // inner back
+      ]);
+      
+      // Right wing - main structure
+      const rightWingGeometry = new BufferGeometry().setFromPoints([
+        new Vector3(1.5, -0.1, -0.5),   // outer back
+        new Vector3(0.4, -0.1, -0.8),   // inner back
+        new Vector3(0.4, -0.1, 0.3),    // inner front
+        new Vector3(1.2, -0.1, 0.0),    // outer middle
+        new Vector3(1.5, -0.1, -0.5),   // outer back (close shape)
+      ]);
+      
+      // Right wing - interior details
+      const rightWingDetailGeometry = new BufferGeometry().setFromPoints([
+        new Vector3(1.2, -0.1, 0.0),    // outer middle
+        new Vector3(0.8, -0.1, -0.3),   // middle detail
+        new Vector3(0.4, -0.1, -0.2),   // inner middle
+      ]);
+      
+      const rightWingDetail2Geometry = new BufferGeometry().setFromPoints([
+        new Vector3(0.8, -0.1, -0.3),   // middle detail
+        new Vector3(0.4, -0.1, -0.8),   // inner back
+      ]);
+      
+      // Add all wing parts
+      const wingMaterial = new LineBasicMaterial({ color, linewidth: 1.5 });
+      model.add(new Line(leftWingGeometry, wingMaterial));
+      model.add(new Line(leftWingDetailGeometry, wingMaterial));
+      model.add(new Line(leftWingDetail2Geometry, wingMaterial));
+      model.add(new Line(rightWingGeometry, wingMaterial));
+      model.add(new Line(rightWingDetailGeometry, wingMaterial));
+      model.add(new Line(rightWingDetail2Geometry, wingMaterial));
+      
+      // Cockpit - more aerodynamic
+      const cockpitGeometry = new SphereGeometry(0.2, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5);
+      const cockpitEdges = new EdgesGeometry(cockpitGeometry);
+      const cockpitLines = new LineSegments(
+        cockpitEdges,
+        new LineBasicMaterial({ color, linewidth: 1.5 })
+      );
+      cockpitLines.position.set(0, 0.2, 0.4); // Raised and forward
+      cockpitLines.scale.set(1, 0.5, 1.5); // Stretched for aerodynamic look
+      model.add(cockpitLines);
+      
+      // Engines
+      const engineGeometry = new TorusGeometry(0.15, 0.05, 8, 8);
+      const engineEdges = new EdgesGeometry(engineGeometry);
+      const engineLines1 = new LineSegments(
+        engineEdges,
+        new LineBasicMaterial({ color, linewidth: 1.5 })
+      );
+      engineLines1.position.set(0.4, 0, -1.1);
+      engineLines1.rotation.x = Math.PI / 2;
+      model.add(engineLines1);
+      
+      const engineLines2 = engineLines1.clone();
+      engineLines2.position.set(-0.4, 0, -1.1);
+      model.add(engineLines2);
+      
+      // Fin - add vertical stabilizer
+      const finGeometry = new BufferGeometry().setFromPoints([
+        new Vector3(0, 0.2, -0.7),    // bottom front
+        new Vector3(0, 0.6, -0.9),    // top back
+        new Vector3(0, 0.2, -1.2),    // bottom back
+        new Vector3(0, 0.2, -0.7),    // bottom front (close shape)
+      ]);
+      const fin = new Line(finGeometry, new LineBasicMaterial({ color, linewidth: 1.5 }));
+      model.add(fin);
+      
+      // Rotate the ship to face forward and tilt it
+      model.rotation.y = Math.PI;
+      model.rotation.x = 30 * (Math.PI / 180); // 30 degrees downward pitch (static)
+      
+    } else if (modelType === 'dysonSphere') {
+      // Create a perfect sphere wireframe with evenly distributed lines
+      
+      // Use a different approach for a more perfect sphere appearance
+      const radius = 1.3;
+      const strutMaterial = new LineBasicMaterial({ color, linewidth: 0.5 });
+      
+      // Create horizontal rings
+      const ringCount = 4; // Use fewer rings for cleaner appearance
+      
+      for (let i = 0; i < ringCount; i++) {
+        // Calculate angle based on position (distribute evenly)
+        const phi = ((i + 0.5) / ringCount) * Math.PI;
+        
+        // Create points for this ring
+        const segments = 12; // Number of segments in each ring
+        const ringPoints: Vector3[] = [];
+        
+        // Y position of this ring
+        const y = radius * Math.cos(phi);
+        // Radius of this ring
+        const ringRadius = radius * Math.sin(phi);
+        
+        // Create the points around the ring
+        for (let j = 0; j <= segments; j++) {
+          const theta = (j / segments) * Math.PI * 2;
+          const x = ringRadius * Math.cos(theta);
+          const z = ringRadius * Math.sin(theta);
+          ringPoints.push(new Vector3(x, y, z));
+        }
+        
+        // Create the ring line
+        const ringGeometry = new BufferGeometry().setFromPoints(ringPoints);
+        const ring = new Line(ringGeometry, strutMaterial);
+        model.add(ring);
+      }
+      
+      // Add central equatorial ring (exactly in the middle)
+      const equatorialSegments = 16; // More segments for smoother central ring
+      const equatorialPoints: Vector3[] = [];
+      
+      for (let j = 0; j <= equatorialSegments; j++) {
+        const theta = (j / equatorialSegments) * Math.PI * 2;
+        // Central ring is exactly at y=0 (equator) with full radius
+        const x = radius * Math.cos(theta);
+        const z = radius * Math.sin(theta);
+        equatorialPoints.push(new Vector3(x, 0, z));
+      }
+      
+      const equatorialGeometry = new BufferGeometry().setFromPoints(equatorialPoints);
+      const equatorialRing = new Line(equatorialGeometry, strutMaterial);
+      // Make it slightly thicker for emphasis
+      equatorialRing.material = new LineBasicMaterial({ color, linewidth: 0.7 });
+      model.add(equatorialRing);
+      
+      // Create vertical semicircles
+      const verticalCount = 12; // Double the number of vertical semicircles (was 6)
+      
+      for (let i = 0; i < verticalCount; i++) {
+        const theta = (i / verticalCount) * Math.PI * 2; // Now goes all the way around (0 to 2π)
+        
+        // Create points for this semicircle
+        const segments = 16; // Number of segments in each semicircle
+        const arcPoints: Vector3[] = [];
+        
+        // Create the points along the semicircle
+        for (let j = 0; j <= segments; j++) {
+          const phi = (j / segments) * Math.PI;
+          const x = radius * Math.sin(phi) * Math.cos(theta);
+          const y = radius * Math.cos(phi);
+          const z = radius * Math.sin(phi) * Math.sin(theta);
+          arcPoints.push(new Vector3(x, y, z));
+        }
+        
+        // Create the semicircle line
+        const arcGeometry = new BufferGeometry().setFromPoints(arcPoints);
+        const arc = new Line(arcGeometry, strutMaterial);
+        model.add(arc);
+      }
+    }
+    
+    // Add model to scene
+    model.scale.set(0.8, 0.8, 0.8); // Slightly larger scale for better visibility
+    model.position.y = 0; // Center vertically
+    scene.add(model);
+    modelRef.current = model;
+    
+    // Do an initial render even if not active
+    if (rendererRef.current && sceneRef.current && cameraRef.current) {
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
+    }
+    
+    // Cleanup
+    return () => {
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+      }
+      
+      if (rendererRef.current && containerRef.current) {
+        containerRef.current.removeChild(rendererRef.current.domElement);
+        rendererRef.current.dispose();
+      }
+    };
+  }, [modelType, size, color]);
+  
+  // Handle animation in a separate effect that responds to game state
+  useEffect(() => {
+    if (!gameIsActive) {
+      // If game is not active, cancel any running animation
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+        animationFrameIdRef.current = null;
+      }
+      return;
+    }
+    
+    // Set initial rotation for models to ensure consistent starting point
+    if (modelRef.current) {
+      if (modelType === 'ship') {
+        // Ensure ship has the correct static pitch at all times
+        modelRef.current.rotation.x = 30 * (Math.PI / 180);
+      }
+    }
+    
+    // Animation loop - only run when game is active
+    const animate = () => {
+      if (!modelRef.current || !rendererRef.current || !sceneRef.current || !cameraRef.current) {
+        return;
+      }
+      
+      // Apply rotation - both models only rotate around Y axis with different speeds
+      if (modelType === 'ship') {
+        // Ship rotates around Y axis only, keeping static X rotation (pitch)
+        modelRef.current.rotation.y += 0.01;
+        // Ensure pitch stays at exactly 30 degrees
+        modelRef.current.rotation.x = 30 * (Math.PI / 180);
+      } else {
+        // Dyson Sphere rotates slowly around Y axis only
+        modelRef.current.rotation.y += 0.005;
+      }
+      
+      // Apply slight bobbing movement for holographic feel
+      modelRef.current.position.y = 0.1 + Math.sin(Date.now() * 0.002) * 0.05;
+      
+      // Render
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
+      animationFrameIdRef.current = requestAnimationFrame(animate);
+    };
+    
+    // Start the animation
+    animate();
+    
+    // Cleanup on state change
+    return () => {
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+        animationFrameIdRef.current = null;
+      }
+    };
+  }, [gameIsActive, modelType]);
+  
+  // Add hologram effect with CSS (projection effect)
+  return (
+    <div 
+      className="hologram-container"
+      style={{ 
+        width: `${size}px`, 
+        height: `${size}px`,
+        display: 'inline-block',
+        marginRight: '8px',
+        position: 'relative',
+        background: 'transparent'
+      }}
+    >
+      {/* Actual Three.js canvas container */}
+      <div 
+        ref={containerRef} 
+        style={{ 
+          width: '100%', 
+          height: '100%',
+          opacity: 1 // Full opacity for better visibility
+        }}
+      />
+      
+      {/* Projection cone */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '-6px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '0',
+          height: '0',
+          borderLeft: '8px solid transparent',
+          borderRight: '8px solid transparent',
+          borderTop: `12px solid ${color}`,
+          filter: `blur(3px) brightness(1.5)`,
+          opacity: 0.7,
+          zIndex: -1
+        }}
+      />
+      
+      {/* Light pool/base effect */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '-8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '18px',
+          height: '4px',
+          background: color,
+          borderRadius: '50%',
+          filter: 'blur(3px)',
+          opacity: 0.5,
+          zIndex: -1
+        }}
+      />
+      
+      {/* Scanline overlay for hologram effect */}
+      <div 
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: `linear-gradient(180deg, 
+            rgba(0, 0, 0, 0) 0%, 
+            rgba(${parseInt(color.slice(1, 3), 16)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(color.slice(5, 7), 16)}, 0.1) 50%, 
+            rgba(0, 0, 0, 0) 100%)`,
+          backgroundSize: `100% ${size / 10}px`,
+          animation: 'scanline 2s linear infinite',
+          pointerEvents: 'none',
+          opacity: 0.3
+        }}
+      />
+      
+      {/* Hologram flicker */}
+      <div 
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          opacity: 0.2,
+          animation: 'hologram-flicker 4s ease-in-out infinite',
+          background: 'transparent',
+          mixBlendMode: 'screen',
+          pointerEvents: 'none'
+        }}
+      />
+      
+      {/* Ambient glow around model */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: `${size * 0.8}px`,
+          height: `${size * 0.8}px`,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(0,170,255,0.2) 0%, rgba(0,170,255,0) 70%)',
+          pointerEvents: 'none'
+        }}
+      />
+    </div>
+  );
+};
 
 // Helper function to convert world position to screen coordinates
 function worldToScreen(position: Position, camera: Camera): { x: number, y: number } | null {
@@ -889,13 +1361,13 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
       {/* Player HUD - Bottom */}
       <div className="ship-console" style={{
         position: 'absolute',
-        bottom: '20px',
+        bottom: '40px', // Raised from 20px
         left: '50%',
         transform: `translateX(-50%) ${damageEffect.active ? getShakeTransform() : ''}`,
         display: 'flex',
         width: '90%',
         maxWidth: '1200px',
-        height: screen.isMobile ? '120px' : '180px',
+        // height adjustment handled by individual panels now if needed, or set a min-height
         justifyContent: 'space-between',
         alignItems: 'flex-end',
         zIndex: 10,
@@ -905,7 +1377,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         {/* Left Panel - Messages Console */}
         <div className="console-panel retro-text" style={{
           width: screen.isMobile ? '100%' : '32%',
-          height: screen.isMobile ? '120px' : '100%',
+          height: screen.isMobile ? '120px' : '220px', // Match height of center panel for consistency
           marginBottom: screen.isMobile ? '10px' : '0',
           display: screen.isMobile && !waveCountdown ? 'none' : 'flex', // Hide on mobile when no wave activity
           background: 'rgba(0, 0, 0, 0.7)',
@@ -1096,7 +1568,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         {/* Center Panel - Ship Status */}
         <div className="console-panel retro-text" style={{
           width: screen.isMobile ? '100%' : '32%',
-          height: screen.isMobile ? '120px' : '100%',
+          height: screen.isMobile ? '140px' : '220px', // Increased height from 180px
           marginBottom: screen.isMobile ? '10px' : '0',
           background: 'rgba(0, 0, 0, 0.7)',
           borderTop: '2px solid #ff00ff',
@@ -1112,7 +1584,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           <div style={{
             borderBottom: '1px solid #ff00ff',
             paddingBottom: '8px',
-            marginBottom: '8px',
+            marginBottom: '8px', // Reduced margin slightly
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center'
@@ -1135,10 +1607,23 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
             {/* Left Column: Ship Systems */}
             <div style={{
               flex: '1',
-              marginRight: '5px', // Space between columns
+              marginRight: '8px', // Adjusted space for separator
               display: 'flex',
               flexDirection: 'column'
             }}>
+              {/* Ship Systems Header with Hologram */}
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
+                {/* Add hologram next to the ship header */}
+                <Hologram modelType="ship" size={35} color="#00aaff" gameIsActive={gameState === 'playing'} />
+                <span style={{ color: '#ff00ff', fontSize: '0.65rem', fontWeight: 'bold' }}>SHIP</span>
+              </div>
+              {/* Dotted line below header */}
+              <div style={{
+                width: '90%', // Make slightly shorter than full width
+                borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', // Dotted magenta line
+                marginBottom: '8px' // Space below line
+              }}></div>
+
               {/* Boost System */}
               <div style={{ marginBottom: '10px' }}> 
                 <div style={{
@@ -1242,13 +1727,35 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
               </div>
             </div> {/* End Left Column */}
 
+            {/* Vertical Separator - ADD THIS */}
+            <div style={{
+              width: '1px',
+              background: 'rgba(255, 0, 255, 0.3)', // Magenta separator
+              height: '85%', // Adjust height as needed, relative to parent container
+              alignSelf: 'center', // Center it vertically
+              margin: '0 4px' // Add small horizontal margin
+            }}></div>
+
             {/* Right Column: Dyson Systems */}
             <div style={{
               flex: '1',
-              marginLeft: '5px', // Space between columns
+              marginLeft: '8px', // Ensure this is set
               display: 'flex',
               flexDirection: 'column'
             }}>
+              {/* Dyson Systems Header with Hologram */}
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
+                {/* Add hologram next to the Dyson Sphere header */}
+                <Hologram modelType="dysonSphere" size={40} color="#00aaff" gameIsActive={gameState === 'playing'} />
+                <span style={{ color: '#ff00ff', fontSize: '0.65rem', fontWeight: 'bold' }}>DYSON SPHERE</span>
+              </div>
+              {/* Dotted line below header */}
+              <div style={{
+                width: '90%', // Make slightly shorter than full width
+                borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', // Dotted magenta line
+                marginBottom: '8px' // Space below line
+              }}></div>
+
               {/* Dyson Shield Status */}
               <div style={{ marginBottom: '10px' }}>
                 <div style={{
@@ -1360,7 +1867,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         {/* Right Panel - Radar */}
         <div className="console-panel retro-text" style={{
           width: screen.isMobile ? '100%' : '32%',
-          height: screen.isMobile ? '120px' : '100%',
+          height: screen.isMobile ? '120px' : '220px', // Match height of center panel for consistency
           display: screen.isMobile ? 'none' : 'flex', // Hide radar on mobile
           background: 'rgba(0, 0, 0, 0.7)',
           borderTop: '2px solid #ff00ff',

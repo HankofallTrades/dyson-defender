@@ -1010,4 +1010,47 @@
   opacity: 1;
   animation-play-state: running;
   animation-delay: calc(4 * 1.2s);
+}
+
+/* Add these hologram-specific animations */
+@keyframes scanline {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 100%;
+  }
+}
+
+@keyframes hologram-flicker {
+  0% {
+    opacity: 0.1;
+  }
+  5% {
+    opacity: 0.2;
+  }
+  10% {
+    opacity: 0.1;
+  }
+  15% {
+    opacity: 0.3;
+  }
+  20% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.15;
+  }
+  70% {
+    opacity: 0.2;
+  }
+  80% {
+    opacity: 0.1;
+  }
+  90% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0.1;
+  }
 } 
