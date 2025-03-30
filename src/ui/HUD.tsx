@@ -260,7 +260,7 @@ const Hologram: React.FC<{
       const equatorialGeometry = new BufferGeometry().setFromPoints(equatorialPoints);
       const equatorialRing = new Line(equatorialGeometry, strutMaterial);
       // Make it slightly thicker for emphasis
-      equatorialRing.material = new LineBasicMaterial({ color, linewidth: 0.7 });
+      equatorialRing.material = new LineBasicMaterial({ color, linewidth: 0.5 });
       model.add(equatorialRing);
       
       // Create vertical semicircles

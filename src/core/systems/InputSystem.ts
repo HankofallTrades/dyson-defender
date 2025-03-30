@@ -145,10 +145,13 @@ export class InputSystem implements System {
 
       // Calculate movement based on determined input
       if (inputSource !== 'none') {
-        const shipQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rotation.y, 0));
+        // Ensure Euler order matches camera ('YXZ') for consistent forward vector
+        const shipEuler = new THREE.Euler(rotation.x, rotation.y, rotation.z, 'YXZ'); 
+        const shipQuaternion = new THREE.Quaternion().setFromEuler(shipEuler);
+        
         const worldForward = new THREE.Vector3(0, 0, -1).applyQuaternion(shipQuaternion);
         const worldRight = new THREE.Vector3(1, 0, 0).applyQuaternion(shipQuaternion);
-        const worldUp = new THREE.Vector3(0, 1, 0);
+        const worldUp = new THREE.Vector3(0, 1, 0); // Keep world up for Q/E strafing
 
         const finalVelocity = new THREE.Vector3(0, 0, 0);
 
