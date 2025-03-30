@@ -4,6 +4,7 @@ import { InputReceiver, Position, Rotation, LaserCooldown } from '../components'
 import { InputManager } from '../input/InputManager';
 import { SceneManager } from '../../rendering/SceneManager';
 import { createLaser } from '../entities/LaserEntity';
+import { AudioManager } from '../AudioManager';
 
 /**
  * WeaponSystem
@@ -17,17 +18,20 @@ import { createLaser } from '../entities/LaserEntity';
  * - Creates projectile entities when firing
  * - Handles timing and cooldown management
  * - Supports different weapon types (to be expanded)
+ * - Plays sound effects when weapons are fired
  */
 export class WeaponSystem implements System {
   private world: World;
   private scene: THREE.Scene;
   private inputManager: InputManager;
   private sceneManager: SceneManager;
+  private audioManager?: AudioManager;
 
-  constructor(world: World, sceneManager: SceneManager) {
+  constructor(world: World, sceneManager: SceneManager, audioManager?: AudioManager) {
     this.world = world;
     this.scene = sceneManager.getScene();
     this.sceneManager = sceneManager;
+    this.audioManager = audioManager;
     
     // Get the renderer DOM element for input handling
     const rendererElement = sceneManager.getRendererDomElement();
@@ -35,6 +39,14 @@ export class WeaponSystem implements System {
       throw new Error('Renderer DOM element not available');
     }
     this.inputManager = InputManager.getInstance(rendererElement);
+  }
+
+  /**
+   * Set the audio manager after construction
+   * @param audioManager The audio manager to use
+   */
+  public setAudioManager(audioManager: AudioManager): void {
+    this.audioManager = audioManager;
   }
 
   update(deltaTime: number): void {
@@ -114,6 +126,11 @@ export class WeaponSystem implements System {
     
     // Define cannon offset positions (left and right of the ship)
     const cannonOffsets = [-1.5, 1.5];
+    
+    // Play laser sound effect
+    if (this.audioManager) {
+      this.audioManager.playSound('laser', false, 0.5);
+    }
     
     // Fire from both cannons
     cannonOffsets.forEach(offset => {

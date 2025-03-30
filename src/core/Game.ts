@@ -27,6 +27,7 @@ import { PowerUpSystem } from './systems/PowerUpSystem';
 import { createFireRatePowerUp } from './entities/PowerUpEntity';
 import { WaveInfo } from './components';
 import { DevSystem } from './systems/DevSystem';
+import { AudioManager } from './AudioManager';
 
 /**
  * Main Game Controller
@@ -62,8 +63,9 @@ class Game {
   private devSystem!: DevSystem; // Reference to the dev system
   private inputManager!: InputManager;
   private isFirstFrameLogged: boolean = false;
+  private audioManager: AudioManager;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, audioManager?: AudioManager) {
     console.log('[Game] Initializing...');
     
     this.container = container;
@@ -74,6 +76,15 @@ class Game {
     
     // Set the game state in the world
     this.world.setGameState(this.stateManager.getState());
+
+    // Use provided audio manager or create a new one if not provided
+    this.audioManager = audioManager || new AudioManager();
+    
+    // Set up the camera for audio listener
+    const camera = this.sceneManager.getCamera();
+    if (camera) {
+      this.audioManager.setCamera(camera);
+    }
 
     this.initSystems();
     this.initEntities();
@@ -93,11 +104,15 @@ class Game {
     this.world.addSystem(new InputSystem(this.world, this.sceneManager));
     this.world.addSystem(new MovementSystem(this.sceneManager, this.world));
     this.world.addSystem(new CameraSystem(this.sceneManager, this.world));
-    this.world.addSystem(new WeaponSystem(this.world, this.sceneManager));
+    
+    // Create and add WeaponSystem with audio manager
+    const weaponSystem = new WeaponSystem(this.world, this.sceneManager, this.audioManager);
+    this.world.addSystem(weaponSystem);
+    
     this.world.addSystem(new EnemySystem(this.world, this.sceneManager.getScene()));
     
-    // Create and store reference to CollisionSystem
-    const collisionSystem = new CollisionSystem(this.world);
+    // Create and store reference to CollisionSystem with audio manager
+    const collisionSystem = new CollisionSystem(this.world, this.audioManager);
     this.world.addSystem(collisionSystem);
     
     // Create and store reference to PowerUpSystem
@@ -107,6 +122,12 @@ class Game {
     // Make systems globally accessible for debugging
     (window as any).powerUpSystem = powerUpSystem;
     (window as any).collisionSystem = collisionSystem;
+    
+    // Add debug method for testing audio
+    (window as any).testAudio = (soundId: string = 'laser') => {
+      console.log(`Playing test sound: ${soundId}`);
+      this.audioManager.playSound(soundId);
+    };
     
     // Add a debug method to test power-up collection
     (window as any).testPowerUp = () => {
@@ -237,6 +258,9 @@ class Game {
     this.initSystems();
     this.initEntities();
     
+    // Resume soundtrack if it was paused
+    this.audioManager.resumeSoundtrack();
+    
     // Start the game
     this.startGame();
     
@@ -260,6 +284,9 @@ class Game {
     if (this.isRunning && this.animationFrameId !== null) {
       this.isRunning = false;
       this.stateManager.updateState({ isPaused: true });
+      
+      // Pause the soundtrack when game is paused
+      this.audioManager.pauseSoundtrack();
     }
   }
 
@@ -284,6 +311,9 @@ class Game {
     if (!this.isRunning) {
       this.isRunning = true;
       this.lastFrameTime = performance.now();
+      
+      // Resume the soundtrack when game is resumed
+      this.audioManager.resumeSoundtrack();
     }
     
     // Request pointer lock when resuming the game
@@ -388,13 +418,18 @@ class Game {
 
   public dispose(): void {
     this.pause();
+    
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
+    
     window.removeEventListener('resize', this.handleResize);
     this.sceneManager.destroy();
     this.inputManager.dispose();
+    
+    // Dispose of audio resources
+    this.audioManager.dispose();
   }
 
   public restartAtWave(waveNumber: number): void {
@@ -439,6 +474,9 @@ class Game {
         });
       }
     }
+    
+    // Resume soundtrack if it was paused
+    this.audioManager.resumeSoundtrack();
     
     // Reset the game state to running
     this.isRunning = true;

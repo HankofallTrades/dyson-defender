@@ -6,6 +6,7 @@ import { ShieldSystem } from './ShieldSystem';
 import { AnimationSystem } from './AnimationSystem';
 import { PowerUpSystem } from './PowerUpSystem';
 import { createFloatingScore } from '../entities/FloatingScoreEntity';
+import { AudioManager } from '../AudioManager';
 
 /**
  * Collision System
@@ -18,15 +19,18 @@ import { createFloatingScore } from '../entities/FloatingScoreEntity';
  * - Handles different collision types based on entity layers
  * - Applies damage to Health components when hit by projectiles
  * - Maintains collision layer filtering
+ * - Plays appropriate sound effects for different collision types
  */
 export class CollisionSystem implements System {
   private world: World;
   private collisionMatrix: Map<string, string[]>;
   private animationSystem: AnimationSystem | null = null;
   private powerUpSystem: PowerUpSystem | null = null;
+  private audioManager: AudioManager | null = null;
 
-  constructor(world: World) {
+  constructor(world: World, audioManager?: AudioManager) {
     this.world = world;
+    this.audioManager = audioManager || null;
     
     // Set up collision matrix - which layers can collide with which
     this.collisionMatrix = new Map();
@@ -45,6 +49,10 @@ export class CollisionSystem implements System {
 
   public setPowerUpSystem(powerUpSystem: PowerUpSystem): void {
     this.powerUpSystem = powerUpSystem;
+  }
+
+  public setAudioManager(audioManager: AudioManager): void {
+    this.audioManager = audioManager;
   }
 
   update(deltaTime: number): void {
@@ -353,6 +361,11 @@ export class CollisionSystem implements System {
             
             // Check if player is destroyed
             if (health.current <= 0) {
+              // Play explosion sound when player is destroyed
+              if (this.audioManager) {
+                this.audioManager.playSound('explosion', false, 0.7);
+              }
+              
               // Find the HUD entity to pass to triggerGameOver
               const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
               if (hudEntities.length > 0) {
@@ -378,6 +391,11 @@ export class CollisionSystem implements System {
           
           // Check if entity is destroyed
           if (health.current <= 0) {
+            // Play explosion sound when enemy is destroyed
+            if (this.audioManager) {
+              this.audioManager.playSound('explosion', false, 0.5);
+            }
+            
             if (hudSystem) {
               // Get the enemy position for the floating score
               const enemyPosition = this.world.getComponent<Position>(targetEntity, 'Position');
@@ -404,6 +422,11 @@ export class CollisionSystem implements System {
                           1.5,  // Longer duration
                           50   // More particles
                         );
+                        
+                        // Play a louder explosion sound for asteroids
+                        if (this.audioManager) {
+                          this.audioManager.playSound('explosion', false, 0.8);
+                        }
                       }
                     }
                     
@@ -685,6 +708,11 @@ export class CollisionSystem implements System {
       } else if (powerUp.type === 'health') {
         hudSystem.displayMessage("Health Power-Up Collected! +20 HP", 2);
       }
+    }
+    
+    // Play power-up sound when collected
+    if (this.audioManager) {
+      this.audioManager.playSound('powerup', false, 0.6);
     }
   }
 } 

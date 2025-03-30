@@ -1,4 +1,3 @@
-
 # Dyson Defender
 
 **Dyson Defender** is a retro-futuristic 3D space shooter built with React, TypeScript, Three.js, and Vite. Take control of a spaceship, defend the Dyson Sphere from waves of alien enemies, and blast your way through space with lasers and boosts. With a modular design and an Entity-Component-System (ECS) architecture, this game is both fun to play and easy to extend.
@@ -25,6 +24,24 @@
 - **Performance**:
   - Optimized with Three.js best practices.
   - Smooth gameplay with a frame-rate-independent loop.
+
+## Audio Files
+
+The game requires the following audio files to be placed in the `public/audio/` directory:
+
+- `DysonDefenderTheme.mp3` - Main game soundtrack (required, will play on game start)
+- `laser.mp3` - Player laser sound effect
+- `explosion.mp3` - Enemy/asteroid explosion sound
+- `powerup.mp3` - Power-up collection sound
+
+If these files are not available, the game will continue to run with appropriate warning messages, but without sound effects.
+
+You can find placeholder sound files or create your own using resources like:
+- [Freesound.org](https://freesound.org/)
+- [OpenGameArt.org](https://opengameart.org/)
+- [Free Music Archive](https://freemusicarchive.org/)
+
+Remember to respect the licensing requirements of any audio you use.
 
 ## Getting Started
 
@@ -90,7 +107,7 @@ The output will be saved in the `dist/` folder.
 
 ## Project Structure
 
-Here’s how the codebase is organized:
+Here's how the codebase is organized:
 
 - **`src/core/`**: Game logic (entities, systems, components, and ECS manager `World.ts`).
 - **`src/rendering/`**: Three.js scene setup and 3D mesh creation.
@@ -102,7 +119,7 @@ This separation keeps the logic, rendering, and UI distinct, making the project 
 
 ## Contributing
 
-We’d love your help improving Dyson Sphere Defender! Here’s how to contribute:
+We'd love your help improving Dyson Sphere Defender! Here's how to contribute:
 
 1. **Fork the repository**.
 2. **Create a branch** for your changes.
@@ -124,4 +141,4 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ---
 
-This `README.md` gives you everything you need to dive into "Dyson Sphere Defender"—whether you’re here to play, develop, or contribute. Enjoy defending the sphere!
+This `README.md` gives you everything you need to dive into "Dyson Sphere Defender"—whether you're here to play, develop, or contribute. Enjoy defending the sphere!
