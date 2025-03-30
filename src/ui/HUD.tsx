@@ -1139,51 +1139,6 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
               display: 'flex',
               flexDirection: 'column'
             }}>
-              {/* Hull Status */}
-              <div style={{ marginBottom: '10px' }}> 
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  marginBottom: '5px',
-                  color: hullStatus.color,
-                  fontSize: '0.6rem',
-                  whiteSpace: 'nowrap'
-                }}>
-                  <span>HULL INTEGRITY:</span>
-                </div>
-                <div style={{
-                  width: '100%',
-                  height: '16px',
-                  background: 'rgba(0, 0, 0, 0.5)',
-                  border: '2px solid #555555',
-                  borderRadius: '8px',
-                  overflow: 'hidden',
-                  boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)',
-                  position: 'relative'
-                }}>
-                  <div style={{ 
-                    width: `${playerHealthPercentage}%`,
-                    height: '100%',
-                    background: hullStatus.color,
-                    transition: 'width 0.3s ease'
-                  }}></div>
-                  <div style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    color: '#ffffff',
-                    textShadow: '1px 1px 2px #000000',
-                    fontSize: '0.65rem',
-                    fontWeight: 'bold',
-                    textAlign: 'center',
-                    width: '100%'
-                  }}>
-                    {hullStatus.text}
-                  </div>
-                </div>
-              </div>
-
               {/* Boost System */}
               <div style={{ marginBottom: '10px' }}> 
                 <div style={{
@@ -1226,7 +1181,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
                     top: '50%',
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
-                    color: '#ffffff',
+                    color: boostData.cooldown > 0 ? '#888888' : '#ffffff',
                     textShadow: '1px 1px 2px #000000',
                     fontSize: '0.65rem',
                     fontWeight: 'bold'
@@ -1237,6 +1192,51 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
                         ? "ACTIVE" 
                         : "READY"
                     }
+                  </div>
+                </div>
+              </div>
+
+              {/* Hull Status */}
+              <div style={{ marginBottom: '10px' }}> 
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginBottom: '5px',
+                  color: hullStatus.color,
+                  fontSize: '0.6rem',
+                  whiteSpace: 'nowrap'
+                }}>
+                  <span>HULL INTEGRITY:</span>
+                </div>
+                <div style={{
+                  width: '100%',
+                  height: '16px',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  border: '2px solid #555555',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)',
+                  position: 'relative'
+                }}>
+                  <div style={{ 
+                    width: `${playerHealthPercentage}%`,
+                    height: '100%',
+                    background: hullStatus.color,
+                    transition: 'width 0.3s ease'
+                  }}></div>
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    color: '#ffffff',
+                    textShadow: '1px 1px 2px #000000',
+                    fontSize: '0.65rem',
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    width: '100%'
+                  }}>
+                    {hullStatus.text}
                   </div>
                 </div>
               </div>

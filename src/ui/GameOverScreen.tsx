@@ -68,7 +68,7 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ stats, onRestart }) => 
         `
       }}>
         <p className="text-2xl" style={{ color: '#00ffff', marginBottom: '1.5rem' }}>Final Score: {stats.finalScore}</p>
-        <p className="text-xl" style={{ color: '#ff00ff', marginBottom: '1rem' }}>Waves Completed: {stats.wavesCompleted}</p>
+        <p className="text-xl" style={{ color: '#ff00ff', marginBottom: '1rem' }}>Waves Completed: {stats.wavesCompleted - 1}</p>
         <p className="text-xl" style={{ color: '#ff00ff', marginBottom: '1rem' }}>Enemies Defeated: {stats.enemiesDefeated}</p>
         {stats.level && <p className="text-xl" style={{ color: '#ff00ff' }}>You reached level {stats.level}</p>}
       </div>
