@@ -61,6 +61,12 @@ function App() {
   const handleRestartGame = () => {
     if (gameRef.current) {
       gameRef.current.restart();
+      gameRef.current.requestPointerLock();
+      // Get the new world instance after restart and update the state
+      const newWorld = gameRef.current.getWorld();
+      if (newWorld) {
+        setWorld(newWorld);
+      }
     }
   };
 

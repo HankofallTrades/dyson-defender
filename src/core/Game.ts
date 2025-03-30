@@ -448,6 +448,14 @@ class Game {
     const inputManager = InputManager.getInstance(this.container);
     inputManager.requestPointerLock();
   }
+
+  public requestPointerLock(): void {
+    if (this.inputManager) {
+      this.inputManager.requestPointerLock();
+    } else {
+      console.warn('[Game] InputManager not available to request pointer lock.');
+    }
+  }
 }
 
 export default Game;
