@@ -415,7 +415,8 @@ export class CollisionSystem implements System {
                 }
                 
                 // Create floating score at enemy position
-                createFloatingScore(this.world, enemyPosition, scoreValue);
+                const scorePosition = { x: enemyPosition.x, y: enemyPosition.y, z: enemyPosition.z };
+                createFloatingScore(this.world, scorePosition, scoreValue);
                 
                 // Still update the score in HUD
                 hudSystem.incrementScore(scoreValue);
