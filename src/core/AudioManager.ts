@@ -66,6 +66,7 @@ export class AudioManager {
       await this.loadSoundSafely('laser', '/audio/laser.mp3');
       await this.loadSoundSafely('explosion', '/audio/explosion.mp3');
       await this.loadSoundSafely('powerup', '/audio/powerup.mp3');
+      await this.loadSoundSafely('boost', '/audio/boost.mp3');
       
       console.log('[AudioManager] Sound loading completed');
     } catch (error) {

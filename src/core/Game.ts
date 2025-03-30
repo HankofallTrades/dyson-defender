@@ -102,7 +102,7 @@ class Game {
 
   private initSystems(): void {
     this.world.addSystem(new InputSystem(this.world, this.sceneManager));
-    this.world.addSystem(new MovementSystem(this.sceneManager, this.world));
+    this.world.addSystem(new MovementSystem(this.sceneManager, this.world, this.audioManager));
     this.world.addSystem(new CameraSystem(this.sceneManager, this.world));
     
     // Create and add WeaponSystem with audio manager

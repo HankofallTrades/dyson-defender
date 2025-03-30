@@ -3,19 +3,22 @@ import { System, World } from '../World';
 import { Position, Velocity, InputReceiver, Rotation, Boost, PowerUp } from '../components';
 import { SceneManager } from '../../rendering/SceneManager';
 import { InputManager } from '../input/InputManager';
+import { AudioManager } from '../AudioManager';
 import * as THREE from 'three';
 
 export class MovementSystem implements System {
   private sceneManager: SceneManager;
   private world: World;
   private inputManager: InputManager;
+  private audioManager: AudioManager | null = null;
   private readonly MIN_VELOCITY = 0.01; // Threshold for considering movement
   private readonly MIN_DISTANCE = 20; // Minimum distance from Dyson Sphere
   private readonly MAX_DISTANCE = 400; // Maximum distance from Dyson Sphere (increased to 400)
 
-  constructor(sceneManager: SceneManager, world: World) {
+  constructor(sceneManager: SceneManager, world: World, audioManager?: AudioManager) {
     this.sceneManager = sceneManager;
     this.world = world;
+    this.audioManager = audioManager || null;
     
     // Get the renderer DOM element for input handling
     const rendererElement = sceneManager.getRendererDomElement();
@@ -23,6 +26,10 @@ export class MovementSystem implements System {
       throw new Error('Renderer DOM element not available');
     }
     this.inputManager = InputManager.getInstance(rendererElement);
+  }
+
+  public setAudioManager(audioManager: AudioManager): void {
+    this.audioManager = audioManager;
   }
 
   update(deltaTime: number): void {
@@ -171,7 +178,12 @@ export class MovementSystem implements System {
     
     // Handle boost activation/deactivation
     if (isBoostRequested && boost.cooldown <= 0 && boost.remaining > 0) {
-      boost.active = true;
+      if (!boost.active) {  // Only play sound when boost is first activated
+        boost.active = true;
+        if (this.audioManager) {
+          this.audioManager.playSound('boost');
+        }
+      }
     } else if (!isBoostRequested && boost.active) {
       // We just released the boost key - enter charging state
       boost.active = false;
