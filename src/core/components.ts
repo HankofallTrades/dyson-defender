@@ -300,3 +300,12 @@ export interface ActivePowerUps {
     }
   }
 }
+
+export interface StarfieldBackground {
+  starCount: number;       // Number of stars
+  galaxyCount: number;     // Number of distant galaxies 
+  starSize: number;        // Size multiplier for stars
+  galaxySize: number;      // Size multiplier for galaxies
+  starfieldRadius: number; // Radius of the spherical starfield
+  rotationSpeed: number;   // How fast the starfield rotates
+}

@@ -6,6 +6,7 @@ import { createDysonSphere } from './entities/DysonSphereEntity';
 import { createPlayerShip } from './entities/PlayerShipEntity';
 import { createCamera } from './entities/CameraEntity';
 import { createHUD } from './entities/HUDEntity';
+import { createStarfieldBackground } from './entities/StarfieldEntity';
 import { InputSystem } from './systems/InputSystem';
 import { MovementSystem } from './systems/MovementSystem';
 import { RenderingSystem } from './systems/RenderingSystem';
@@ -73,6 +74,9 @@ class Game {
     this.stateManager.updateState({ lastUpdateTime: Date.now() });
     this.sceneManager = SceneManager.getInstance(container);
     this.world = new World();
+    
+    // Make world available globally for MeshFactory to access component data
+    (window as any).gameWorld = this.world;
     
     // Set the game state in the world
     this.world.setGameState(this.stateManager.getState());
@@ -202,6 +206,9 @@ class Game {
   }
 
   private initEntities(): void {
+    // Create the starfield background first so it's rendered behind everything else
+    createStarfieldBackground(this.world);
+    
     const dysonSphere = createDysonSphere(this.world);
     const playerShip = createPlayerShip(this.world);
     const cameraEntity = createCamera(this.world, playerShip);

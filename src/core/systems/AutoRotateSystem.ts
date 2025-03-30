@@ -1,26 +1,37 @@
 // src/core/systems/AutoRotateSystem.ts
 import { World, System } from '../World';
-import { AutoRotate, Rotation } from '../components';
+import { Rotation, AutoRotate } from '../components';
 
+/**
+ * Responsible for auto-rotating entities
+ * This is used for the Dyson Sphere, starfield background, and other effects
+ */
 export class AutoRotateSystem implements System {
-  constructor(private world: World) {}
+  private world: World;
 
-  update(deltaTime: number): void {
-    // Only need AutoRotate and Rotation components, not Renderable
-    const entities = this.world.getEntitiesWith(['AutoRotate', 'Rotation']);
-    
+  constructor(world: World) {
+    this.world = world;
+  }
+
+  public update(deltaTime: number): void {
+    // Get all entities with Rotation and AutoRotate components
+    const entities = this.world.getEntitiesWith(['Rotation', 'AutoRotate']);
+
     for (const entity of entities) {
-      const autoRotate = this.world.getComponent<AutoRotate>(entity, 'AutoRotate');
       const rotation = this.world.getComponent<Rotation>(entity, 'Rotation');
-      
-      if (!autoRotate || !rotation) continue;
-      
-      // Update rotation values in the component
+      const autoRotate = this.world.getComponent<AutoRotate>(entity, 'AutoRotate');
+
+      if (!rotation || !autoRotate) continue;
+
+      // Update rotation based on speeds and delta time
       rotation.x += autoRotate.speedX * deltaTime;
       rotation.y += autoRotate.speedY * deltaTime;
       rotation.z += autoRotate.speedZ * deltaTime;
-      
-      // No direct mesh manipulation here - RenderingSystem will handle that
+
+      // Normalize rotation values between 0 and 2π to prevent overflow
+      rotation.x %= Math.PI * 2;
+      rotation.y %= Math.PI * 2;
+      rotation.z %= Math.PI * 2;
     }
   }
 }

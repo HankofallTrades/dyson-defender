@@ -88,7 +88,7 @@ export class SceneManager {
   private initScene(): void {
     console.log('[SceneManager] Creating scene...');
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x000011);
+    this.scene.background = new THREE.Color(0x000005); // Very dark blue, almost black
     
     console.log('[SceneManager] Creating camera...');
     this.activeCamera = new THREE.PerspectiveCamera(

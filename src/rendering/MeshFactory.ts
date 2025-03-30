@@ -34,6 +34,8 @@ export class MeshFactory {
       return this.createAsteroidMesh(renderable);
     } else if (renderable.modelId === 'powerUpOrb') {
       return this.createPowerUpOrbMesh(renderable);
+    } else if (renderable.modelId === 'starfield') {
+      return this.createStarfieldMesh(renderable);
     } else {
       return this.createDefaultMesh(renderable);
     }
@@ -1187,5 +1189,261 @@ export class MeshFactory {
     group.scale.set(renderable.scale, renderable.scale, renderable.scale);
     
     return group;
+  }
+
+  private static createStarfieldMesh(renderable: Renderable): THREE.Object3D {
+    const group = new THREE.Group();
+    
+    // Get the World instance to access StarfieldBackground component data
+    const world = (window as any).gameWorld;
+    
+    // Find the entity with the StarfieldBackground component
+    const entities = world ? world.getEntitiesWith(['StarfieldBackground']) : [];
+    if (entities.length === 0) {
+      console.warn('No entity with StarfieldBackground component found');
+      return group;
+    }
+    
+    const starfieldConfig = world.getComponent(entities[0], 'StarfieldBackground');
+    if (!starfieldConfig) {
+      console.warn('StarfieldBackground component not found on entity');
+      return group;
+    }
+    
+    const radius = starfieldConfig.starfieldRadius || 900.0;
+    
+    // Create stars
+    const starCount = starfieldConfig.starCount || 2000;
+    const starSize = starfieldConfig.starSize || 1.0;
+    const starGeometry = new THREE.BufferGeometry();
+    const starVertices = [];
+    const starColors = [];
+    const starSizes = [];
+    
+    // Generate random stars across the sphere
+    for (let i = 0; i < starCount; i++) {
+      // Use random spherical coordinates for uniform distribution on a sphere
+      const phi = Math.acos(2 * Math.random() - 1); // Latitude
+      const theta = 2 * Math.PI * Math.random();    // Longitude
+      
+      // Convert to Cartesian coordinates
+      const x = radius * Math.sin(phi) * Math.cos(theta);
+      const y = radius * Math.sin(phi) * Math.sin(theta);
+      const z = radius * Math.cos(phi);
+      
+      starVertices.push(x, y, z);
+      
+      // Randomly select colors (mostly white/blue, some yellow/red for variety)
+      const colorType = Math.random();
+      let r, g, b;
+      
+      if (colorType < 0.7) {
+        // White/blue stars (most common)
+        r = 0.8 + Math.random() * 0.2;
+        g = 0.8 + Math.random() * 0.2;
+        b = 0.9 + Math.random() * 0.1;
+      } else if (colorType < 0.9) {
+        // Yellow stars
+        r = 0.9 + Math.random() * 0.1;
+        g = 0.8 + Math.random() * 0.2;
+        b = 0.4 + Math.random() * 0.3;
+      } else {
+        // Red stars (less common)
+        r = 0.9 + Math.random() * 0.1;
+        g = 0.2 + Math.random() * 0.3;
+        b = 0.2 + Math.random() * 0.2;
+      }
+      
+      starColors.push(r, g, b);
+      
+      // Random star sizes with some variation
+      starSizes.push(Math.random() * 2 + 0.5);
+    }
+    
+    starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+    starGeometry.setAttribute('color', new THREE.Float32BufferAttribute(starColors, 3));
+    starGeometry.setAttribute('size', new THREE.Float32BufferAttribute(starSizes, 1));
+    
+    // Create a shader material for the stars
+    const starMaterial = new THREE.PointsMaterial({
+      size: starSize,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.8,
+      sizeAttenuation: true
+    });
+    
+    const stars = new THREE.Points(starGeometry, starMaterial);
+    group.add(stars);
+    
+    // Create distant galaxies - use large sprites
+    const galaxyCount = starfieldConfig.galaxyCount || 25;
+    const galaxySize = starfieldConfig.galaxySize || 150.0;
+    
+    // Create a shared galaxy texture
+    const galaxyTexture = this.createGalaxyTexture(256);
+    
+    for (let i = 0; i < galaxyCount; i++) {
+      // Random position on the sphere
+      const phi = Math.acos(2 * Math.random() - 1);
+      const theta = 2 * Math.PI * Math.random();
+      
+      const x = radius * 0.8 * Math.sin(phi) * Math.cos(theta);
+      const y = radius * 0.8 * Math.sin(phi) * Math.sin(theta);
+      const z = radius * 0.8 * Math.cos(phi);
+      
+      // Create a galaxy sprite with custom material
+      const spriteMaterial = new THREE.SpriteMaterial({
+        map: galaxyTexture,
+        color: this.getRandomGalaxyColor(),
+        transparent: true,
+        opacity: 0.3, // Reduced from 0.7 to 0.3 for more transparency
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: false // Important! Make sure galaxies are always visible
+      });
+      
+      const sprite = new THREE.Sprite(spriteMaterial);
+      
+      // Position the sprite
+      sprite.position.set(x, y, z);
+      
+      // Make galaxies much larger
+      const scale = (Math.random() * 0.4 + 1.2) * galaxySize;
+      sprite.scale.set(scale, scale, 1);
+      
+      // Random rotation for variety
+      sprite.material.rotation = Math.random() * Math.PI * 2;
+      
+      // Add galaxy to group
+      group.add(sprite);
+    }
+    
+    return group;
+  }
+  
+  // Create a more realistic galaxy texture with spiral arms
+  private static createGalaxyTexture(size: number = 256): THREE.Texture {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return new THREE.Texture();
+    
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = canvas.width / 2;
+    
+    // Fill with transparent black background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Create bright core with gradient - reduced brightness
+    const coreGradient = ctx.createRadialGradient(
+      centerX, centerY, 0,
+      centerX, centerY, radius * 0.3
+    );
+    coreGradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)'); // Reduced from 1.0 to 0.8
+    coreGradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.4)'); // Reduced from 0.6 to 0.4
+    coreGradient.addColorStop(1, 'rgba(255, 255, 255, 0.05)'); // Reduced from 0.1 to 0.05
+    
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = coreGradient;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Create outer disc with gradient - reduced brightness
+    const discGradient = ctx.createRadialGradient(
+      centerX, centerY, radius * 0.3,
+      centerX, centerY, radius
+    );
+    discGradient.addColorStop(0, 'rgba(200, 200, 255, 0.2)'); // Reduced from 0.4 to 0.2
+    discGradient.addColorStop(0.7, 'rgba(180, 180, 255, 0.05)'); // Reduced from 0.1 to 0.05
+    discGradient.addColorStop(1, 'rgba(150, 150, 255, 0)');
+    
+    ctx.fillStyle = discGradient;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Add spiral arms - reduced brightness
+    ctx.globalCompositeOperation = 'lighter';
+    
+    const armCount = 2 + Math.floor(Math.random() * 2); // 2-3 arms
+    const armWidth = 0.2 + Math.random() * 0.1;
+    const rotation = Math.random() * Math.PI * 2;
+    const tightness = 3 + Math.random() * 2; // How tightly wound the spiral is
+    
+    for (let a = 0; a < armCount; a++) {
+      const armAngle = (a / armCount) * Math.PI * 2 + rotation;
+      
+      // Draw the arm using many small particles
+      for (let r = radius * 0.3; r < radius * 0.95; r += 2) {
+        // Calculate angle based on distance from center (logarithmic spiral)
+        const angle = armAngle + (r / radius) * tightness;
+        
+        // Position along the spiral arm
+        const x = centerX + r * Math.cos(angle);
+        const y = centerY + r * Math.sin(angle);
+        
+        // Calculate perpendicular direction for arm width
+        const perpX = -Math.sin(angle);
+        const perpY = Math.cos(angle);
+        
+        // Thickness of arm decreases with distance
+        const thickness = armWidth * (1 - r / radius) * radius * 0.5;
+        
+        // Add some fuzziness/randomness to the arm
+        for (let p = 0; p < 3; p++) {
+          // Random offset perpendicular to the arm direction
+          const offsetDist = (Math.random() - 0.5) * thickness;
+          const offsetX = perpX * offsetDist;
+          const offsetY = perpY * offsetDist;
+          
+          // Random brightness decreasing with distance - reduced overall brightness
+          const brightness = (1 - 0.7 * (r / radius)) * (0.3 + Math.random() * 0.3); // Reduced from 0.5-1.0 to 0.3-0.6
+          const size = 1 + Math.random() * 2 + (1 - r / radius) * 3; // Slightly reduced particle size
+          
+          // Draw particle
+          ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+          ctx.beginPath();
+          ctx.arc(x + offsetX, y + offsetY, size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+    
+    // Add some random stars throughout - fewer and less bright
+    for (let i = 0; i < 70; i++) { // Reduced from 100 to 70
+      const angle = Math.random() * Math.PI * 2;
+      const distance = Math.random() * radius * 0.9;
+      
+      const x = centerX + distance * Math.cos(angle);
+      const y = centerY + distance * Math.sin(angle);
+      
+      const size = 0.5 + Math.random() * 1.5; // Reduced size
+      const brightness = 0.3 + Math.random() * 0.3; // Reduced from 0.5-1.0 to 0.3-0.6
+      
+      ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    return texture;
+  }
+  
+  // Helper to get random galaxy colors
+  private static getRandomGalaxyColor(): number {
+    const colors = [
+      0xCCCCDD, // Very light blue-gray
+      0xDDDDEE, // Even lighter blue
+      0xEEEEDD, // Light cream
+      0xDDDDDD, // Light gray
+      0xE0E0E8  // Light blue-gray
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
   }
 } 
