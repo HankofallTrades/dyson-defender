@@ -886,59 +886,6 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         </div>
       )}
       
-      {/* Top-Left Status Panel (Updated to match the console style) */}
-      <div className="console-panel retro-text" style={{
-        position: 'absolute',
-        top: '20px',
-        left: '20px',
-        width: screen.isMobile ? '180px' : '250px',
-        background: 'rgba(0, 0, 0, 0.7)',
-        borderBottom: '2px solid #ff00ff',
-        borderLeft: '2px solid #ff00ff',
-        borderRight: '2px solid #ff00ff',
-        borderBottomLeftRadius: '15px',
-        borderBottomRightRadius: '15px',
-        boxShadow: '0 0 15px rgba(255, 0, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2)',
-        padding: '12px',
-        zIndex: 10,
-        pointerEvents: 'none',
-        transform: damageEffect.active ? getShakeTransform() : 'none'
-      }}>
-        <div style={{
-          borderBottom: '1px solid #ff00ff',
-          paddingBottom: '8px',
-          marginBottom: '8px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <span style={{ color: '#ff00ff', fontSize: '0.7rem' }}>STATUS</span>
-          <span style={{ 
-            color: '#00ffff', 
-            fontSize: '0.6rem',
-            animation: 'pulse-opacity 1s infinite alternate'
-          }}>ACTIVE</span>
-        </div>
-        
-        <div style={{ color: '#00ffff', fontSize: '0.7rem', marginBottom: '5px' }}>
-          SCORE: <span style={{ color: '#ffff00' }}>{score}</span>
-        </div>
-        <div style={{ color: '#00ffff', fontSize: '0.7rem', marginBottom: '5px' }}>
-          SHIELD: <span style={{ color: '#21a9f3' }}>{Math.round(dysonHealth.shieldPercentage)}%</span>
-        </div>
-        <div style={{ color: '#00ffff', fontSize: '0.7rem', marginBottom: '5px' }}>
-          HEALTH: <span style={{ color: '#ff5722' }}>{Math.round(dysonHealth.healthPercentage * 5)}</span>
-        </div>
-        <div style={{ color: '#00ffff', fontSize: '0.7rem' }}>
-          DYSON CORE: <span style={{ 
-            color: dysonHealth.healthPercentage < 20 ? '#ff0000' : '#44ff44',
-            animation: dysonHealth.healthPercentage < 20 ? 'alertBlink 0.5s infinite alternate' : 'none'
-          }}>
-            {dysonHealth.healthPercentage < 20 ? 'CRITICAL' : 'STABLE'}
-          </span>
-        </div>
-      </div>
-      
       {/* Player HUD - Bottom */}
       <div className="ship-console" style={{
         position: 'absolute',
@@ -1178,107 +1125,222 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
             }}>{hullStatus.text}</span>
           </div>
 
-          {/* Hull Status */}
-          <div style={{ marginBottom: '15px' }}>
+          {/* Container for the two columns */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            width: '100%',
+            flex: '1' // Allow this container to grow and fill space
+          }}>
+            {/* Left Column: Ship Systems */}
             <div style={{
+              flex: '1',
+              marginRight: '5px', // Space between columns
               display: 'flex',
-              alignItems: 'center',
-              marginBottom: '5px',
-              color: hullStatus.color,
-              fontSize: '0.7rem'
+              flexDirection: 'column'
             }}>
-              <span>HULL INTEGRITY:</span>
-            </div>
-            <div style={{
-              width: '100%',
-              height: '20px',
-              background: 'rgba(0, 0, 0, 0.5)',
-              border: '2px solid #555555',
-              borderRadius: '10px',
-              overflow: 'hidden',
-              boxShadow: '0 0 10px rgba(0, 0, 0, 0.3), inset 0 0 5px rgba(0, 0, 0, 0.5)',
-              position: 'relative'
-            }}>
-              <div style={{ 
-                width: `${playerHealthPercentage}%`,
-                height: '100%',
-                background: `linear-gradient(90deg, 
-                  #F44336, 
-                  ${playerHealthPercentage > 60 ? '#4CAF50' : 
-                    playerHealthPercentage > 30 ? '#FFC107' : '#F44336'})`,
-                transition: 'width 0.3s ease'
-              }}></div>
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                color: '#ffffff',
-                textShadow: '1px 1px 2px #000000',
-                fontSize: '0.65rem',
-                fontWeight: 'bold'
-              }}>
-                {Math.round(playerHealthPercentage)}%
+              {/* Hull Status */}
+              <div style={{ marginBottom: '10px' }}> 
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginBottom: '5px',
+                  color: hullStatus.color,
+                  fontSize: '0.6rem',
+                  whiteSpace: 'nowrap'
+                }}>
+                  <span>HULL INTEGRITY:</span>
+                </div>
+                <div style={{
+                  width: '100%',
+                  height: '16px',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  border: '2px solid #555555',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)',
+                  position: 'relative'
+                }}>
+                  <div style={{ 
+                    width: `${playerHealthPercentage}%`,
+                    height: '100%',
+                    background: hullStatus.color,
+                    transition: 'width 0.3s ease'
+                  }}></div>
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    color: '#ffffff',
+                    textShadow: '1px 1px 2px #000000',
+                    fontSize: '0.65rem',
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    width: '100%'
+                  }}>
+                    {hullStatus.text}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          
-          {/* Boost System */}
-          <div>
-            <div style={{
-              color: '#00ffff', 
-              marginBottom: '5px',
-              fontSize: '0.7rem'
-            }}>
-              BOOST SYSTEM:
-            </div>
-            <div style={{
-              width: '100%',
-              height: '20px',
-              background: 'rgba(0, 0, 0, 0.5)',
-              border: '2px solid #555555',
-              borderRadius: '10px',
-              overflow: 'hidden',
-              boxShadow: '0 0 10px rgba(0, 0, 0, 0.3), inset 0 0 5px rgba(0, 0, 0, 0.5)',
-              position: 'relative'
-            }}>
-              <div style={{ 
-                width: boostData.cooldown > 0 
-                  ? `${(1 - boostData.cooldown / 3.0) * 100}%` 
-                  : `${Math.max(0, (boostData.remaining / boostData.maxTime) * 100)}%`,
-                height: '100%',
-                background: boostData.cooldown > 0
-                  ? 'linear-gradient(90deg, #330066, #660066)'
-                  : (boostData.active 
-                      ? 'linear-gradient(90deg, #ff00ff, #00ffff)' 
-                      : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
-                boxShadow: boostData.active 
-                  ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' 
-                  : 'none',
-                transitionProperty: 'box-shadow, background',
-                transitionDuration: '0.2s',
-                transform: 'translateZ(0)',
-                willChange: 'width'
-              }}></div>
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                color: '#ffffff',
-                textShadow: '1px 1px 2px #000000',
-                fontSize: '0.65rem',
-                fontWeight: 'bold'
-              }}>
-                {boostData.cooldown > 0 
-                  ? "CHARGING" 
-                  : boostData.active 
-                    ? "ACTIVE" 
-                    : "READY"
-                }
+
+              {/* Boost System */}
+              <div style={{ marginBottom: '10px' }}> 
+                <div style={{
+                  color: '#00ffff', 
+                  marginBottom: '5px',
+                  fontSize: '0.6rem'
+                }}>
+                  BOOST SYSTEM:
+                </div>
+                <div style={{
+                  width: '100%',
+                  height: '16px',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  border: '2px solid #555555',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)',
+                  position: 'relative'
+                }}>
+                  <div style={{ 
+                    width: boostData.cooldown > 0 
+                      ? `${(1 - boostData.cooldown / 3.0) * 100}%` 
+                      : `${Math.max(0, (boostData.remaining / boostData.maxTime) * 100)}%`,
+                    height: '100%',
+                    background: boostData.cooldown > 0
+                      ? 'linear-gradient(90deg, #330066, #660066)'
+                      : (boostData.active 
+                          ? 'linear-gradient(90deg, #ff00ff, #00ffff)' 
+                          : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
+                    boxShadow: boostData.active 
+                      ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' 
+                      : 'none',
+                    transitionProperty: 'box-shadow, background',
+                    transitionDuration: '0.2s',
+                    transform: 'translateZ(0)',
+                    willChange: 'width'
+                  }}></div>
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    color: '#ffffff',
+                    textShadow: '1px 1px 2px #000000',
+                    fontSize: '0.65rem',
+                    fontWeight: 'bold'
+                  }}>
+                    {boostData.cooldown > 0 
+                      ? "CHARGING" 
+                      : boostData.active 
+                        ? "ACTIVE" 
+                        : "READY"
+                    }
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            </div> {/* End Left Column */}
+
+            {/* Right Column: Dyson Systems */}
+            <div style={{
+              flex: '1',
+              marginLeft: '5px', // Space between columns
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              {/* Dyson Shield Status */}
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{
+                  color: dysonHealth.shieldPercentage > 70 ? '#21a9f3' : dysonHealth.shieldPercentage > 30 ? '#FFC107' : '#F44336',
+                  marginBottom: '5px',
+                  fontSize: '0.6rem'
+                }}>
+                  DYSON SHIELD:
+                </div>
+                <div style={{
+                  width: '100%',
+                  height: '16px',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  border: '2px solid #555555',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)',
+                  position: 'relative'
+                }}>
+                  <div style={{ 
+                    width: `${dysonHealth.shieldPercentage}%`,
+                    height: '100%',
+                    background: dysonHealth.shieldPercentage > 70 
+                      ? 'linear-gradient(90deg, #2196F3, #64B5F6)'
+                      : dysonHealth.shieldPercentage > 30
+                      ? 'linear-gradient(90deg, #FFC107, #FFD54F)'
+                      : 'linear-gradient(90deg, #F44336, #E57373)',
+                    transition: 'width 0.3s ease'
+                  }}></div>
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    color: '#ffffff',
+                    textShadow: '1px 1px 2px #000000',
+                    fontSize: '0.65rem',
+                    fontWeight: 'bold'
+                  }}>
+                    {Math.round(dysonHealth.shieldPercentage)}%
+                  </div>
+                </div>
+              </div>
+
+              {/* Dyson Core Status */}
+              <div style={{ marginBottom: '10px' }}>
+                 <div style={{
+                  color: dysonHealth.healthPercentage > 70 ? '#4CAF50' : dysonHealth.healthPercentage > 30 ? '#FFC107' : '#F44336',
+                  marginBottom: '5px',
+                  fontSize: '0.6rem'
+                }}>
+                  DYSON CORE:
+                </div>
+                <div style={{
+                  width: '100%',
+                  height: '16px',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  border: '2px solid #555555',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)',
+                  position: 'relative'
+                }}>
+                  <div style={{ 
+                    width: `${dysonHealth.healthPercentage}%`,
+                    height: '100%',
+                    background: dysonHealth.healthPercentage > 70
+                      ? 'linear-gradient(90deg, #4CAF50, #81C784)'
+                      : dysonHealth.healthPercentage > 30
+                      ? 'linear-gradient(90deg, #FFC107, #FFD54F)'
+                      : 'linear-gradient(90deg, #F44336, #E57373)',
+                    transition: 'width 0.3s ease',
+                    animation: dysonHealth.healthPercentage < 30 ? 'alertBlinkBackground 0.5s infinite alternate' : 'none'
+                  }}></div>
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    color: '#ffffff',
+                    textShadow: '1px 1px 2px #000000',
+                    fontSize: '0.65rem',
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    width: '100%'
+                  }}>
+                    {dysonHealth.healthPercentage > 70 ? 'STABLE' : dysonHealth.healthPercentage > 30 ? 'WARNING' : 'CRITICAL'}
+                  </div>
+                </div>
+              </div>
+            </div> {/* End Right Column */}
+          </div> {/* End Columns Container */}
           
           {/* Ship information */}
           <div style={{
