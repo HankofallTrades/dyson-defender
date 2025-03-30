@@ -167,8 +167,9 @@ export class WaveSystem implements System {
     // Reset announcement flags for the new wave
     this.hasAnnouncedShieldGuardian = false;
     this.hasAnnouncedWarpRaider = false;
-    this.hasAnnouncedAsteroid = false;
+    this.hasAnnouncedAsteroid = false; // Reset asteroid announcement flag
     
+    // --- Spawn Initial Grunt/Guardian ---
     // Spawn the first enemy immediately - always make it a grunt
     const firstEnemyPosition = this.getRandomPositionOnSphere(160);
     const wormholeEntity = createWormhole(this.world, firstEnemyPosition, this.dysonSphereEntity);
@@ -207,7 +208,34 @@ export class WaveSystem implements System {
       }
     }
     
-    waveInfo.totalEnemies--;
+    // Decrement totalEnemies *after* the initial grunt/guardian spawn
+    waveInfo.totalEnemies--; 
+    
+    // --- Handle Wave-Start Asteroid Spawning ---
+    const baseSpawnRadius = 160;
+    if (waveInfo.currentWave === 3) {
+        // Guaranteed asteroid at the start of Wave 3
+        console.log("Spawning guaranteed asteroid for Wave 3 start");
+        this.spawnStartWaveAsteroid(baseSpawnRadius);
+    } else if (waveInfo.currentWave === 4) {
+        // 25% chance for an asteroid at the start of Wave 4
+        if (Math.random() < 0.25) {
+            console.log("Spawning asteroid (25% chance) for Wave 4 start");
+            this.spawnStartWaveAsteroid(baseSpawnRadius);
+        }
+    } else if (waveInfo.currentWave >= 5) {
+        // Two separate 25% chances for asteroids at the start of Wave 5+
+        if (Math.random() < 0.25) {
+            console.log("Spawning asteroid (Roll 1, 25% chance) for Wave 5+ start");
+            this.spawnStartWaveAsteroid(baseSpawnRadius);
+        }
+        if (Math.random() < 0.25) {
+            console.log("Spawning asteroid (Roll 2, 25% chance) for Wave 5+ start");
+            this.spawnStartWaveAsteroid(baseSpawnRadius);
+        }
+    }
+    
+    // Reset spawn timer for regular enemies
     this.timeSinceLastSpawn = 0;
   }
   
@@ -243,23 +271,6 @@ export class WaveSystem implements System {
     
     let enemyEntity: number;
 
-    // After wave 3, 15% chance to spawn an asteroid
-    if (!forceGrunt && waveInfo.currentWave > 3 && Math.random() < 0.15) {
-      // Create asteroid at a much further distance (4-6.5x normal spawn distance)
-      const asteroidSpawnMultiplier = 4 + Math.random() * 2.5;
-      const asteroidPosition = this.getRandomPositionOnSphere(radius * asteroidSpawnMultiplier);
-      
-      console.log(`Spawning asteroid at distance: ${radius * asteroidSpawnMultiplier} units`);
-      
-      enemyEntity = createAsteroid(this.world, asteroidPosition, this.dysonSphereEntity);
-      
-      if (!this.hasAnnouncedAsteroid && this.hudSystem) {
-        this.hudSystem.displayMessage("CRITICAL THREAT: Incoming Asteroid!", 5);
-        this.hasAnnouncedAsteroid = true;
-      }
-      return enemyEntity;
-    }
-    
     // First, handle the guaranteed Warp Raider spawn in wave 4
     if (!forceGrunt && waveInfo.currentWave === 4) {
       const totalEnemiesInWave = 5 + (waveInfo.currentWave - 1) * 3;
@@ -311,6 +322,25 @@ export class WaveSystem implements System {
     }
     
     return enemyEntity;
+  }
+  
+  // New helper method to spawn an asteroid at the start of a wave
+  private spawnStartWaveAsteroid(baseRadius: number): number {
+      // Create asteroid at a much further distance (4-6.5x normal spawn distance)
+      const asteroidSpawnMultiplier = 4 + Math.random() * 2.5;
+      const asteroidPosition = this.getRandomPositionOnSphere(baseRadius * asteroidSpawnMultiplier);
+      
+      console.log(`Spawning start-wave asteroid at distance: ${baseRadius * asteroidSpawnMultiplier} units`);
+      
+      const asteroidEntity = createAsteroid(this.world, asteroidPosition, this.dysonSphereEntity);
+      
+      // Announce only once per wave start, even if two asteroids spawn
+      if (!this.hasAnnouncedAsteroid && this.hudSystem) {
+        this.hudSystem.displayMessage("CRITICAL THREAT: Incoming Asteroid!", 5);
+        this.hasAnnouncedAsteroid = true; 
+      }
+      
+      return asteroidEntity;
   }
   
   private getRandomPositionOnSphere(radius: number): { x: number, y: number, z: number } {

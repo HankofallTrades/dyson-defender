@@ -48,7 +48,7 @@ export function createPlayerShip(world: World): number {
     remaining: 1.0, // Full boost
     maxTime: 1.0,
     cooldown: 0, // No cooldown
-    speedMultiplier: 1.75
+    speedMultiplier: 2.0
   });
   
   // Add collider for collision detection

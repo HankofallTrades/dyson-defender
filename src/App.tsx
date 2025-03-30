@@ -79,6 +79,13 @@ function App() {
   const handleRestartAtWave = (wave: number) => {
     if (gameRef.current) {
       gameRef.current.restartAtWave(wave);
+      // Get the new world instance after restart and update the state
+      const newWorld = gameRef.current.getWorld();
+      if (newWorld) {
+        setWorld(newWorld);
+      }
+      // Optionally re-request pointer lock if needed after restart
+      // gameRef.current.requestPointerLock(); 
     }
   };
 
