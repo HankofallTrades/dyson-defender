@@ -36,6 +36,8 @@ export class MeshFactory {
       return this.createPowerUpOrbMesh(renderable);
     } else if (renderable.modelId === 'starfield') {
       return this.createStarfieldMesh(renderable);
+    } else if (renderable.modelId === 'centralStar') {
+      return this.createCentralStarMesh(renderable);
     } else {
       return this.createDefaultMesh(renderable);
     }
@@ -116,7 +118,7 @@ export class MeshFactory {
   private static createDysonSphereMesh(renderable: Renderable): THREE.Object3D {
     const group = new THREE.Group();
     
-    // Outer wireframe sphere
+    // Outer wireframe sphere - increased wireframe transparency
     const outerGeometry = new THREE.SphereGeometry(50, 32, 32);
     const outerMaterial = new THREE.MeshStandardMaterial({
       color: renderable.color || COLORS.DYSON_PRIMARY,
@@ -124,16 +126,18 @@ export class MeshFactory {
       roughness: 0.2,
       emissive: COLORS.DYSON_EMISSIVE,
       wireframe: true,
+      transparent: true,
+      opacity: 0.8,
     });
     const outerMesh = new THREE.Mesh(outerGeometry, outerMaterial);
     group.add(outerMesh);
     
-    // Inner transparent sphere
+    // Inner transparent sphere - made much more transparent
     const innerGeometry = new THREE.SphereGeometry(48, 32, 32);
     const innerMaterial = new THREE.MeshStandardMaterial({
       color: COLORS.DYSON_SECONDARY,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.1, // Significantly reduced opacity to allow more light through
       side: THREE.DoubleSide,
     });
     const innerMesh = new THREE.Mesh(innerGeometry, innerMaterial);
@@ -1445,5 +1449,69 @@ export class MeshFactory {
       0xE0E0E8  // Light blue-gray
     ];
     return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  private static createCentralStarMesh(renderable: Renderable): THREE.Object3D {
+    const group = new THREE.Group();
+    
+    // Create the core of the star - a sphere with emissive material
+    const coreGeometry = new THREE.SphereGeometry(1, 32, 32);
+    const coreMaterial = new THREE.MeshStandardMaterial({
+      color: renderable.color || COLORS.STAR_CORE,
+      emissive: renderable.color || COLORS.STAR_CORE,
+      emissiveIntensity: 1.8,
+      metalness: 0.0,
+      roughness: 0.1,
+    });
+    const core = new THREE.Mesh(coreGeometry, coreMaterial);
+    group.add(core);
+    
+    // Add a tighter inner glow around the star
+    const glowGeometry = new THREE.SphereGeometry(1.3, 32, 32);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: COLORS.STAR_GLOW,
+      transparent: true,
+      opacity: 0.7,
+      blending: THREE.AdditiveBlending,
+      side: THREE.FrontSide,
+    });
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    group.add(glow);
+    
+    // Add a secondary glow layer
+    const outerGlowGeometry = new THREE.SphereGeometry(1.8, 32, 32);
+    const outerGlowMaterial = new THREE.MeshBasicMaterial({
+      color: COLORS.STAR_GLOW,
+      transparent: true,
+      opacity: 0.3,
+      blending: THREE.AdditiveBlending,
+      side: THREE.FrontSide,
+    });
+    const outerGlow = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial);
+    group.add(outerGlow);
+    
+    // Add a tertiary glow layer for more visibility
+    const farGlowGeometry = new THREE.SphereGeometry(2.5, 32, 32);
+    const farGlowMaterial = new THREE.MeshBasicMaterial({
+      color: COLORS.STAR_GLOW,
+      transparent: true,
+      opacity: 0.15,
+      blending: THREE.AdditiveBlending,
+      side: THREE.FrontSide,
+    });
+    const farGlow = new THREE.Mesh(farGlowGeometry, farGlowMaterial);
+    group.add(farGlow);
+    
+    // Add a point light as the light source with increased range
+    const light = new THREE.PointLight(COLORS.STAR_LIGHT, 4.0, 800);
+    light.castShadow = true;
+    light.shadow.mapSize.width = 2048;
+    light.shadow.mapSize.height = 2048;
+    group.add(light);
+    
+    // Apply scale
+    group.scale.set(renderable.scale, renderable.scale, renderable.scale);
+    
+    return group;
   }
 } 

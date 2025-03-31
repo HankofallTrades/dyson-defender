@@ -125,16 +125,18 @@ export class SceneManager {
   private initLights(): void {
     console.log('[SceneManager] Setting up lights...');
     
-    // Add ambient light
-    const ambientLight = new THREE.AmbientLight(0x404040);
+    // Create a brighter ambient light for better overall scene illumination
+    const ambientLight = new THREE.AmbientLight(0x505080, 1.0);
     this.scene.add(ambientLight);
     
-    // Add directional light
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(1, 1, 1);
-    this.scene.add(directionalLight);
+    // Add a soft directional light to simulate starfield lighting
+    const starfieldLight = new THREE.DirectionalLight(0xd0d0ff, 0.5);
+    starfieldLight.position.set(0, 1, 0); // Coming from above
+    this.scene.add(starfieldLight);
     
-    console.log('[SceneManager] Lights configured');
+    // The central star will still be our main light source
+    
+    console.log('[SceneManager] Ambient and starfield lights configured, main light comes from the star');
   }
   
   /**

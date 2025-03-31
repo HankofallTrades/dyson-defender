@@ -7,6 +7,7 @@ import { createPlayerShip } from './entities/PlayerShipEntity';
 import { createCamera } from './entities/CameraEntity';
 import { createHUD } from './entities/HUDEntity';
 import { createStarfieldBackground } from './entities/StarfieldEntity';
+import { createCentralStar } from './entities/StarEntity';
 import { InputSystem } from './systems/InputSystem';
 import { MovementSystem } from './systems/MovementSystem';
 import { RenderingSystem } from './systems/RenderingSystem';
@@ -209,7 +210,12 @@ class Game {
     // Create the starfield background first so it's rendered behind everything else
     createStarfieldBackground(this.world);
     
+    // Create the Dyson Sphere
     const dysonSphere = createDysonSphere(this.world);
+    
+    // Create the central star inside the Dyson Sphere
+    createCentralStar(this.world);
+    
     const playerShip = createPlayerShip(this.world);
     const cameraEntity = createCamera(this.world, playerShip);
     createHUD(this.world, playerShip, dysonSphere);

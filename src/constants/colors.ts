@@ -9,6 +9,11 @@ export const COLORS = {
   PLAYER_BASE: 0x00ff00,
   PLAYER_ACCENT: 0x88ff88,
   
+  // Central star colors
+  STAR_CORE: 0xffeecc, // Warmer yellow-white for the star's core
+  STAR_GLOW: 0xfff2dd, // Slightly warmer for the glow effect
+  STAR_LIGHT: 0xfff5dd, // Warmer light color
+  
   // Enemy colors - Grunt (formerly squid alien)
   GRUNT_BASE: 0x6600cc, // Deep purple for the main body and tentacles
   GRUNT_GLOW: 0x9900ff, // Brighter purple for the outer glow effect
