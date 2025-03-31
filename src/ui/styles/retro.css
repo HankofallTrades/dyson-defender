@@ -1053,4 +1053,136 @@
   100% {
     opacity: 0.1;
   }
+}
+
+/* --- NEW STYLES --- */
+
+/* Top Center Alerts Container */
+.top-center-alerts {
+  position: absolute;
+  top: 20px; /* Position below the very top edge */
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px; /* Space between alerts */
+  z-index: 90; /* Below central wave alert, above game */
+  pointer-events: none; /* Allow clicks through */
+  width: 80%; /* Limit width */
+  max-width: 500px;
+}
+
+/* Individual Game Alert Style */
+.game-alert {
+  background: rgba(255, 0, 80, 0.8); /* Bright pink background */
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 100, 150, 0.8);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.8rem; /* Smaller font size */
+  text-shadow: 1px 1px 0 #000;
+  box-shadow: 0 0 8px rgba(255, 0, 80, 0.6);
+  animation: fade-in-out 3s ease-out forwards; /* Use existing animation */
+  opacity: 0;
+  text-align: center;
+}
+
+/* Update fade-in-out animation for faster appearance */
+@keyframes fade-in-out {
+  0% { opacity: 0; transform: translateY(5px); }
+  15% { opacity: 1; transform: translateY(0); } /* Appear faster */
+  85% { opacity: 1; transform: translateY(0); } /* Hold longer */
+  100% { opacity: 0; transform: translateY(-5px); } /* Fade out faster */
+}
+
+/* Ensure typing animation styles are available */
+/* These seem to exist already based on file outline, but adding defensively */
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes cursor-blink {
+  from, to { opacity: 0; } /* Use opacity for cursor */
+  50% { opacity: 1; }
+}
+
+.typing-animation {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 0;
+  border-right: 2px solid transparent; /* Use border for cursor */
+  animation:
+    typewriter 1s steps(30, end) forwards,
+    cursor-blink .75s step-end infinite;
+  animation-delay: calc(var(--delay, 0) * 0.8s); /* Use variable delay */
+  vertical-align: bottom;
+}
+
+/* Hide cursor after animation finishes */
+.typing-animation:not(:empty) {
+   /* Keep border transparent by default */
+}
+
+/* Ensure scanline/CRT effects are defined correctly */
+/* .wave-alert-overlay styles likely exist, this adds the scanlines within */
+.wave-notification-scan {
+  /* Styles for the moving scanlines within the wave alert box */
+   position: absolute;
+   top: 0; left: 0; right: 0; bottom: 0;
+   border-radius: 15px; /* Match parent border-radius */
+   overflow: hidden;
+   pointer-events: none;
+}
+
+.wave-notification-scan::before {
+  content: '';
+  position: absolute;
+  top: -100%; /* Start above */
+  left: 0; right: 0;
+  height: 10px; /* Scanline height */
+  background: linear-gradient(
+    0deg, transparent 0%, rgba(0, 255, 255, 0.5) 50%, transparent 100%
+  );
+  animation: verticalScan 2s linear infinite;
+}
+
+.wave-notification-scan::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  left: -100%; /* Start left */
+  width: 10px; /* Scanline width */
+  background: linear-gradient(
+    90deg, transparent 0%, rgba(255, 0, 255, 0.5) 50%, transparent 100%
+  );
+  animation: horizontalScan 2.5s linear infinite; /* Slightly different speed */
+}
+
+/* Add keyframes if they don't exist */
+@keyframes verticalScan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes horizontalScan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+
+/* Hologram Container - Ensure it doesn't capture pointer events */
+.hologram-container {
+  pointer-events: none;
 } 

@@ -7,7 +7,8 @@ import GameOverScreen from './GameOverScreen';
 import PauseScreen from './PauseScreen';
 import './styles/retro.css';
 import { Vector3, Camera, WebGLRenderer, Scene, PerspectiveCamera, MeshBasicMaterial, BoxGeometry, SphereGeometry, IcosahedronGeometry, EdgesGeometry, LineSegments, LineBasicMaterial, DoubleSide, Group, AmbientLight, MathUtils, TorusGeometry, PointLight, BufferGeometry, Line } from 'three';
-import RadarDisplay from './hud/RadarDisplay'; // <-- ADDED IMPORT
+import RadarDisplay from './hud/RadarDisplay';
+import CommsDisplay from './hud/CommsDisplay'; // ADDED IMPORT
 
 // Hologram component for rendering small 3D wireframe models
 const Hologram: React.FC<{
@@ -533,14 +534,13 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
   // State to hold UI data
   const [playerHealth, setPlayerHealth] = useState<Health>({ current: 100, max: 100 });
   const [score, setScore] = useState(0);
-  const [message, setMessage] = useState('');
   const [dysonHealth, setDysonHealth] = useState({ 
     shieldPercentage: 100, 
     healthPercentage: 100 
   });
   const [enemiesRemaining, setEnemiesRemaining] = useState({ current: 0, total: 0 });
-  const [currentWave, setCurrentWave] = useState(1);
-  const [boostReady, setBoostReady] = useState(true);
+  const [currentWave, setCurrentWave] = useState(0); // Start at 0, update from WaveInfo
+  const [boostReady, setBoostReady] = useState(true); // Kept for potential direct use? Check if derived purely from boostData now.
   const [boostData, setBoostData] = useState({
     active: false,
     remaining: 1.0,
@@ -552,8 +552,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
   const [gameOverStats, setGameOverStats] = useState({ finalScore: 0, survivalTime: 0, enemiesDefeated: 0, wavesCompleted: 0 });
   const [waveCountdown, setWaveCountdown] = useState<number | null>(null);
   const [waveComplete, setWaveComplete] = useState(false);
-  const [alertMessages, setAlertMessages] = useState<string[]>([]);
-  const [animatedMessages, setAnimatedMessages] = useState<Set<string>>(new Set());
+  const [alertMessages, setAlertMessages] = useState<string[]>([]); // Log for CommsDisplay
   const [reticle, setReticle] = useState<Reticle>({
     visible: true,
     style: 'default',
@@ -608,11 +607,13 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
   const [bracketsOffset, setBracketsOffset] = useState({ x: 0, y: 0 });
   const lastMouseMoveRef = useRef({ x: 0, y: 0, time: 0 });
   
-  // Use a ref to track processed messages so we have immediate access to the latest value
-  const processedMessagesRef = useRef<Set<string>>(new Set());
+  // Use a ref to track processed messages for the log
+  const processedMessagesLogRef = useRef<Set<string>>(new Set());
   
-  // Add this ref near the other refs (around line 95)
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // State and ref for current alerts
+  const [currentObjective, setCurrentObjective] = useState<string | null>(null);
+  const [currentTempAlert, setCurrentTempAlert] = useState<string | null>(null);
+  const alertTimeoutRef = useRef<number | null>(null); // CHANGED: NodeJS.Timeout to number
   
   // Update UI data from ECS world
   useEffect(() => {
@@ -625,7 +626,8 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
       lastRender = timestamp;
       
       const hudEntities = world.getEntitiesWith(['UIDisplay']);
-      if (hudEntities.length === 0) return;
+      // Use requestAnimationFrame for the next update even if we return early
+      if (hudEntities.length === 0) return requestAnimationFrame(updateHUD);
       
       const hudEntity = hudEntities[0];
       
@@ -644,27 +646,48 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         setScore(scoreDisplay.score);
       }
       
-      // Update message
+      // --- Handle Messages ---
       const messageDisplay = world.getComponent<MessageDisplay>(hudEntity, 'MessageDisplay');
-      if (messageDisplay) {
-        const newMessage = messageDisplay.message;
-        
-        // Only process if this is a new message that we haven't seen before
-        if (newMessage && newMessage.trim() !== '' && 
-            !processedMessagesRef.current.has(newMessage) && 
-            !alertMessages.includes(newMessage) &&  
-            !(newMessage === "OBJECTIVE: DEFEND THE DYSON SPHERE" && 
-              alertMessages.includes("OBJECTIVE: DEFEND THE DYSON SPHERE"))) {
-          
-          // Add to processed messages ref immediately
-          processedMessagesRef.current.add(newMessage);
-          
-          // Add to alert messages array - keep all messages, don't limit to 4
+      const newMessage = messageDisplay?.message;
+      const messageIsActive = messageDisplay && messageDisplay.timeRemaining > 0;
+      
+      if (messageIsActive && newMessage) {
+        // Add to log if new
+        if (!processedMessagesLogRef.current.has(newMessage)) {
+          processedMessagesLogRef.current.add(newMessage);
+          // Append to keep chronological order in log
           setAlertMessages(prev => [...prev, newMessage]);
         }
         
-        setMessage(newMessage);
+        // Handle displaying the message based on type
+        if (newMessage.includes('OBJECTIVE:')) {
+          // Set objective if it's different from the current one
+          if (newMessage !== currentObjective) {
+             setCurrentObjective(newMessage);
+             // Clear any temporary alert that might be showing
+             if (currentTempAlert) setCurrentTempAlert(null);
+             if (alertTimeoutRef.current) {
+                 clearTimeout(alertTimeoutRef.current);
+                 alertTimeoutRef.current = null;
+             }
+          }
+        } else if (!newMessage.includes('WAVE')) { // Handle non-objective, non-wave alerts
+          // Show as temp alert if it's different from the current one
+          // Only show temp alert if no objective is currently displayed? Or show both? Show both.
+          if (newMessage !== currentTempAlert) {
+            setCurrentTempAlert(newMessage);
+            if (alertTimeoutRef.current) {
+                clearTimeout(alertTimeoutRef.current);
+            }
+            alertTimeoutRef.current = setTimeout(() => {
+              setCurrentTempAlert(null);
+              alertTimeoutRef.current = null;
+            }, 3000); // Show for 3 seconds
+          }
+        }
       }
+      // Note: We don't explicitly clear currentObjective here. It persists until replaced or game reset.
+      // Temp alerts clear themselves via timeout.
       
       // Update Dyson Sphere status
       const dysonStatus = world.getComponent<DysonSphereStatus>(hudEntity, 'DysonSphereStatus');
@@ -687,35 +710,49 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
       // Update game state
       const gameStateDisplay = world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
       if (gameStateDisplay) {
-        setGameState(gameStateDisplay.currentState);
+        // Update local state only if it differs to avoid unnecessary re-renders
+        if (gameStateDisplay.currentState !== gameState) {
+             setGameState(gameStateDisplay.currentState);
+        }
       }
       
       // Update reticle
       const reticleComponent = world.getComponent<Reticle>(hudEntity, 'Reticle');
       if (reticleComponent) {
-        setReticle(reticleComponent);
+        // Simple comparison check to avoid object state update if unchanged
+        if (JSON.stringify(reticleComponent) !== JSON.stringify(reticle)) {
+          setReticle(reticleComponent);
+        }
       }
       
       // Update boost state from game state - priority update for smoothness
-      const gameState = world.getGameState();
-      if (gameState) {
-        // Boost is ready if cooldown is 0 and there's some boost remaining
-        setBoostReady(gameState.boostCooldown <= 0 && gameState.boostRemaining > 0);
-        
-        // Update the boost data with exact values from game state
-        setBoostData({
-          active: gameState.boostActive,
-          remaining: gameState.boostRemaining,
-          cooldown: gameState.boostCooldown,
-          maxTime: 1.0
-        });
+      const worldGameState = world.getGameState(); // Renamed to avoid conflict
+      if (worldGameState) {
+        // Update boost data state if changed
+        const newBoostData = {
+           active: worldGameState.boostActive,
+           remaining: worldGameState.boostRemaining,
+           cooldown: worldGameState.boostCooldown,
+           maxTime: 1.0 // Assuming maxTime is constant
+        };
+        if (JSON.stringify(newBoostData) !== JSON.stringify(boostData)) {
+             setBoostData(newBoostData);
+        }
+        // Update boostReady derived state (might be redundant if UI uses boostData directly)
+        const ready = worldGameState.boostCooldown <= 0 && worldGameState.boostRemaining > 0;
+        if (ready !== boostReady) {
+            setBoostReady(ready);
+        }
       }
       
       // Update game over stats if in game over state
-      if (gameStateDisplay && gameStateDisplay.currentState === 'game_over') {
+      if (gameState === 'game_over') { // Check local state
         const stats = world.getComponent<GameOverStats>(hudEntity, 'GameOverStats');
         if (stats) {
-          setGameOverStats(stats);
+          // Avoid state update if object is identical
+           if (JSON.stringify(stats) !== JSON.stringify(gameOverStats)) {
+             setGameOverStats(stats);
+           }
         }
       }
       
@@ -724,21 +761,43 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
       if (waveEntities.length > 0) {
         const waveInfo = world.getComponent<WaveInfo>(waveEntities[0], 'WaveInfo');
         if (waveInfo) {
-          setCurrentWave(waveInfo.currentWave);
-          setEnemiesRemaining({
+          // Update states only if they change
+          if (waveInfo.currentWave !== currentWave) setCurrentWave(waveInfo.currentWave);
+          const newEnemiesRemaining = {
             current: waveInfo.enemiesRemaining,
             total: waveInfo.totalEnemies + waveInfo.enemiesRemaining
-          });
-          
-          // Update wave countdown and completion state
-          if (!waveInfo.isActive && waveInfo.nextWaveTimer > 0) {
-            // Round to nearest integer for clean display
-            setWaveCountdown(Math.ceil(waveInfo.nextWaveTimer));
-            setWaveComplete(waveInfo.currentWave > 0);
-          } else {
-            setWaveCountdown(null);
-            setWaveComplete(false);
+          };
+          if (JSON.stringify(newEnemiesRemaining) !== JSON.stringify(enemiesRemaining)) {
+            setEnemiesRemaining(newEnemiesRemaining);
           }
+          
+          // Simple approach: only show countdown when wave is not active and timer > 0
+          if (!waveInfo.isActive && waveInfo.nextWaveTimer > 0) {
+            // Update countdown
+            const newWaveCountdown = Math.ceil(waveInfo.nextWaveTimer);
+            if (newWaveCountdown !== waveCountdown) {
+              setWaveCountdown(newWaveCountdown);
+            }
+            // Set wave complete flag
+            if (waveInfo.currentWave > 0 && !waveComplete) {
+              setWaveComplete(true);
+            }
+          } else {
+            // Clear countdown when wave is active or timer is 0
+            if (waveCountdown !== null) {
+              setWaveCountdown(null);
+            }
+            if (waveComplete) {
+              setWaveComplete(false);
+            }
+          }
+        }
+      } else {
+        // Reset wave info if component is gone
+        if (waveCountdown !== null) setWaveCountdown(null);
+        if (waveComplete) setWaveComplete(false);
+        if (enemiesRemaining.current !== 0 || enemiesRemaining.total !== 0) {
+          setEnemiesRemaining({ current: 0, total: 0 });
         }
       }
       
@@ -771,16 +830,22 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           opacity: number;
         }>;
         
-        setFloatingScores(newFloatingScores);
+        // Basic check to prevent update if array content is identical stringified
+        if (JSON.stringify(newFloatingScores) !== JSON.stringify(floatingScores)) {
+            setFloatingScores(newFloatingScores);
+        }
       }
       
       // Update radar data
       const radarComponent = world.getComponent<Radar>(hudEntity, 'Radar');
       if (radarComponent) {
-        setRadarData({
-          active: radarComponent.active,
-          trackedEntities: radarComponent.trackedEntities
-        });
+         // Check before setting state
+         if (JSON.stringify(radarComponent) !== JSON.stringify(radarData)) {
+             setRadarData({ // Assuming Radar component structure matches state
+               active: radarComponent.active,
+               trackedEntities: radarComponent.trackedEntities
+             });
+         }
       }
       
       // Update shield bars if camera is available
@@ -823,7 +888,9 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           percent: number;
         }>;
         
-        setShieldBars(newShieldBars);
+        if (JSON.stringify(newShieldBars) !== JSON.stringify(shieldBars)) {
+             setShieldBars(newShieldBars);
+        }
         
         // Update health bars
         const healthBarEntities = world.getEntitiesWith(['HealthBarComponent', 'Position']);
@@ -864,7 +931,9 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           percent: number;
         }>;
         
-        setHealthBars(newHealthBars);
+         if (JSON.stringify(newHealthBars) !== JSON.stringify(healthBars)) {
+            setHealthBars(newHealthBars);
+         }
       }
       
       // Request next frame update - use the timestamp
@@ -877,42 +946,32 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
     // Cleanup
     return () => {
       cancelAnimationFrame(animationId);
+      // Clear alert timeout on unmount
+      if (alertTimeoutRef.current) {
+         clearTimeout(alertTimeoutRef.current);
+      }
     };
+    // Dependencies: world, camera, gameState, reticle, boostData, boostReady, gameOverStats, waveCountdown, waveComplete, currentObjective, currentTempAlert, alertMessages, floatingScores, radarData, shieldBars, healthBars
+    // Simplifying dependencies: Let React handle object/array changes. Key triggers are world and camera. Internal state changes trigger re-renders anyway.
   }, [world, camera]);
   
-  // Effect to handle alert messages after wave countdown
+  // Effect to clear alerts and logs on game state reset
   useEffect(() => {
-    // When wave countdown ends (changes from a number to null), show only the objective alert
-    if (waveCountdown === null && gameState === 'playing') {
-      // Clear alerts immediately before setting new one to prevent flashing
+    if (gameState === 'not_started' || gameState === 'game_over') {
       setAlertMessages([]);
-      
-      // Small delay to ensure full clear before showing objective
-      setTimeout(() => {
-        // Always show the objective message when wave countdown ends
-        setAlertMessages(["OBJECTIVE: DEFEND THE DYSON SPHERE"]);
-        // Reset animated messages so objective gets animated
-        setAnimatedMessages(new Set());
-      }, 200);
+      processedMessagesLogRef.current.clear();
+      setCurrentObjective(null);
+      setCurrentTempAlert(null);
+      if (alertTimeoutRef.current) {
+        clearTimeout(alertTimeoutRef.current);
+        alertTimeoutRef.current = null;
+      }
+      // Reset wave info specific to active gameplay?
+      // setWaveCountdown(null); // This should be handled by WaveInfo component absence
+      // setWaveComplete(false);
+      // Reset score? No, keep for game over screen.
     }
-  }, [waveCountdown, gameState]); // Remove alertMessages from dependencies
-  
-  // Reset processed messages when starting a new wave
-  useEffect(() => {
-    if (waveCountdown !== null) {
-      // Reset the processed messages when a new wave is about to start
-      processedMessagesRef.current = new Set();
-      // Reset animated messages so new messages get animated
-      setAnimatedMessages(new Set());
-    }
-  }, [waveCountdown]);
-  
-  // Add this effect to scroll to the bottom when messages change
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [alertMessages]);
+  }, [gameState]);
   
   // Convert hex color to CSS color format
   const hexToCSS = (hexColor: number): string => {
@@ -920,7 +979,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
   };
   
   // Calculate player health percentage
-  const playerHealthPercentage = (playerHealth.current / playerHealth.max) * 100;
+  const playerHealthPercentage = playerHealth.max > 0 ? (playerHealth.current / playerHealth.max) * 100 : 0;
   
   // Determine hull status text and color based on health percentage
   const getHullStatus = () => {
@@ -936,7 +995,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
   };
   
   const hullStatus = getHullStatus();
-
+  
   // Generate random shake transform when damage effect is active
   const getShakeTransform = (): string => {
     if (damageEffect.active) {
@@ -1007,7 +1066,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [gameState]);
+  }, [gameState]); // Dependency is correct
   
   // Add effect to handle mouse movement for reticle bracket lag
   useEffect(() => {
@@ -1075,21 +1134,32 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
       document.removeEventListener('mousemove', handleMouseMove);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [gameState]);
+  }, [gameState]); // Dependency is correct
   
-  // Render appropriate screen based on game state
+  // Add effect to force-clear the countdown
+  useEffect(() => {
+    // If countdown reaches 1, force clear it after a short delay
+    if (waveCountdown === 1) {
+      const timerId = setTimeout(() => {
+        setWaveCountdown(null);
+      }, 1000); // Clear after 1 second
+      
+      return () => clearTimeout(timerId);
+    }
+  }, [waveCountdown]);
+  
+  // --- Render Logic ---
   if (gameState === 'not_started') {
     return <StartScreen onStartGame={onStartGame} />;
   }
-  
   if (gameState === 'game_over') {
-    return <GameOverScreen stats={gameOverStats} onRestart={onRestartGame} />;
+    // Pass the final wave number to game over screen if needed
+    return <GameOverScreen stats={{ ...gameOverStats, wavesCompleted: currentWave }} onRestart={onRestartGame} />;
   }
-  
   if (gameState === 'paused') {
     return (
-      <PauseScreen 
-        onResume={handleResumeGame} 
+      <PauseScreen
+        onResume={handleResumeGame}
         onRestart={onRestartGame}
         currentWave={currentWave}
         onSelectWave={handleSelectWave}
@@ -1359,267 +1429,138 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         </div>
       )}
       
-      {/* === NEW: Top Right Radar Container === */}
+      {/* --- NEW: Central Wave Alert --- */}
+      {waveCountdown && waveCountdown > 0 && gameState === 'playing' && (
+        <div
+          className="wave-alert-overlay"
+          style={{
+            position: 'absolute',
+            top: '40%', // Adjust vertical position
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 100,
+            textAlign: 'center',
+            pointerEvents: 'none',
+            // Apply flicker animation directly if needed, or rely on CSS
+            animation: waveComplete ? 'wave-alert-flicker 0.5s infinite' : 'none',
+            padding: '2rem', // Add padding for better visual separation
+            background: 'rgba(0,0,0,0.7)', // Dark background for contrast
+            border: '2px solid #ff00ff', // Magenta border
+            borderRadius: '15px',
+            boxShadow: '0 0 20px #ff00ff, inset 0 0 10px rgba(0, 255, 255, 0.2)', // Added inner glow
+          }}
+        >
+          {waveComplete ? (
+            <div
+              style={{
+                color: '#4CAF50', // Green for completion
+                fontSize: '2.5rem', // Larger font
+                textShadow: '0 0 15px #4CAF50', // Green shadow
+                animation: 'alert-text-blink 1.5s infinite', // Slower blink for complete
+                fontFamily: "'Press Start 2P', monospace",
+                marginBottom: '0.5rem',
+                 letterSpacing: '0.2rem'
+              }}
+            >
+              WAVE {currentWave} COMPLETE
+            </div>
+          ) : (
+             <div
+              style={{
+                color: '#ff9900', // Orange for incoming
+                fontSize: '2.5rem',
+                textShadow: '0 0 15px #ff9900',
+                animation: 'alert-text-blink 1s infinite', // Standard blink
+                fontFamily: "'Press Start 2P', monospace",
+                 marginBottom: '0.5rem',
+                  letterSpacing: '0.2rem'
+              }}
+            >
+              {/* Show "First Wave" only if currentWave is 0 (before first wave starts) */}
+              WARNING: THREATS DETECTED
+            </div>
+          )}
+           <div style={{ fontSize: '2.5rem', color: '#ffffff', fontFamily: "'Press Start 2P', monospace" }}>
+             {waveCountdown}
+           </div>
+           {/* Add scanlines effect within this overlay */}
+           <div className="wave-notification-scan"></div>
+        </div>
+      )}
+      
+      {/* --- NEW: Top Center Alerts --- */}
+       <div className="top-center-alerts">
+         {currentObjective && (
+           <div className="retro-text" style={{
+               fontSize: '1rem',
+               color: '#00ff00',
+               textShadow: '0 0 8px #00ff00',
+               background: 'rgba(0, 0, 0, 0.5)', // Slight background
+               padding: '4px 8px',
+               borderRadius: '4px',
+               border: '1px solid rgba(0, 255, 0, 0.3)'
+           }}>
+             {currentObjective}
+           </div>
+         )}
+         {currentTempAlert && (
+            <div className="game-alert">
+                {currentTempAlert}
+            </div>
+         )}
+       </div>
+      
+      {/* --- NEW: Comms Log Display --- */}
+      {/* Render CommsDisplay, passing the collected alertMessages */}
+      {!screen.isMobile && <CommsDisplay messages={alertMessages} />}
+      
+      {/* Top Right Radar (as before, Wave display added back below) */}
       {!screen.isMobile && (
         <div style={{
-          position: 'absolute',
-          top: '20px',        // Position from top
-          right: '20px',       // Position from right
-          zIndex: 10,          // Ensure it's above game, below modals
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end', // Align content (labels) to the right
-          background: 'rgba(0, 0, 0, 0.6)', // Keeping background
-          padding: '10px', // Keeping padding
-          borderRadius: '8px', // Keeping border radius
-          // border: '1px solid #ff00ff', // REMOVED border
-          // boxShadow: '0 0 10px rgba(255, 0, 255, 0.4)', // REMOVED glow
-          pointerEvents: 'none', // Allow clicks to pass through usually
+          position: 'absolute', top: '20px', right: '20px', zIndex: 10,
+          display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+          background: 'rgba(0, 0, 0, 0.6)', padding: '10px', borderRadius: '8px',
+          pointerEvents: 'none',
         }}>
-          {/* Render the Radar Display Component with updated size prop */}
           <RadarDisplay radarData={radarData} radarVisualRadius={82} />
-
-          {/* Threats Label below the radar */}
           <div style={{ marginTop: '8px', textAlign: 'right' }}>
-            <div style={{
-              fontSize: '0.7rem',
-              color: radarData.trackedEntities.filter(e => e.entityType !== 'dysonSphere').length > 0 ? '#ff5555' : '#44ff44',
-              fontFamily: "'Press Start 2P', monospace",
-              textShadow: '1px 1px 1px #000',
-            }}>
-              THREATS: {radarData.trackedEntities.filter(e => e.entityType !== 'dysonSphere').length}
-            </div>
-            {/* Wave Label REMOVED */}
-            {/* <div style={{
-              fontSize: '0.7rem',
-              color: '#00ffff',
-              marginTop: '4px',
-              fontFamily: "'Press Start 2P', monospace",
-              textShadow: '1px 1px 1px #000',
-            }}>
-              WAVE: {currentWave}
-            </div> */}
+             <div style={{ fontSize: '0.7rem', color: radarData.trackedEntities.filter(e => e.entityType !== 'dysonSphere').length > 0 ? '#ff5555' : '#44ff44', fontFamily: "'Press Start 2P', monospace", textShadow: '1px 1px 1px #000' }}>
+               THREATS: {radarData.trackedEntities.filter(e => e.entityType !== 'dysonSphere').length}
+             </div>
+             {/* Keep Wave display here */}
+             <div style={{ fontSize: '0.7rem', color: '#00ffff', marginTop: '4px', fontFamily: "'Press Start 2P', monospace", textShadow: '1px 1px 1px #000' }}>
+               WAVE: {currentWave > 0 ? currentWave : '-'} {/* Show '-' if wave 0 */}
+             </div>
           </div>
         </div>
       )}
-      {/* === END: Top Right Radar Container === */}
-
-
+      
       {/* Player HUD - Bottom (Adjusted Layout) */}
       <div className="ship-console" style={{
         position: 'absolute',
-        bottom: '40px', // Raised from 20px
+        bottom: '0px', // CHANGED: Align container to the very bottom
         left: '50%',
         transform: `translateX(-50%) ${damageEffect.active ? getShakeTransform() : ''}`,
         display: 'flex',
-        width: '90%',           // Adjust as needed
-        maxWidth: '1000px',     // Reduce max width slightly?
-        // height adjustment handled by individual panels now if needed, or set a min-height
-        justifyContent: 'center', // Center the two remaining panels
-        gap: '2%',              // Add space between panels
+        width: '100%', // CHANGED: Make container full width
+        // REMOVED: maxWidth: '1000px',
+        justifyContent: 'center', // Center the panel within this container
+        gap: '0', // No gap needed for single panel
         alignItems: 'flex-end',
         zIndex: 10,
         pointerEvents: 'none',
         flexDirection: screen.isMobile ? 'column' : 'row'
       }}>
 
-        {/* Left Panel - Messages Console */}
+        {/* === REMOVED Left Panel - Messages Console === */}
+        {/* The entire div.console-panel.retro-text for messages has been removed */}
+
+
+        {/* Center Panel - Ship Status (Now the only main panel) */}
         <div className="console-panel retro-text" style={{
-          width: screen.isMobile ? '100%' : '49%', // Increased width
-          height: screen.isMobile ? '120px' : '220px', // Match height of center panel for consistency
-          marginBottom: screen.isMobile ? '10px' : '0',
-          display: screen.isMobile && !waveCountdown ? 'none' : 'flex', // Hide on mobile when no wave activity
-          background: 'rgba(0, 0, 0, 0.7)',
-          borderTop: '2px solid #ff00ff',
-          borderLeft: '2px solid #ff00ff',
-          borderRight: '2px solid #ff00ff',
-          borderTopLeftRadius: '15px',
-          borderTopRightRadius: '15px',
-          boxShadow: '0 0 15px rgba(255, 0, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2)',
-          padding: '12px',
-          overflow: 'hidden',
-          flexDirection: 'column',
-          minWidth: '350px'
-        }}>
-          {/* ... Keep ALL internal content of the messages panel ... */}
-          <div style={{
-            borderBottom: '1px solid #ff00ff',
-            paddingBottom: '8px',
-            marginBottom: '8px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <span style={{ color: '#ff00ff', fontSize: '0.7rem', display: 'flex', alignItems: 'center' }}>
-              {waveCountdown !== null ? 'ALERT' : 'COMMS'}
-              {(alertMessages.length > 0 || waveCountdown !== null) && <span className="notification-indicator"></span>}
-            </span>
-            <span style={{ 
-              color: waveCountdown !== null ? '#ff5555' : '#00ffff', 
-              fontSize: '0.6rem',
-              animation: waveCountdown !== null ? 'alert-text-blink 1s infinite' : 'pulse-opacity 1s infinite alternate'
-            }}>
-              {waveCountdown !== null ? 'WARNING' : 'ONLINE'}
-            </span>
-          </div>
-          
-          <div style={{ 
-            position: 'relative', 
-            height: '100%', 
-            display: 'flex', 
-            flexDirection: 'column',
-            overflow: 'hidden'
-          }}>
-            {waveCountdown && (
-              <div 
-                className="wave-alert-overlay"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  padding: '1rem',
-                  zIndex: 2,
-                  animation: waveComplete ? 'wave-alert-flicker 0.5s infinite' : 'none'
-                }}
-              >
-                {waveComplete ? (
-                  <div 
-                    style={{
-                      color: '#ff0000', 
-                      fontSize: '1.5rem',
-                      textAlign: 'center',
-                      textShadow: '0 0 10px #ff0000',
-                      animation: 'alert-text-blink 1s infinite',
-                      fontFamily: 'monospace'
-                    }}
-                  >
-                    <div style={{letterSpacing: '0.2rem'}}>WAVE COMPLETE</div>
-                    <div style={{fontSize: '1.1rem', marginTop: '0.5rem'}}>
-                      NEXT WAVE IN {waveCountdown}
-                    </div>
-                  </div>
-                ) : (
-                  <div 
-                    style={{
-                      color: '#ff9900', 
-                      fontSize: '1.5rem',
-                      textAlign: 'center',
-                      textShadow: '0 0 10px #ff9900',
-                      animation: 'alert-text-blink 1s infinite',
-                      fontFamily: 'monospace'
-                    }}
-                  >
-                    <div style={{letterSpacing: '0.2rem'}}>INCOMING WAVE</div>
-                    <div style={{fontSize: '1.1rem', marginTop: '0.5rem'}}>
-                      {waveCountdown}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Normal console content when no wave notification */}
-            {waveCountdown === null && (
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                height: '100%',
-                width: '100%',
-                padding: '5px 0',
-                overflowY: 'auto',
-                scrollBehavior: 'smooth',
-                maxHeight: '100%'
-              }}>
-                {/* Display messages with oldest at the top, newest at the bottom */}
-                {alertMessages.map((alert, index) => {
-                  // Only animate messages that haven't been animated yet
-                  const shouldAnimate = !animatedMessages.has(alert);
-                  
-                  // When a message has been rendered with animation, add it to the set
-                  if (shouldAnimate) {
-                    // Use timeout to ensure message gets animated before adding to set
-                    setTimeout(() => {
-                      setAnimatedMessages(prev => new Set([...prev, alert]));
-                    }, 2100); // Wait for animation to complete
-                  }
-
-                  // Split message into lines with max 25 characters per line
-                  const words = alert.split(' ');
-                  let lines: string[] = [];
-                  let currentLine = '';
-
-                  words.forEach(word => {
-                    if (currentLine.length + word.length + 1 > 25) {
-                      lines.push(currentLine.trim());
-                      currentLine = word;
-                    } else {
-                      currentLine += (currentLine ? ' ' : '') + word;
-                    }
-                  });
-                  if (currentLine) {
-                    lines.push(currentLine.trim());
-                  }
-                  
-                  return (
-                    <div 
-                      key={`alert-${index}-${alert}`}
-                      style={{ 
-                        color: alert.includes('OBJECTIVE') ? '#00ff00' : '#ff5555', 
-                        fontSize: '0.7rem', 
-                        marginBottom: '8px',
-                        width: '100%',
-                        lineHeight: '1.2'
-                      }}
-                    >
-                      &gt; {lines.map((line, lineIndex) => (
-                        <div 
-                          key={`line-${lineIndex}`}
-                          style={{
-                            display: 'block',
-                            marginLeft: lineIndex > 0 ? '12px' : '0'
-                          }}
-                        >
-                          <span 
-                            className={shouldAnimate ? `typing-animation line-${lineIndex}` : ""}
-                            style={{
-                              display: 'inline-block',
-                              maxWidth: 'calc(100% - 15px)',
-                              wordBreak: 'break-word',
-                              '--delay': lineIndex * 1.2,
-                              '--total-lines': lines.length,
-                              '--line-index': lineIndex
-                            } as React.CSSProperties}
-                          >
-                            {line}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })}
-                {alertMessages.length === 0 && (
-                  <div style={{ color: '#666666', fontSize: '0.7rem', fontStyle: 'italic' }}>
-                    &gt; No messages
-                  </div>
-                )}
-                <div ref={messagesEndRef} /> {/* This element helps us scroll to the bottom */}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Center Panel - Ship Status */}
-        <div className="console-panel retro-text" style={{
-          width: screen.isMobile ? '100%' : '49%', // Increased width
-          height: screen.isMobile ? '140px' : '220px', // Increased height from 180px
-          marginBottom: screen.isMobile ? '10px' : '0',
+          width: screen.isMobile ? '100%' : '30%', // Panel takes 30% of the container width (now effectively 30% of screen)
+          height: screen.isMobile ? '120px' : '180px', // CHANGED: Reduced height for both desktop and mobile
+          marginBottom: screen.isMobile ? '10px' : '0', // Keep margin for mobile stacking
           background: 'rgba(0, 0, 0, 0.7)',
           borderTop: '2px solid #ff00ff',
           borderLeft: '2px solid #ff00ff',
@@ -1631,292 +1572,103 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           display: 'flex',
           flexDirection: 'column'
         }}>
-           {/* ... Keep ALL internal content of the systems panel ... */}
-           <div style={{
-            borderBottom: '1px solid #ff00ff',
-            paddingBottom: '8px',
-            marginBottom: '8px', // Reduced margin slightly
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <span style={{ color: '#ff00ff', fontSize: '0.7rem' }}>SYSTEMS</span>
-            <span style={{ 
-              color: hullStatus.color, 
-              fontSize: '0.6rem',
-              animation: hullStatus.text === 'CRITICAL' ? 'alertBlink 0.5s infinite alternate' : 'none'
-            }}>{hullStatus.text}</span>
-          </div>
-
-          {/* Container for the two columns */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            width: '100%',
-            flex: '1' // Allow this container to grow and fill space
-          }}>
-            {/* Left Column: Ship Systems */}
-            <div style={{
-              flex: '1',
-              marginRight: '8px', // Adjusted space for separator
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              {/* Ship Systems Header with Hologram */}
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
-                {/* Add hologram next to the ship header */}
-                <Hologram modelType="ship" size={35} color="#00aaff" gameIsActive={gameState === 'playing'} />
-                <span style={{ color: '#ff00ff', fontSize: '0.65rem', fontWeight: 'bold' }}>SHIP</span>
-              </div>
-              {/* Dotted line below header */}
-              <div style={{
-                width: '90%', // Make slightly shorter than full width
-                borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', // Dotted magenta line
-                marginBottom: '8px' // Space below line
-              }}></div>
-
-              {/* Boost System */}
-              <div style={{ marginBottom: '10px' }}> 
-                <div style={{
-                  color: '#00ffff', 
-                  marginBottom: '5px',
-                  fontSize: '0.6rem'
-                }}>
-                  BOOST SYSTEM:
-                </div>
-                <div style={{
-                  width: '100%',
-                  height: '16px',
-                  background: 'rgba(0, 0, 0, 0.5)',
-                  border: '2px solid #555555',
-                  borderRadius: '8px',
-                  overflow: 'hidden',
-                  boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)',
-                  position: 'relative'
-                }}>
-                  <div style={{ 
-                    width: boostData.cooldown > 0 
-                      ? `${(1 - boostData.cooldown / 3.0) * 100}%` 
-                      : `${Math.max(0, (boostData.remaining / boostData.maxTime) * 100)}%`,
-                    height: '100%',
-                    background: boostData.cooldown > 0
-                      ? 'linear-gradient(90deg, #330066, #660066)'
-                      : (boostData.active 
-                          ? 'linear-gradient(90deg, #ff00ff, #00ffff)' 
-                          : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
-                    boxShadow: boostData.active 
-                      ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' 
-                      : 'none',
-                    transitionProperty: 'box-shadow, background',
-                    transitionDuration: '0.2s',
-                    transform: 'translateZ(0)',
-                    willChange: 'width'
-                  }}></div>
-                  <div style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    color: boostData.cooldown > 0 ? '#888888' : '#ffffff',
-                    textShadow: '1px 1px 2px #000000',
-                    fontSize: '0.65rem',
-                    fontWeight: 'bold'
-                  }}>
-                    {boostData.cooldown > 0 
-                      ? "CHARGING" 
-                      : boostData.active 
-                        ? "ACTIVE" 
-                        : "READY"
-                    }
-                  </div>
-                </div>
-              </div>
-
-              {/* Hull Status */}
-              <div style={{ marginBottom: '10px' }}> 
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  marginBottom: '5px',
-                  color: hullStatus.color,
-                  fontSize: '0.6rem',
-                  whiteSpace: 'nowrap'
-                }}>
-                  <span>HULL INTEGRITY:</span>
-                </div>
-                <div style={{
-                  width: '100%',
-                  height: '16px',
-                  background: 'rgba(0, 0, 0, 0.5)',
-                  border: '2px solid #555555',
-                  borderRadius: '8px',
-                  overflow: 'hidden',
-                  boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)',
-                  position: 'relative'
-                }}>
-                  <div style={{ 
-                    width: `${playerHealthPercentage}%`,
-                    height: '100%',
-                    background: hullStatus.color,
-                    transition: 'width 0.3s ease'
-                  }}></div>
-                  <div style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    color: '#ffffff',
-                    textShadow: '1px 1px 2px #000000',
-                    fontSize: '0.65rem',
-                    fontWeight: 'bold',
-                    textAlign: 'center',
-                    width: '100%'
-                  }}>
-                    {hullStatus.text}
-                  </div>
-                </div>
-              </div>
-            </div> {/* End Left Column */}
-
-            {/* Vertical Separator - ADD THIS */}
-            <div style={{
-              width: '1px',
-              background: 'rgba(255, 0, 255, 0.3)', // Magenta separator
-              height: '85%', // Adjust height as needed, relative to parent container
-              alignSelf: 'center', // Center it vertically
-              margin: '0 4px' // Add small horizontal margin
-            }}></div>
-
-            {/* Right Column: Dyson Systems */}
-            <div style={{
-              flex: '1',
-              marginLeft: '8px', // Ensure this is set
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              {/* Dyson Systems Header with Hologram */}
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
-                {/* Add hologram next to the Dyson Sphere header */}
-                <Hologram modelType="dysonSphere" size={40} color="#00aaff" gameIsActive={gameState === 'playing'} />
-                <span style={{ color: '#ff00ff', fontSize: '0.65rem', fontWeight: 'bold' }}>DYSON SPHERE</span>
-              </div>
-              {/* Dotted line below header */}
-              <div style={{
-                width: '90%', // Make slightly shorter than full width
-                borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', // Dotted magenta line
-                marginBottom: '8px' // Space below line
-              }}></div>
-
-              {/* Dyson Shield Status */}
-              <div style={{ marginBottom: '10px' }}>
-                <div style={{
-                  color: dysonHealth.shieldPercentage > 70 ? '#21a9f3' : dysonHealth.shieldPercentage > 30 ? '#FFC107' : '#F44336',
-                  marginBottom: '5px',
-                  fontSize: '0.6rem'
-                }}>
-                  DYSON SHIELD:
-                </div>
-                <div style={{
-                  width: '100%',
-                  height: '16px',
-                  background: 'rgba(0, 0, 0, 0.5)',
-                  border: '2px solid #555555',
-                  borderRadius: '8px',
-                  overflow: 'hidden',
-                  boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)',
-                  position: 'relative'
-                }}>
-                  <div style={{ 
-                    width: `${dysonHealth.shieldPercentage}%`,
-                    height: '100%',
-                    background: dysonHealth.shieldPercentage > 70 
-                      ? 'linear-gradient(90deg, #2196F3, #64B5F6)'
-                      : dysonHealth.shieldPercentage > 30
-                      ? 'linear-gradient(90deg, #FFC107, #FFD54F)'
-                      : 'linear-gradient(90deg, #F44336, #E57373)',
-                    transition: 'width 0.3s ease'
-                  }}></div>
-                  <div style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    color: '#ffffff',
-                    textShadow: '1px 1px 2px #000000',
-                    fontSize: '0.65rem',
-                    fontWeight: 'bold'
-                  }}>
-                    {Math.round(dysonHealth.shieldPercentage)}%
-                  </div>
-                </div>
-              </div>
-
-              {/* Dyson Core Status */}
-              <div style={{ marginBottom: '10px' }}>
-                 <div style={{
-                  color: dysonHealth.healthPercentage > 70 ? '#4CAF50' : dysonHealth.healthPercentage > 30 ? '#FFC107' : '#F44336',
-                  marginBottom: '5px',
-                  fontSize: '0.6rem'
-                }}>
-                  DYSON CORE:
-                </div>
-                <div style={{
-                  width: '100%',
-                  height: '16px',
-                  background: 'rgba(0, 0, 0, 0.5)',
-                  border: '2px solid #555555',
-                  borderRadius: '8px',
-                  overflow: 'hidden',
-                  boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)',
-                  position: 'relative'
-                }}>
-                  <div style={{ 
-                    width: `${dysonHealth.healthPercentage}%`,
-                    height: '100%',
-                    background: dysonHealth.healthPercentage > 70
-                      ? 'linear-gradient(90deg, #4CAF50, #81C784)'
-                      : dysonHealth.healthPercentage > 30
-                      ? 'linear-gradient(90deg, #FFC107, #FFD54F)'
-                      : 'linear-gradient(90deg, #F44336, #E57373)',
-                    transition: 'width 0.3s ease',
-                    animation: dysonHealth.healthPercentage < 30 ? 'alertBlinkBackground 0.5s infinite alternate' : 'none'
-                  }}></div>
-                  <div style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    color: '#ffffff',
-                    textShadow: '1px 1px 2px #000000',
-                    fontSize: '0.65rem',
-                    fontWeight: 'bold',
-                    textAlign: 'center',
-                    width: '100%'
-                  }}>
-                    {dysonHealth.healthPercentage > 70 ? 'STABLE' : dysonHealth.healthPercentage > 30 ? 'WARNING' : 'CRITICAL'}
-                  </div>
-                </div>
-              </div>
-            </div> {/* End Right Column */}
-          </div> {/* End Columns Container */}
-          
-          {/* Ship information */}
-          <div style={{
-            marginTop: 'auto',
-            borderTop: '1px solid #555555',
-            paddingTop: '8px',
-            color: '#bbbbbb',
-            fontSize: '0.6rem',
-            display: 'flex',
-            justifyContent: 'space-between'
-          }}>
-            <div>CLASS: DEFENDER</div>
-            <div>ID: DSP-117</div>
-          </div>
+          {/* ... (Internal content of the Ship Status panel remains exactly the same) ... */}
+           <div style={{ borderBottom: '1px solid #ff00ff', paddingBottom: '8px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+             <span style={{ color: '#ff00ff', fontSize: '0.7rem' }}>SYSTEMS</span>
+             <span style={{ color: hullStatus.color, fontSize: '0.6rem', animation: hullStatus.text === 'CRITICAL' ? 'alertBlink 0.5s infinite alternate' : 'none' }}>{hullStatus.text}</span>
+           </div>
+           <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', flex: '1' }}>
+             {/* Left Column: Ship Systems */}
+             <div style={{ flex: '1', marginRight: '8px', display: 'flex', flexDirection: 'column' }}>
+               {/* Ship Systems Header */}
+               <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
+                 <Hologram modelType="ship" size={35} color="#00aaff" gameIsActive={gameState === 'playing'} />
+                 <span style={{ color: '#ff00ff', fontSize: '0.65rem', fontWeight: 'bold' }}>SHIP</span>
+               </div>
+               {/* Dotted line */}
+               <div style={{ width: '90%', borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', marginBottom: '8px' }}></div>
+               {/* Boost System */}
+               <div style={{ marginBottom: '10px' }}>
+                 <div style={{ color: '#00ffff', marginBottom: '5px', fontSize: '0.6rem' }}>BOOST SYSTEM:</div>
+                 <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
+                   {/* Boost Bar Fill */}
+                   <div style={{
+                       width: boostData.cooldown > 0
+                         ? `${(1 - boostData.cooldown / 3.0) * 100}%`
+                         : `${Math.max(0, (boostData.remaining / boostData.maxTime) * 100)}%`,
+                       height: '100%',
+                       background: boostData.cooldown > 0 ? 'linear-gradient(90deg, #330066, #660066)' : (boostData.active ? 'linear-gradient(90deg, #ff00ff, #00ffff)' : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
+                       boxShadow: boostData.active ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' : 'none',
+                       transition: 'width 0.1s linear, background 0.2s, box-shadow 0.2s', // Faster width transition
+                       transform: 'translateZ(0)',
+                       willChange: 'width'
+                   }}></div>
+                   {/* Boost Bar Text */}
+                   <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: boostData.cooldown > 0 ? '#888888' : '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                       {boostData.cooldown > 0 ? "CHARGING" : boostData.active ? "ACTIVE" : "READY"}
+                   </div>
+                 </div>
+               </div>
+               {/* Hull Status */}
+               <div style={{ marginBottom: '10px' }}>
+                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '5px', color: hullStatus.color, fontSize: '0.6rem', whiteSpace: 'nowrap' }}>
+                   <span>HULL INTEGRITY:</span>
+                 </div>
+                 <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
+                   {/* Hull Bar Fill */}
+                   <div style={{ width: `${playerHealthPercentage}%`, height: '100%', background: hullStatus.color, transition: 'width 0.3s ease' }}></div>
+                   {/* Hull Bar Text */}
+                   <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center', width: '100%' }}>
+                       {hullStatus.text}
+                   </div>
+                 </div>
+               </div>
+             </div>
+             {/* Vertical Separator */}
+             <div style={{ width: '1px', background: 'rgba(255, 0, 255, 0.3)', height: '85%', alignSelf: 'center', margin: '0 4px' }}></div>
+             {/* Right Column: Dyson Systems */}
+             <div style={{ flex: '1', marginLeft: '8px', display: 'flex', flexDirection: 'column' }}>
+                {/* Dyson Systems Header */}
+               <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
+                 <Hologram modelType="dysonSphere" size={40} color="#00aaff" gameIsActive={gameState === 'playing'} />
+                 <span style={{ color: '#ff00ff', fontSize: '0.65rem', fontWeight: 'bold' }}>DYSON SPHERE</span>
+               </div>
+                {/* Dotted line */}
+               <div style={{ width: '90%', borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', marginBottom: '8px' }}></div>
+                {/* Dyson Shield Status */}
+               <div style={{ marginBottom: '10px' }}>
+                 <div style={{ color: dysonHealth.shieldPercentage > 70 ? '#21a9f3' : dysonHealth.shieldPercentage > 30 ? '#FFC107' : '#F44336', marginBottom: '5px', fontSize: '0.6rem' }}>DYSON SHIELD:</div>
+                 <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
+                    {/* Shield Bar Fill */}
+                   <div style={{ width: `${dysonHealth.shieldPercentage}%`, height: '100%', background: dysonHealth.shieldPercentage > 70 ? 'linear-gradient(90deg, #2196F3, #64B5F6)' : dysonHealth.shieldPercentage > 30 ? 'linear-gradient(90deg, #FFC107, #FFD54F)' : 'linear-gradient(90deg, #F44336, #E57373)', transition: 'width 0.3s ease' }}></div>
+                    {/* Shield Bar Text */}
+                   <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                     {Math.round(dysonHealth.shieldPercentage)}%
+                   </div>
+                 </div>
+               </div>
+                {/* Dyson Core Status */}
+               <div style={{ marginBottom: '10px' }}>
+                  <div style={{ color: dysonHealth.healthPercentage > 70 ? '#4CAF50' : dysonHealth.healthPercentage > 30 ? '#FFC107' : '#F44336', marginBottom: '5px', fontSize: '0.6rem' }}>DYSON CORE:</div>
+                 <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
+                    {/* Core Bar Fill */}
+                   <div style={{ width: `${dysonHealth.healthPercentage}%`, height: '100%', background: dysonHealth.healthPercentage > 70 ? 'linear-gradient(90deg, #4CAF50, #81C784)' : dysonHealth.healthPercentage > 30 ? 'linear-gradient(90deg, #FFC107, #FFD54F)' : 'linear-gradient(90deg, #F44336, #E57373)', transition: 'width 0.3s ease', animation: dysonHealth.healthPercentage < 30 ? 'alertBlinkBackground 0.5s infinite alternate' : 'none' }}></div>
+                    {/* Core Bar Text */}
+                   <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center', width: '100%' }}>
+                     {dysonHealth.healthPercentage > 70 ? 'STABLE' : dysonHealth.healthPercentage > 30 ? 'WARNING' : 'CRITICAL'}
+                   </div>
+                 </div>
+               </div>
+             </div> {/* End Right Column */}
+           </div> {/* End Columns Container */}
+           {/* Ship information */}
+           <div style={{ marginTop: 'auto', borderTop: '1px solid #555555', paddingTop: '8px', color: '#bbbbbb', fontSize: '0.6rem', display: 'flex', justifyContent: 'space-between' }}>
+             <div>CLASS: DEFENDER</div>
+             <div>ID: DSP-117</div>
+           </div>
         </div>
 
         {/* === REMOVED Right Panel === */}
-        {/* The entire div.console-panel.retro-text for the Radar has been removed */}
 
       </div> {/* End ship-console */}
     </>
