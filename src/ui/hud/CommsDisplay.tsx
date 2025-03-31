@@ -25,22 +25,22 @@ const CommsDisplay: React.FC<CommsDisplayProps> = ({ messages }) => {
 
   return (
     <div style={{
-      position: 'absolute',
-      top: '20px',
-      left: '20px',
-      width: '300px', // Adjust as needed
-      height: '150px', // Adjust as needed
-      background: 'rgba(0, 0, 0, 0.6)',
-      border: '1px solid #ff00ff',
-      borderRadius: '8px',
-      padding: '10px',
+      width: '280px', 
+      height: '180px',
+      background: 'rgba(0, 0, 0, 0.7)',
+      borderTop: '2px solid #ff00ff',
+      borderLeft: '2px solid #ff00ff',
+      borderRight: '2px solid #ff00ff',
+      borderTopLeftRadius: '15px',
+      borderTopRightRadius: '15px',
+      boxShadow: '0 0 15px rgba(255, 0, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2)',
+      padding: '12px',
       overflowY: 'auto',
-      zIndex: 10,
       fontFamily: "'Press Start 2P', monospace",
       fontSize: '0.7rem',
-      color: '#00ff00', // Default comms color
+      color: '#00ff00',
       display: 'flex',
-      flexDirection: 'column',
+      flexDirection: 'column'
     }}>
       <div style={{
         borderBottom: '1px solid #ff00ff',
@@ -67,7 +67,7 @@ const CommsDisplay: React.FC<CommsDisplayProps> = ({ messages }) => {
           const words = alert.split(' ');
           let lines: string[] = [];
           let currentLine = '';
-          const maxChars = 35; // Approx chars based on width/font
+          const maxChars = 30; // Slightly reduced to fit the new width
 
           words.forEach(word => {
             if (currentLine.length + word.length + 1 > maxChars) {

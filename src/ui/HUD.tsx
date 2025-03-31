@@ -655,7 +655,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         // Add to log if new
         if (!processedMessagesLogRef.current.has(newMessage)) {
           processedMessagesLogRef.current.add(newMessage);
-          // Append to keep chronological order in log
+          // Append to keep chronological order in log - don't filter here to maintain full history
           setAlertMessages(prev => [...prev, newMessage]);
         }
         
@@ -1148,6 +1148,24 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
     }
   }, [waveCountdown]);
   
+  // Add effect to show objective message after wave countdown finishes
+  useEffect(() => {
+    // When wave countdown reaches 1, queue up the objective message after a short delay
+    if (waveCountdown === 1) {
+      const timerId = setTimeout(() => {
+        // Add the objective message if it doesn't exist yet
+        const objectiveMessage = "OBJECTIVE: DEFEND THE DYSON SPHERE";
+        if (!processedMessagesLogRef.current.has(objectiveMessage)) {
+          processedMessagesLogRef.current.add(objectiveMessage);
+          setAlertMessages(prev => [...prev, objectiveMessage]);
+          setCurrentObjective(objectiveMessage);
+        }
+      }, 2000); // Show after 2 seconds (after countdown disappears)
+      
+      return () => clearTimeout(timerId);
+    }
+  }, [waveCountdown]);
+  
   // --- Render Logic ---
   if (gameState === 'not_started') {
     return <StartScreen onStartGame={onStartGame} />;
@@ -1477,7 +1495,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
               }}
             >
               {/* Show "First Wave" only if currentWave is 0 (before first wave starts) */}
-              WARNING: THREATS DETECTED
+              WARNING: INCOMING THREATS DETECTED
             </div>
           )}
            <div style={{ fontSize: '2.5rem', color: '#ffffff', fontFamily: "'Press Start 2P', monospace" }}>
@@ -1488,79 +1506,72 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         </div>
       )}
       
-      {/* --- NEW: Top Center Alerts --- */}
-       <div className="top-center-alerts">
-         {currentObjective && (
-           <div className="retro-text" style={{
-               fontSize: '1rem',
-               color: '#00ff00',
-               textShadow: '0 0 8px #00ff00',
-               background: 'rgba(0, 0, 0, 0.5)', // Slight background
-               padding: '4px 8px',
-               borderRadius: '4px',
-               border: '1px solid rgba(0, 255, 0, 0.3)'
-           }}>
-             {currentObjective}
-           </div>
-         )}
-         {currentTempAlert && (
-            <div className="game-alert">
-                {currentTempAlert}
-            </div>
-         )}
-       </div>
-      
       {/* --- NEW: Comms Log Display --- */}
       {/* Render CommsDisplay, passing the collected alertMessages */}
-      {!screen.isMobile && <CommsDisplay messages={alertMessages} />}
+      {/* Moved to bottom left */}
       
       {/* Top Right Radar (as before, Wave display added back below) */}
-      {!screen.isMobile && (
-        <div style={{
-          position: 'absolute', top: '20px', right: '20px', zIndex: 10,
-          display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
-          background: 'rgba(0, 0, 0, 0.6)', padding: '10px', borderRadius: '8px',
-          pointerEvents: 'none',
-        }}>
-          <RadarDisplay radarData={radarData} radarVisualRadius={82} />
-          <div style={{ marginTop: '8px', textAlign: 'right' }}>
-             <div style={{ fontSize: '0.7rem', color: radarData.trackedEntities.filter(e => e.entityType !== 'dysonSphere').length > 0 ? '#ff5555' : '#44ff44', fontFamily: "'Press Start 2P', monospace", textShadow: '1px 1px 1px #000' }}>
-               THREATS: {radarData.trackedEntities.filter(e => e.entityType !== 'dysonSphere').length}
-             </div>
-             {/* Keep Wave display here */}
-             <div style={{ fontSize: '0.7rem', color: '#00ffff', marginTop: '4px', fontFamily: "'Press Start 2P', monospace", textShadow: '1px 1px 1px #000' }}>
-               WAVE: {currentWave > 0 ? currentWave : '-'} {/* Show '-' if wave 0 */}
-             </div>
-          </div>
-        </div>
-      )}
+      {/* Moved to bottom right */}
       
       {/* Player HUD - Bottom (Adjusted Layout) */}
       <div className="ship-console" style={{
         position: 'absolute',
-        bottom: '0px', // CHANGED: Align container to the very bottom
-        left: '50%',
-        transform: `translateX(-50%) ${damageEffect.active ? getShakeTransform() : ''}`,
+        bottom: '0px',
+        left: '0',
+        right: '0',
         display: 'flex',
-        width: '100%', // CHANGED: Make container full width
-        // REMOVED: maxWidth: '1000px',
-        justifyContent: 'center', // Center the panel within this container
-        gap: '0', // No gap needed for single panel
+        width: '100%',
+        justifyContent: 'center',
         alignItems: 'flex-end',
         zIndex: 10,
         pointerEvents: 'none',
-        flexDirection: screen.isMobile ? 'column' : 'row'
+        flexDirection: screen.isMobile ? 'column' : 'row',
+        transform: damageEffect.active ? getShakeTransform() : 'none'
       }}>
 
-        {/* === REMOVED Left Panel - Messages Console === */}
-        {/* The entire div.console-panel.retro-text for messages has been removed */}
+        {/* Left Side - Comms Display */}
+        {!screen.isMobile && (
+          <div style={{ 
+            alignSelf: 'flex-end',
+            marginBottom: '0',
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'flex-end'
+          }}>
+            {/* Wave Information */}
+            <div style={{ 
+              marginRight: '10px',
+              textAlign: 'left',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'flex-end',
+              height: '100%',
+              paddingBottom: '20px'
+            }}>
+              <div style={{ 
+                fontSize: '0.7rem', 
+                color: '#00ffff', 
+                fontFamily: "'Press Start 2P', monospace", 
+                textShadow: '1px 1px 1px #000' 
+              }}>
+                WAVE: {currentWave > 0 ? currentWave : '-'}
+              </div>
+            </div>
+            <CommsDisplay messages={alertMessages.filter(msg => 
+              // Keep messages that:
+              // 1. Contain "OBJECTIVE", 
+              // 2. Don't contain "WAVE"
+              // This ensures the objective message shows while wave alerts are hidden
+              msg.includes("OBJECTIVE") || (!msg.includes("WAVE"))
+            )} />
+          </div>
+        )}
 
-
-        {/* Center Panel - Ship Status (Now the only main panel) */}
+        {/* Center Panel - Ship Status */}
         <div className="console-panel retro-text" style={{
-          width: screen.isMobile ? '100%' : '30%', // Panel takes 30% of the container width (now effectively 30% of screen)
-          height: screen.isMobile ? '120px' : '180px', // CHANGED: Reduced height for both desktop and mobile
-          marginBottom: screen.isMobile ? '10px' : '0', // Keep margin for mobile stacking
+          width: screen.isMobile ? '100%' : '30%',
+          height: screen.isMobile ? '120px' : '180px',
+          marginBottom: screen.isMobile ? '10px' : '0',
           background: 'rgba(0, 0, 0, 0.7)',
           borderTop: '2px solid #ff00ff',
           borderLeft: '2px solid #ff00ff',
@@ -1573,103 +1584,133 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           flexDirection: 'column'
         }}>
           {/* ... (Internal content of the Ship Status panel remains exactly the same) ... */}
-           <div style={{ borderBottom: '1px solid #ff00ff', paddingBottom: '8px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-             <span style={{ color: '#ff00ff', fontSize: '0.7rem' }}>SYSTEMS</span>
-             <span style={{ color: hullStatus.color, fontSize: '0.6rem', animation: hullStatus.text === 'CRITICAL' ? 'alertBlink 0.5s infinite alternate' : 'none' }}>{hullStatus.text}</span>
-           </div>
-           <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', flex: '1' }}>
-             {/* Left Column: Ship Systems */}
-             <div style={{ flex: '1', marginRight: '8px', display: 'flex', flexDirection: 'column' }}>
-               {/* Ship Systems Header */}
-               <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
-                 <Hologram modelType="ship" size={35} color="#00aaff" gameIsActive={gameState === 'playing'} />
-                 <span style={{ color: '#ff00ff', fontSize: '0.65rem', fontWeight: 'bold' }}>SHIP</span>
-               </div>
-               {/* Dotted line */}
-               <div style={{ width: '90%', borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', marginBottom: '8px' }}></div>
-               {/* Boost System */}
-               <div style={{ marginBottom: '10px' }}>
-                 <div style={{ color: '#00ffff', marginBottom: '5px', fontSize: '0.6rem' }}>BOOST SYSTEM:</div>
-                 <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
-                   {/* Boost Bar Fill */}
-                   <div style={{
-                       width: boostData.cooldown > 0
-                         ? `${(1 - boostData.cooldown / 3.0) * 100}%`
-                         : `${Math.max(0, (boostData.remaining / boostData.maxTime) * 100)}%`,
-                       height: '100%',
-                       background: boostData.cooldown > 0 ? 'linear-gradient(90deg, #330066, #660066)' : (boostData.active ? 'linear-gradient(90deg, #ff00ff, #00ffff)' : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
-                       boxShadow: boostData.active ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' : 'none',
-                       transition: 'width 0.1s linear, background 0.2s, box-shadow 0.2s', // Faster width transition
-                       transform: 'translateZ(0)',
-                       willChange: 'width'
-                   }}></div>
-                   {/* Boost Bar Text */}
-                   <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: boostData.cooldown > 0 ? '#888888' : '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                       {boostData.cooldown > 0 ? "CHARGING" : boostData.active ? "ACTIVE" : "READY"}
-                   </div>
-                 </div>
-               </div>
-               {/* Hull Status */}
-               <div style={{ marginBottom: '10px' }}>
-                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '5px', color: hullStatus.color, fontSize: '0.6rem', whiteSpace: 'nowrap' }}>
-                   <span>HULL INTEGRITY:</span>
-                 </div>
-                 <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
-                   {/* Hull Bar Fill */}
-                   <div style={{ width: `${playerHealthPercentage}%`, height: '100%', background: hullStatus.color, transition: 'width 0.3s ease' }}></div>
-                   {/* Hull Bar Text */}
-                   <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center', width: '100%' }}>
-                       {hullStatus.text}
-                   </div>
-                 </div>
-               </div>
-             </div>
-             {/* Vertical Separator */}
-             <div style={{ width: '1px', background: 'rgba(255, 0, 255, 0.3)', height: '85%', alignSelf: 'center', margin: '0 4px' }}></div>
-             {/* Right Column: Dyson Systems */}
-             <div style={{ flex: '1', marginLeft: '8px', display: 'flex', flexDirection: 'column' }}>
-                {/* Dyson Systems Header */}
-               <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
-                 <Hologram modelType="dysonSphere" size={40} color="#00aaff" gameIsActive={gameState === 'playing'} />
-                 <span style={{ color: '#ff00ff', fontSize: '0.65rem', fontWeight: 'bold' }}>DYSON SPHERE</span>
-               </div>
-                {/* Dotted line */}
-               <div style={{ width: '90%', borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', marginBottom: '8px' }}></div>
-                {/* Dyson Shield Status */}
-               <div style={{ marginBottom: '10px' }}>
-                 <div style={{ color: dysonHealth.shieldPercentage > 70 ? '#21a9f3' : dysonHealth.shieldPercentage > 30 ? '#FFC107' : '#F44336', marginBottom: '5px', fontSize: '0.6rem' }}>DYSON SHIELD:</div>
-                 <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
-                    {/* Shield Bar Fill */}
-                   <div style={{ width: `${dysonHealth.shieldPercentage}%`, height: '100%', background: dysonHealth.shieldPercentage > 70 ? 'linear-gradient(90deg, #2196F3, #64B5F6)' : dysonHealth.shieldPercentage > 30 ? 'linear-gradient(90deg, #FFC107, #FFD54F)' : 'linear-gradient(90deg, #F44336, #E57373)', transition: 'width 0.3s ease' }}></div>
-                    {/* Shield Bar Text */}
-                   <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                     {Math.round(dysonHealth.shieldPercentage)}%
-                   </div>
-                 </div>
-               </div>
-                {/* Dyson Core Status */}
-               <div style={{ marginBottom: '10px' }}>
-                  <div style={{ color: dysonHealth.healthPercentage > 70 ? '#4CAF50' : dysonHealth.healthPercentage > 30 ? '#FFC107' : '#F44336', marginBottom: '5px', fontSize: '0.6rem' }}>DYSON CORE:</div>
-                 <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
-                    {/* Core Bar Fill */}
-                   <div style={{ width: `${dysonHealth.healthPercentage}%`, height: '100%', background: dysonHealth.healthPercentage > 70 ? 'linear-gradient(90deg, #4CAF50, #81C784)' : dysonHealth.healthPercentage > 30 ? 'linear-gradient(90deg, #FFC107, #FFD54F)' : 'linear-gradient(90deg, #F44336, #E57373)', transition: 'width 0.3s ease', animation: dysonHealth.healthPercentage < 30 ? 'alertBlinkBackground 0.5s infinite alternate' : 'none' }}></div>
-                    {/* Core Bar Text */}
-                   <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center', width: '100%' }}>
-                     {dysonHealth.healthPercentage > 70 ? 'STABLE' : dysonHealth.healthPercentage > 30 ? 'WARNING' : 'CRITICAL'}
-                   </div>
-                 </div>
-               </div>
-             </div> {/* End Right Column */}
-           </div> {/* End Columns Container */}
-           {/* Ship information */}
-           <div style={{ marginTop: 'auto', borderTop: '1px solid #555555', paddingTop: '8px', color: '#bbbbbb', fontSize: '0.6rem', display: 'flex', justifyContent: 'space-between' }}>
-             <div>CLASS: DEFENDER</div>
-             <div>ID: DSP-117</div>
-           </div>
+          <div style={{ borderBottom: '1px solid #ff00ff', paddingBottom: '8px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: '#ff00ff', fontSize: '0.7rem' }}>SYSTEMS</span>
+            <span style={{ color: hullStatus.color, fontSize: '0.6rem', animation: hullStatus.text === 'CRITICAL' ? 'alertBlink 0.5s infinite alternate' : 'none' }}>{hullStatus.text}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', flex: '1' }}>
+            {/* Left Column: Ship Systems */}
+            <div style={{ flex: '1', marginRight: '8px', display: 'flex', flexDirection: 'column' }}>
+              {/* Ship Systems Header */}
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
+                <Hologram modelType="ship" size={35} color="#00aaff" gameIsActive={gameState === 'playing'} />
+                <span style={{ color: '#ff00ff', fontSize: '0.65rem', fontWeight: 'bold' }}>SHIP</span>
+              </div>
+              {/* Dotted line */}
+              <div style={{ width: '90%', borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', marginBottom: '8px' }}></div>
+              {/* Boost System */}
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{ color: '#00ffff', marginBottom: '5px', fontSize: '0.6rem' }}>BOOST SYSTEM:</div>
+                <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
+                  {/* Boost Bar Fill */}
+                  <div style={{
+                    width: boostData.cooldown > 0
+                      ? `${(1 - boostData.cooldown / 3.0) * 100}%`
+                      : `${Math.max(0, (boostData.remaining / boostData.maxTime) * 100)}%`,
+                    height: '100%',
+                    background: boostData.cooldown > 0 ? 'linear-gradient(90deg, #330066, #660066)' : (boostData.active ? 'linear-gradient(90deg, #ff00ff, #00ffff)' : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
+                    boxShadow: boostData.active ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' : 'none',
+                    transition: 'width 0.1s linear, background 0.2s, box-shadow 0.2s', // Faster width transition
+                    transform: 'translateZ(0)',
+                    willChange: 'width'
+                  }}></div>
+                  {/* Boost Bar Text */}
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: boostData.cooldown > 0 ? '#888888' : '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                    {boostData.cooldown > 0 ? "CHARGING" : boostData.active ? "ACTIVE" : "READY"}
+                  </div>
+                </div>
+              </div>
+              {/* Hull Status */}
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '5px', color: hullStatus.color, fontSize: '0.6rem', whiteSpace: 'nowrap' }}>
+                  <span>HULL INTEGRITY:</span>
+                </div>
+                <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
+                  {/* Hull Bar Fill */}
+                  <div style={{ width: `${playerHealthPercentage}%`, height: '100%', background: hullStatus.color, transition: 'width 0.3s ease' }}></div>
+                  {/* Hull Bar Text */}
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center', width: '100%' }}>
+                    {hullStatus.text}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Vertical Separator */}
+            <div style={{ width: '1px', background: 'rgba(255, 0, 255, 0.3)', height: '85%', alignSelf: 'center', margin: '0 4px' }}></div>
+            {/* Right Column: Dyson Systems */}
+            <div style={{ flex: '1', marginLeft: '8px', display: 'flex', flexDirection: 'column' }}>
+              {/* Dyson Systems Header */}
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
+                <Hologram modelType="dysonSphere" size={40} color="#00aaff" gameIsActive={gameState === 'playing'} />
+                <span style={{ color: '#ff00ff', fontSize: '0.65rem', fontWeight: 'bold' }}>DYSON SPHERE</span>
+              </div>
+              {/* Dotted line */}
+              <div style={{ width: '90%', borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', marginBottom: '8px' }}></div>
+              {/* Dyson Shield Status */}
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{ color: dysonHealth.shieldPercentage > 70 ? '#21a9f3' : dysonHealth.shieldPercentage > 30 ? '#FFC107' : '#F44336', marginBottom: '5px', fontSize: '0.6rem' }}>DYSON SHIELD:</div>
+                <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
+                  {/* Shield Bar Fill */}
+                  <div style={{ width: `${dysonHealth.shieldPercentage}%`, height: '100%', background: dysonHealth.shieldPercentage > 70 ? 'linear-gradient(90deg, #2196F3, #64B5F6)' : dysonHealth.shieldPercentage > 30 ? 'linear-gradient(90deg, #FFC107, #FFD54F)' : 'linear-gradient(90deg, #F44336, #E57373)', transition: 'width 0.3s ease' }}></div>
+                  {/* Shield Bar Text */}
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                    {Math.round(dysonHealth.shieldPercentage)}%
+                  </div>
+                </div>
+              </div>
+              {/* Dyson Core Status */}
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{ color: dysonHealth.healthPercentage > 70 ? '#4CAF50' : dysonHealth.healthPercentage > 30 ? '#FFC107' : '#F44336', marginBottom: '5px', fontSize: '0.6rem' }}>DYSON CORE:</div>
+                <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
+                  {/* Core Bar Fill */}
+                  <div style={{ width: `${dysonHealth.healthPercentage}%`, height: '100%', background: dysonHealth.healthPercentage > 70 ? 'linear-gradient(90deg, #4CAF50, #81C784)' : dysonHealth.healthPercentage > 30 ? 'linear-gradient(90deg, #FFC107, #FFD54F)' : 'linear-gradient(90deg, #F44336, #E57373)', transition: 'width 0.3s ease', animation: dysonHealth.healthPercentage < 30 ? 'alertBlinkBackground 0.5s infinite alternate' : 'none' }}></div>
+                  {/* Core Bar Text */}
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center', width: '100%' }}>
+                    {dysonHealth.healthPercentage > 70 ? 'STABLE' : dysonHealth.healthPercentage > 30 ? 'WARNING' : 'CRITICAL'}
+                  </div>
+                </div>
+              </div>
+            </div> {/* End Right Column */}
+          </div> {/* End Columns Container */}
+          {/* Ship information */}
+          <div style={{ marginTop: 'auto', borderTop: '1px solid #555555', paddingTop: '8px', color: '#bbbbbb', fontSize: '0.6rem', display: 'flex', justifyContent: 'space-between' }}>
+            <div>CLASS: DEFENDER</div>
+            <div>ID: DSP-117</div>
+          </div>
         </div>
 
-        {/* === REMOVED Right Panel === */}
-
+        {/* Right Side - Radar Display */}
+        {!screen.isMobile && (
+          <div style={{ 
+            alignSelf: 'flex-end',
+            marginBottom: '0',
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'flex-end'
+          }}>
+            <RadarDisplay radarData={radarData} radarVisualRadius={82} />
+            
+            {/* Threats Information - moved to right of radar */}
+            <div style={{ 
+              marginLeft: '10px',
+              textAlign: 'left',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'flex-end',
+              height: '100%',
+              paddingBottom: '20px'
+            }}>
+              <div style={{ 
+                fontSize: '0.7rem', 
+                color: radarData.trackedEntities.filter(e => e.entityType !== 'dysonSphere').length > 0 ? '#ff5555' : '#44ff44', 
+                fontFamily: "'Press Start 2P', monospace", 
+                textShadow: '1px 1px 1px #000' 
+              }}>
+                THREATS: {radarData.trackedEntities.filter(e => e.entityType !== 'dysonSphere').length}
+              </div>
+            </div>
+          </div>
+        )}
       </div> {/* End ship-console */}
     </>
   );
