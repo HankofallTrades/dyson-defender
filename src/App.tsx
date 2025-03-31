@@ -21,51 +21,59 @@ function App() {
   // Create a single AudioManager instance that will be shared
   const audioManager = useMemo(() => new AudioManager(), []);
 
-  // Load sounds and set up audio initialization
+  // Load sounds and set up audio initialization based on user interaction
   useEffect(() => {
     const loadAudio = async () => {
       try {
         await audioManager.loadSounds();
-        console.log('[App] Audio files loaded, waiting for user interaction to play');
-        
-        // Try to play soundtrack immediately (will likely be blocked by browser)
-        try {
-          audioManager.playSoundtrack();
-        } catch (error) {
-          console.warn('[App] Autoplay was prevented by the browser. Click to play audio.');
-        }
-        
-        // Set up a one-time click handler on the document to enable audio
+        console.log('[App] Audio files loaded, waiting for user interaction.');
+
+        // DO NOT try to play sound here initially due to autoplay policies.
+
+        // Set up interaction handler ONLY if not already initialized
         if (!audioInitialized) {
           const handleUserInteraction = () => {
-            console.log('[App] User interaction detected, playing soundtrack');
-            audioManager.playSoundtrack();
-            setAudioInitialized(true);
-            
-            // Remove the event listeners after successful playback
-            document.removeEventListener('click', handleUserInteraction);
-            document.removeEventListener('keydown', handleUserInteraction);
-            document.removeEventListener('touchstart', handleUserInteraction);
+            // Attempt to resume context (best handled inside AudioManager)
+            // audioManager.resumeContextIfNeeded(); // Let's add this later in AudioManager
+
+            console.log('[App] User interaction detected, attempting to play soundtrack');
+            try {
+               audioManager.playSoundtrack(); // Play the sound
+               setAudioInitialized(true); // Mark as initialized
+               console.log('[App] Soundtrack started after interaction.');
+               // No need to manually remove listeners here if using { once: true }
+            } catch (error) {
+               console.error('[App] Error playing soundtrack after interaction:', error);
+            }
           };
-          
-          document.addEventListener('click', handleUserInteraction);
-          document.addEventListener('keydown', handleUserInteraction);
-          document.addEventListener('touchstart', handleUserInteraction);
+
+          console.log('[App] Adding interaction listeners for audio.');
+          document.addEventListener('click', handleUserInteraction, { once: true });
+          document.addEventListener('keydown', handleUserInteraction, { once: true });
+          document.addEventListener('touchstart', handleUserInteraction, { once: true });
+
+          // Return a cleanup function for when the component unmounts or dependencies change
+          // This cleanup is primarily for unmounting, as { once: true } handles removal after interaction.
+          return () => {
+              console.log('[App] Cleanup: Removing interaction listeners.');
+              // Remove listeners by the *same* function reference
+              document.removeEventListener('click', handleUserInteraction);
+              document.removeEventListener('keydown', handleUserInteraction);
+              document.removeEventListener('touchstart', handleUserInteraction);
+          };
+        } else {
+           console.log('[App] Audio already initialized, skipping interaction listener setup.');
         }
       } catch (error) {
         console.error('[App] Error loading audio:', error);
       }
     };
-    
+
     loadAudio();
-    
-    // Clean up event listeners when component unmounts
-    return () => {
-      document.removeEventListener('click', () => {});
-      document.removeEventListener('keydown', () => {});
-      document.removeEventListener('touchstart', () => {});
-    };
-  }, [audioManager, audioInitialized]);
+
+    // Dependency array includes audioInitialized now.
+    // The cleanup function returned above handles removal.
+  }, [audioManager, audioInitialized]); // Add audioInitialized as a dependency
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -105,13 +113,24 @@ function App() {
 
   const handleStartGame = () => {
     if (gameRef.current) {
-      gameRef.current.startGame();
-      
-      // Ensure audio is playing when game starts
+      // --- Ensure audio is initialized on Start Game click ---
       if (!audioInitialized) {
-        audioManager.playSoundtrack();
-        setAudioInitialized(true);
+        console.log('[App] Starting soundtrack via Start Game button.');
+        try {
+          // Attempt to resume context (best handled inside AudioManager)
+          // audioManager.resumeContextIfNeeded(); // Let's add this later in AudioManager
+          audioManager.playSoundtrack();
+          setAudioInitialized(true); // Mark as initialized
+          // Listeners should be removed by {once: true} or the interaction handler itself.
+          console.log('[App] Soundtrack started via Start Game button.');
+        } catch (error) {
+           console.error('[App] Error starting soundtrack from Start Game button:', error);
+        }
       }
+      // ------------------------------------------------------
+
+      gameRef.current.startGame();
+      gameRef.current.requestPointerLock(); // Request pointer lock *after* starting game
     }
   };
 

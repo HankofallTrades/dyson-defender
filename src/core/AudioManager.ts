@@ -15,6 +15,7 @@ export class AudioManager {
   private sfxVolume: number = 0.7;
   private muted: boolean = false;
   private audioEnabled: boolean = true;
+  private isContextResumed: boolean = false; // Track AudioContext state
 
   constructor() {
     console.log('[AudioManager] Initializing...');
@@ -38,6 +39,31 @@ export class AudioManager {
     if (!this.audioEnabled) return;
     
     camera.add(this.listener);
+  }
+
+  /**
+   * Attempts to resume the AudioContext if it's suspended.
+   * This is often required due to browser autoplay policies.
+   */
+  public async resumeContextIfNeeded(): Promise<void> {
+    if (!this.audioEnabled || this.isContextResumed) return;
+
+    const context = this.listener.context;
+    if (context.state === 'suspended') {
+      console.log('[AudioManager] AudioContext suspended, attempting to resume...');
+      try {
+        await context.resume();
+        this.isContextResumed = true;
+        console.log('[AudioManager] AudioContext resumed successfully.');
+      } catch (error) {
+        console.warn('[AudioManager] Failed to resume AudioContext:', error);
+        // It might remain suspended until another interaction
+        // isContextResumed remains false
+      }
+    } else {
+      this.isContextResumed = true; // Already running or closed
+      console.log(`[AudioManager] AudioContext state is ${context.state}, no resume needed.`);
+    }
   }
 
   /**
@@ -91,41 +117,57 @@ export class AudioManager {
   }
 
   /**
-   * Play a sound with the specified key
+   * Play a sound effect (non-soundtrack) with the specified key.
+   * Stops any existing instance of the same sound effect before playing.
    * @param key The key of the sound to play
    * @param loop Whether the sound should loop
    * @param volume Optional volume override
-   * @returns The audio object that was created
+   * @returns The audio object that was created or undefined if failed
    */
-  public playSound(key: string, loop: boolean = false, volume?: number): THREE.Audio | undefined {
-    if (!this.audioEnabled || this.muted) return;
+  public async playSound(key: string, loop: boolean = false, volume?: number): Promise<THREE.Audio | undefined> {
+    if (key === 'soundtrack') {
+      console.warn('[AudioManager] Use playSoundtrack() method for the soundtrack.');
+      await this.playSoundtrack(); // Redirect to the proper method
+      return this.audioSources.get('soundtrack');
+    }
     
+    if (!this.audioEnabled || this.muted) return undefined;
+
+    // --- Attempt to resume context before playing --- 
+    await this.resumeContextIfNeeded();
+    if (!this.isContextResumed) {
+      console.warn(`[AudioManager] Cannot play sound "${key}", AudioContext not active.`);
+      return undefined;
+    }
+    // ----------------------------------------------
+
     const buffer = this.sounds.get(key);
     if (!buffer) {
       console.warn(`[AudioManager] Sound "${key}" not found`);
-      return;
+      return undefined;
     }
-    
-    // Stop existing instance of this sound if it exists
+
+    // Stop existing SFX instance explicitly *before* creating the new one
     this.stopSound(key);
-    
+
     // Create new audio source
     const sound = new THREE.Audio(this.listener);
     sound.setBuffer(buffer);
-    
+
     // Set volume based on sound type with optional override
-    if (volume !== undefined) {
-      sound.setVolume(volume);
-    } else {
-      sound.setVolume(key === 'soundtrack' ? this.soundtrackVolume : this.sfxVolume);
-    }
-    
+    const finalVolume = volume !== undefined ? volume : this.sfxVolume;
+    sound.setVolume(finalVolume);
+
     sound.setLoop(loop);
+    sound.offset = 0; // Explicitly start from the beginning
     sound.play();
-    
+
     // Store the audio source for later control
-    this.audioSources.set(key, sound);
-    
+    // Non-looping sounds don't strictly need storing unless we want to stop them early
+    if (loop) {
+      this.audioSources.set(key, sound);
+    }
+
     return sound;
   }
 
@@ -137,21 +179,67 @@ export class AudioManager {
     if (!this.audioEnabled) return;
     
     const sound = this.audioSources.get(key);
-    if (sound && sound.isPlaying) {
-      sound.stop();
-      this.audioSources.delete(key);
+    if (sound) {
+      if (sound.isPlaying) {
+        sound.stop();
+      }
+      // Reset offset specifically for the soundtrack when stopped
+      if (key === 'soundtrack') {
+        sound.offset = 0;
+        console.log('[AudioManager] Explicitly reset soundtrack offset on stop.');
+      }
+      // Remove the source only if we stopped it successfully
+      // Keep the soundtrack source even when stopped.
+      if (key !== 'soundtrack') {
+        this.audioSources.delete(key);
+      }
     }
   }
 
   /**
-   * Play the game soundtrack
+   * Play the game soundtrack, ensuring it starts cleanly and loops.
+   * Manages a persistent THREE.Audio instance for the soundtrack.
    */
-  public playSoundtrack(): void {
-    if (!this.audioEnabled) return;
-    
-    const result = this.playSound('soundtrack', true);
-    if (!result) {
-      console.warn('[AudioManager] Could not play soundtrack');
+  public async playSoundtrack(): Promise<void> {
+    if (!this.audioEnabled || this.muted) return;
+
+    await this.resumeContextIfNeeded();
+    if (!this.isContextResumed) {
+      console.warn('[AudioManager] Cannot play soundtrack, AudioContext not active.');
+      return;
+    }
+
+    const buffer = this.sounds.get('soundtrack');
+    if (!buffer) {
+      console.warn('[AudioManager] Soundtrack buffer not loaded.');
+      return;
+    }
+
+    let soundtrack = this.audioSources.get('soundtrack');
+
+    if (soundtrack) {
+      // Soundtrack object exists
+      if (!soundtrack.isPlaying) {
+        console.log('[AudioManager] Resuming existing soundtrack instance.');
+        soundtrack.offset = 0; // Ensure it starts from beginning if paused/stopped
+        soundtrack.play();
+      } else {
+        // Already playing, ensure loop and volume are correct (might have changed)
+        soundtrack.setLoop(true);
+        soundtrack.setVolume(this.soundtrackVolume);
+      }
+    } else {
+      // Soundtrack object does not exist, create it
+      console.log('[AudioManager] Creating new soundtrack instance.');
+      soundtrack = new THREE.Audio(this.listener);
+      soundtrack.setBuffer(buffer);
+      soundtrack.setVolume(this.soundtrackVolume);
+      soundtrack.setLoop(true);
+      soundtrack.offset = 0; // Start from the beginning
+      soundtrack.play();
+
+      // Store the persistent soundtrack source
+      this.audioSources.set('soundtrack', soundtrack);
     }
   }
 
@@ -162,21 +250,23 @@ export class AudioManager {
     if (!this.audioEnabled) return;
     
     const soundtrack = this.audioSources.get('soundtrack');
+    // Only pause, don't remove from audioSources
     if (soundtrack && soundtrack.isPlaying) {
+      console.log('[AudioManager] Pausing soundtrack.');
       soundtrack.pause();
+      // Explicitly set offset to 0 immediately after pausing
+      soundtrack.offset = 0;
+      console.log('[AudioManager] Explicitly reset soundtrack offset on pause.');
     }
   }
 
   /**
-   * Resume the game soundtrack
+   * Resume the game soundtrack (simple alias for playSoundtrack now)
    */
   public resumeSoundtrack(): void {
-    if (!this.audioEnabled) return;
-    
-    const soundtrack = this.audioSources.get('soundtrack');
-    if (soundtrack && !soundtrack.isPlaying) {
-      soundtrack.play();
-    }
+    console.log('[AudioManager] Attempting to resume soundtrack.');
+    // playSoundtrack now handles resuming correctly
+    this.playSoundtrack();
   }
 
   /**
