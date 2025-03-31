@@ -7,6 +7,7 @@ import GameOverScreen from './GameOverScreen';
 import PauseScreen from './PauseScreen';
 import './styles/retro.css';
 import { Vector3, Camera, WebGLRenderer, Scene, PerspectiveCamera, MeshBasicMaterial, BoxGeometry, SphereGeometry, IcosahedronGeometry, EdgesGeometry, LineSegments, LineBasicMaterial, DoubleSide, Group, AmbientLight, MathUtils, TorusGeometry, PointLight, BufferGeometry, Line } from 'three';
+import RadarDisplay from './hud/RadarDisplay'; // <-- ADDED IMPORT
 
 // Hologram component for rendering small 3D wireframe models
 const Hologram: React.FC<{
@@ -1096,7 +1097,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
     );
   }
   
-  // Main game HUD (only show when playing)
+  // Main game HUD
   return (
     <>
       {/* Damage effect overlay */}
@@ -1358,25 +1359,73 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         </div>
       )}
       
-      {/* Player HUD - Bottom */}
+      {/* === NEW: Top Right Radar Container === */}
+      {!screen.isMobile && (
+        <div style={{
+          position: 'absolute',
+          top: '20px',        // Position from top
+          right: '20px',       // Position from right
+          zIndex: 10,          // Ensure it's above game, below modals
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end', // Align content (labels) to the right
+          background: 'rgba(0, 0, 0, 0.6)', // Keeping background
+          padding: '10px', // Keeping padding
+          borderRadius: '8px', // Keeping border radius
+          // border: '1px solid #ff00ff', // REMOVED border
+          // boxShadow: '0 0 10px rgba(255, 0, 255, 0.4)', // REMOVED glow
+          pointerEvents: 'none', // Allow clicks to pass through usually
+        }}>
+          {/* Render the Radar Display Component with updated size prop */}
+          <RadarDisplay radarData={radarData} radarVisualRadius={82} />
+
+          {/* Threats Label below the radar */}
+          <div style={{ marginTop: '8px', textAlign: 'right' }}>
+            <div style={{
+              fontSize: '0.7rem',
+              color: radarData.trackedEntities.filter(e => e.entityType !== 'dysonSphere').length > 0 ? '#ff5555' : '#44ff44',
+              fontFamily: "'Press Start 2P', monospace",
+              textShadow: '1px 1px 1px #000',
+            }}>
+              THREATS: {radarData.trackedEntities.filter(e => e.entityType !== 'dysonSphere').length}
+            </div>
+            {/* Wave Label REMOVED */}
+            {/* <div style={{
+              fontSize: '0.7rem',
+              color: '#00ffff',
+              marginTop: '4px',
+              fontFamily: "'Press Start 2P', monospace",
+              textShadow: '1px 1px 1px #000',
+            }}>
+              WAVE: {currentWave}
+            </div> */}
+          </div>
+        </div>
+      )}
+      {/* === END: Top Right Radar Container === */}
+
+
+      {/* Player HUD - Bottom (Adjusted Layout) */}
       <div className="ship-console" style={{
         position: 'absolute',
         bottom: '40px', // Raised from 20px
         left: '50%',
         transform: `translateX(-50%) ${damageEffect.active ? getShakeTransform() : ''}`,
         display: 'flex',
-        width: '90%',
-        maxWidth: '1200px',
+        width: '90%',           // Adjust as needed
+        maxWidth: '1000px',     // Reduce max width slightly?
         // height adjustment handled by individual panels now if needed, or set a min-height
-        justifyContent: 'space-between',
+        justifyContent: 'center', // Center the two remaining panels
+        gap: '2%',              // Add space between panels
         alignItems: 'flex-end',
         zIndex: 10,
         pointerEvents: 'none',
         flexDirection: screen.isMobile ? 'column' : 'row'
       }}>
+
         {/* Left Panel - Messages Console */}
         <div className="console-panel retro-text" style={{
-          width: screen.isMobile ? '100%' : '32%',
+          width: screen.isMobile ? '100%' : '49%', // Increased width
           height: screen.isMobile ? '120px' : '220px', // Match height of center panel for consistency
           marginBottom: screen.isMobile ? '10px' : '0',
           display: screen.isMobile && !waveCountdown ? 'none' : 'flex', // Hide on mobile when no wave activity
@@ -1392,6 +1441,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           flexDirection: 'column',
           minWidth: '350px'
         }}>
+          {/* ... Keep ALL internal content of the messages panel ... */}
           <div style={{
             borderBottom: '1px solid #ff00ff',
             paddingBottom: '8px',
@@ -1564,10 +1614,10 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
             )}
           </div>
         </div>
-        
+
         {/* Center Panel - Ship Status */}
         <div className="console-panel retro-text" style={{
-          width: screen.isMobile ? '100%' : '32%',
+          width: screen.isMobile ? '100%' : '49%', // Increased width
           height: screen.isMobile ? '140px' : '220px', // Increased height from 180px
           marginBottom: screen.isMobile ? '10px' : '0',
           background: 'rgba(0, 0, 0, 0.7)',
@@ -1581,7 +1631,8 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           display: 'flex',
           flexDirection: 'column'
         }}>
-          <div style={{
+           {/* ... Keep ALL internal content of the systems panel ... */}
+           <div style={{
             borderBottom: '1px solid #ff00ff',
             paddingBottom: '8px',
             marginBottom: '8px', // Reduced margin slightly
@@ -1863,315 +1914,11 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
             <div>ID: DSP-117</div>
           </div>
         </div>
-        
-        {/* Right Panel - Radar */}
-        <div className="console-panel retro-text" style={{
-          width: screen.isMobile ? '100%' : '32%',
-          height: screen.isMobile ? '120px' : '220px', // Match height of center panel for consistency
-          display: screen.isMobile ? 'none' : 'flex', // Hide radar on mobile
-          background: 'rgba(0, 0, 0, 0.7)',
-          borderTop: '2px solid #ff00ff',
-          borderLeft: '2px solid #ff00ff',
-          borderRight: '2px solid #ff00ff',
-          borderTopLeftRadius: '15px',
-          borderTopRightRadius: '15px',
-          boxShadow: '0 0 15px rgba(255, 0, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2)',
-          padding: '12px',
-          flexDirection: 'column'
-        }}>
-          <div style={{
-            borderBottom: '1px solid #ff00ff',
-            paddingBottom: '8px',
-            marginBottom: '8px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <span style={{ color: '#ff00ff', fontSize: '0.7rem' }}>RADAR</span>
-            <span style={{ 
-              color: radarData.trackedEntities.filter(entity => entity.entityType !== 'dysonSphere').length > 0 ? '#ff5555' : '#00ffff', 
-              fontSize: '0.6rem',
-              animation: 'pulse-opacity 1s infinite alternate'
-            }}>
-              {radarData.trackedEntities.filter(entity => entity.entityType !== 'dysonSphere').length > 0 ? 'THREATS DETECTED' : 'SCANNING'}
-            </span>
-          </div>
-          
-          {/* Radar Display */}
-          <div style={{
-            flex: '1',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative'
-          }}>
-            {/* Radar circle */}
-            <div style={{
-              width: '120px',
-              height: '120px',
-              borderRadius: '50%',
-              border: '2px solid #00ffff',
-              boxShadow: 'inset 0 0 15px rgba(0, 255, 255, 0.3)',
-              position: 'relative'
-            }}>
-              {/* Center dot */}
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                background: '#00ffff',
-                transform: 'translate(-50%, -50%)',
-                boxShadow: '0 0 5px #00ffff',
-              }}></div>
-              
-              {/* Direction indicator - points up to show player's forward direction */}
-              <div style={{
-                position: 'absolute',
-                top: '40%',
-                left: '50%',
-                width: '0',
-                height: '0',
-                borderLeft: '5px solid transparent',
-                borderRight: '5px solid transparent',
-                borderBottom: '10px solid #00ffff',
-                transform: 'translateX(-50%)',
-                opacity: 0.8,
-              }}></div>
-              
-              {/* Radar grid lines */}
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '0',
-                right: '0',
-                height: '1px',
-                background: 'rgba(0, 255, 255, 0.3)'
-              }}></div>
-              <div style={{
-                position: 'absolute',
-                top: '0',
-                bottom: '0',
-                left: '50%',
-                width: '1px',
-                background: 'rgba(0, 255, 255, 0.3)'
-              }}></div>
-              
-              {/* Radar concentric circles */}
-              <div style={{
-                position: 'absolute',
-                top: '25%',
-                left: '25%',
-                right: '25%',
-                bottom: '25%',
-                borderRadius: '50%',
-                border: '1px solid rgba(0, 255, 255, 0.2)'
-              }}></div>
-              
-              {/* Improved classic radar sweep line */}
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                width: '0',
-                height: '0',
-                zIndex: 5,
-                animation: 'radar-scan 2s linear infinite',
-                transformOrigin: 'center center',
-              }}>
-                <div style={{
-                  position: 'absolute',
-                  left: '0',
-                  top: '0',
-                  width: '60px', // Radius length
-                  height: '1.5px',
-                  background: 'linear-gradient(90deg, rgba(0, 255, 255, 0.6), rgba(0, 255, 255, 0.05))',
-                  transform: 'rotate(90deg)',
-                  transformOrigin: 'left center',
-                  boxShadow: '0 0 3px rgba(0, 255, 255, 0.5)',
-                }}></div>
-              </div>
-              
-              {/* Enemy blips - use actual enemy positions from radar data */}
-              {radarData.trackedEntities.map((entity, index) => {
-                // Using fixed 250 unit radius for the radar
-                const radarRadius = 250;
-                
-                // Calculate direction vector components
-                let dirX = entity.direction.x;
-                let dirZ = entity.direction.z;
-                
-                // Calculate actual distance in X-Z plane (ignoring Y/elevation)
-                const xzDistance = Math.sqrt(
-                  Math.pow(entity.direction.x * entity.distance, 2) + 
-                  Math.pow(entity.direction.z * entity.distance, 2)
-                );
-                
-                // Scale the direction by the distance - closer to max distance = closer to edge
-                // This creates the correct relationship: further entities are toward the edge
-                const distanceRatio = Math.min(xzDistance / radarRadius, 1);
-                dirX *= distanceRatio;
-                dirZ *= distanceRatio;
-                
-                // Map to radar display coordinates (55px is visual radar radius)
-                const radarDisplayRadius = 55;
-                const x = dirX * radarDisplayRadius;
-                const y = -dirZ * radarDisplayRadius; // Negative because screen Y is inverted
-                
-                // Check vertical position (y-coordinate in 3D space)
-                // If significantly above or below player, show triangle instead of dot
-                const verticalThreshold = 10; // Units difference to show elevation indicator
-                const isAbove = entity.direction.y > verticalThreshold;
-                const isBelow = entity.direction.y < -verticalThreshold;
-                
-                // Special case for the Dyson Sphere
-                if (entity.entityType === 'dysonSphere') {
-                  // Dyson Sphere is displayed as a blue circle
-                  return (
-                    <div 
-                      key={entity.entityId}
-                      style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        width: '10px',
-                        height: '10px',
-                        borderRadius: '50%',
-                        border: '2px solid #00ff00',
-                        background: 'rgba(0, 255, 0, 0.3)',
-                        transform: `translate(${x}px, ${y}px)`,
-                        boxShadow: '0 0 6px #00ff00',
-                        zIndex: 10 // Keep Dyson Sphere on top
-                      }}
-                    ></div>
-                  );
-                }
 
-                // Special case for asteroids
-                if (entity.entityType === 'asteroid') {
-                  const asteroidSize = Math.max(3, 6 - (xzDistance / 500)); // Adjusted scale for new radius
-                  
-                  // If asteroid is above or below, render triangle with asteroid color
-                  if (isAbove || isBelow) {
-                    return (
-                      <div 
-                        key={entity.entityId}
-                        style={{
-                          position: 'absolute',
-                          top: '50%',
-                          left: '50%',
-                          width: '0',
-                          height: '0',
-                          borderLeft: `${asteroidSize}px solid transparent`,
-                          borderRight: `${asteroidSize}px solid transparent`,
-                          borderBottom: isAbove ? `${asteroidSize * 2}px solid #ff9900` : 'none',
-                          borderTop: isBelow ? `${asteroidSize * 2}px solid #ff9900` : 'none',
-                          transform: `translate(${x - asteroidSize}px, ${y - (isAbove ? asteroidSize : 0)}px)`,
-                          boxShadow: '0 0 8px #ff9900',
-                          animation: 'pulse-opacity 0.5s infinite alternate', // Faster pulsing
-                          zIndex: 3 // Higher than regular enemies
-                        }}
-                      ></div>
-                    );
-                  }
-                  
-                  // At similar elevation, use diamond shape
-                  return (
-                    <div 
-                      key={entity.entityId}
-                      style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        width: `${asteroidSize}px`,
-                        height: `${asteroidSize}px`,
-                        background: '#ff9900', // Orange warning color
-                        transform: `translate(${x}px, ${y}px) rotate(45deg)`, // Diamond shape
-                        boxShadow: '0 0 8px #ff9900',
-                        animation: 'pulse-opacity 0.5s infinite alternate', // Faster pulsing
-                        zIndex: 3 // Higher than regular enemies
-                      }}
-                    ></div>
-                  );
-                }
-                
-                // Handle regular enemies
-                // Fixed red color for other enemies
-                const color = '#ff0000';
-                
-                // Size based on distance - closer = larger, with minimum size
-                const size = Math.max(2, 4 - (xzDistance / 500)); // Adjusted scale for new radius
-                
-                // Fixed pulse speed
-                const pulseSpeed = 0.8;
-                
-                // If above or below, render triangle, otherwise render dot
-                if (isAbove || isBelow) {
-                  return (
-                    <div 
-                      key={entity.entityId}
-                      style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        width: '0',
-                        height: '0',
-                        borderLeft: `${size}px solid transparent`,
-                        borderRight: `${size}px solid transparent`,
-                        borderBottom: isAbove ? `${size * 2}px solid ${color}` : 'none',
-                        borderTop: isBelow ? `${size * 2}px solid ${color}` : 'none',
-                        transform: `translate(${x - size}px, ${y - (isAbove ? size : 0)}px)`,
-                        animation: `pulse-opacity ${pulseSpeed}s infinite alternate`
-                      }}
-                    ></div>
-                  );
-                } else {
-                  // Standard dot for enemies at similar elevation
-                  return (
-                    <div 
-                      key={entity.entityId}
-                      style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        width: `${size}px`,
-                        height: `${size}px`,
-                        borderRadius: '50%',
-                        background: color,
-                        transform: `translate(${x}px, ${y}px)`,
-                        boxShadow: `0 0 3px ${color}`,
-                        animation: `pulse-opacity ${pulseSpeed}s infinite alternate`
-                      }}
-                    ></div>
-                  );
-                }
-              })}
-            </div>
-            
-            {/* Enemy count */}
-            <div style={{
-              position: 'absolute',
-              bottom: '10px',
-              right: '15px',
-              fontSize: '0.6rem',
-              color: radarData.trackedEntities.filter(entity => entity.entityType !== 'dysonSphere').length > 0 ? '#ff5555' : '#44ff44'
-            }}>
-              THREATS: {radarData.trackedEntities.filter(entity => entity.entityType !== 'dysonSphere').length}
-            </div>
-            <div style={{
-              position: 'absolute',
-              bottom: '10px',
-              left: '15px',
-              fontSize: '0.6rem',
-              color: '#00ffff'
-            }}>
-              WAVE: {currentWave}
-            </div>
-          </div>
-        </div>
-      </div>
+        {/* === REMOVED Right Panel === */}
+        {/* The entire div.console-panel.retro-text for the Radar has been removed */}
+
+      </div> {/* End ship-console */}
     </>
   );
 };
