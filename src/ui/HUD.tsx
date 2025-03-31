@@ -804,16 +804,30 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
       // Update floating scores if camera is available
       if (camera) {
         const scoreEntities = world.getEntitiesWith(['FloatingScore', 'Position']);
+        
+        // --- REMOVE DEBUG LOGS ---
+        // if (scoreEntities.length > 0 && Math.random() < 0.1) {
+        //   console.log(`[DEBUG] HUD: Processing ${scoreEntities.length} floating score entities for display`);
+        // }
+        // --- END DEBUG LOG ---
+        
         const newFloatingScores = scoreEntities.map(entity => {
           const scoreComp = world.getComponent<FloatingScore>(entity, 'FloatingScore');
           const positionComp = world.getComponent<Position>(entity, 'Position');
           
+          // --- REMOVE DEBUG LOGS AND SIMPLIFY ---
           if (!scoreComp || !positionComp) return null;
           
           // Convert world position to screen coordinates
           const screenPos = worldToScreen(positionComp, camera);
           
           if (!screenPos) return null;
+          
+          // --- REMOVE DEBUG LOGS ---
+          // if (Math.random() < 0.1) {
+          //   console.log(`[DEBUG] HUD: Converted world pos (${positionComp.x.toFixed(2)}, ${positionComp.y.toFixed(2)}, ${positionComp.z.toFixed(2)}) to screen pos (${screenPos.x.toFixed(0)}, ${screenPos.y.toFixed(0)}) for score ${scoreComp.value}`);
+          // }
+          // --- END DEBUG LOG ---
           
           return {
             id: entity,
@@ -833,6 +847,12 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         // Basic check to prevent update if array content is identical stringified
         if (JSON.stringify(newFloatingScores) !== JSON.stringify(floatingScores)) {
             setFloatingScores(newFloatingScores);
+          
+          // --- REMOVE DEBUG LOGS ---
+          // if (newFloatingScores.length > 0) {
+          //   console.log(`[DEBUG] HUD: Updated floating scores display with ${newFloatingScores.length} items`);
+          // }
+          // --- END DEBUG LOG ---
         }
       }
       

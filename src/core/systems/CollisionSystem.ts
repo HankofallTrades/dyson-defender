@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { World, System } from '../World';
-import { Position, Collider, Projectile, Health, Enemy, InputReceiver, Shield, ShieldComponent, ShieldBubbleComponent, HealthBarComponent, PowerUp } from '../components';
+import { Position, Collider, Projectile, Health, Enemy, InputReceiver, Shield, ShieldComponent, ShieldBubbleComponent, HealthBarComponent, PowerUp, ShieldBarComponent } from '../components';
 import { HUDSystem } from './HUDSystem';
 import { ShieldSystem } from './ShieldSystem';
 import { AnimationSystem } from './AnimationSystem';
@@ -437,8 +437,14 @@ export class CollisionSystem implements System {
                   }
                 }
                 
+                // Create proper copy of position
+                const scorePosition = { 
+                  x: enemyPosition.x,
+                  y: enemyPosition.y,
+                  z: enemyPosition.z
+                };
+                
                 // Create floating score at enemy position
-                const scorePosition = { x: enemyPosition.x, y: enemyPosition.y, z: enemyPosition.z };
                 createFloatingScore(this.world, scorePosition, scoreValue);
                 
                 // Still update the score in HUD
@@ -644,7 +650,21 @@ export class CollisionSystem implements System {
     
     // If shield is depleted, remove the shield bubble and kill the guardian
     if (shield.currentShield <= 0) {
-      // First remove the shield bubble
+      // First find and remove any ShieldBarComponent entities referencing this guardian
+      const shieldBarEntities = this.world.getEntitiesWith(['ShieldBarComponent']);
+      for (const barEntity of shieldBarEntities) {
+        const barComponent = this.world.getComponent<ShieldBarComponent>(barEntity, 'ShieldBarComponent');
+        if (barComponent && barComponent.entity === guardianEntity) {
+          // Found a shield bar component that references this guardian
+          this.world.removeComponent(barEntity, 'ShieldBarComponent');
+          // If this is a dedicated entity for the bar, remove the whole entity
+          if (barEntity !== guardianEntity) {
+            this.world.removeEntity(barEntity);
+          }
+        }
+      }
+      
+      // Then remove the shield bubble
       this.world.removeEntity(shieldEntity);
       
       // Now destroy the guardian itself
@@ -653,9 +673,16 @@ export class CollisionSystem implements System {
       // Create score entity if the HUD system is available
       const hudSystem = this.getHUDSystem();
       if (hudSystem && bubblePos) {
-        createFloatingScore(this.world, bubblePos, 20); // 20 points for killing a Shield Guardian
+        // Create a proper copy of the position
+        const scorePosition = {
+          x: bubblePos.x,
+          y: bubblePos.y,
+          z: bubblePos.z
+        };
         
-        // Update the actual score in the HUD
+        createFloatingScore(this.world, scorePosition, 20); // 20 points for killing a Shield Guardian
+        
+        // Update the actual score in HUD
         hudSystem.incrementScore(20);
       }
     }
