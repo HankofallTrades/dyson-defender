@@ -38,6 +38,8 @@ export class MeshFactory {
       return this.createStarfieldMesh(renderable);
     } else if (renderable.modelId === 'centralStar') {
       return this.createCentralStarMesh(renderable);
+    } else if (renderable.modelId === 'portal') {
+      return this.createPortalMesh(renderable);
     } else {
       return this.createDefaultMesh(renderable);
     }
@@ -1508,6 +1510,145 @@ export class MeshFactory {
     light.shadow.mapSize.width = 2048;
     light.shadow.mapSize.height = 2048;
     group.add(light);
+    
+    // Apply scale
+    group.scale.set(renderable.scale, renderable.scale, renderable.scale);
+    
+    return group;
+  }
+
+  private static createPortalMesh(renderable: Renderable): THREE.Object3D {
+    const group = new THREE.Group();
+    
+    // Create the main portal ring
+    const ringGeometry = new THREE.TorusGeometry(1, 0.1, 16, 100);
+    const ringMaterial = new THREE.MeshPhongMaterial({
+      color: renderable.color,
+      emissive: renderable.color,
+      emissiveIntensity: 0.5,
+      shininess: 100,
+      transparent: true,
+      opacity: 0.8
+    });
+    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+    ring.rotation.x = -Math.PI / 2; // Match the inner field's orientation
+    group.add(ring);
+    
+    // Add energy field inside the ring
+    const fieldGeometry = new THREE.CircleGeometry(0.9, 32);
+    const fieldMaterial = new THREE.MeshPhongMaterial({
+      color: renderable.color,
+      emissive: renderable.color,
+      emissiveIntensity: 0.3,
+      transparent: true,
+      opacity: 0.6,
+      side: THREE.DoubleSide
+    });
+    const field = new THREE.Mesh(fieldGeometry, fieldMaterial);
+    field.rotation.x = -Math.PI / 2; // Lay flat
+    group.add(field);
+    
+    // Add text above the portal
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (context) {
+      canvas.width = 256;
+      canvas.height = 64;
+      
+      // Fill with transparent background
+      context.fillStyle = 'rgba(0, 0, 0, 0)';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Set text style
+      context.font = 'bold 24px "Press Start 2P", monospace';
+      context.fillStyle = '#' + renderable.color.toString(16).padStart(6, '0');
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      
+      // Draw text
+      context.fillText('VIBEVERSE', canvas.width / 2, canvas.height / 2);
+      
+      // Create texture from canvas
+      const texture = new THREE.CanvasTexture(canvas);
+      const textGeometry = new THREE.PlaneGeometry(0.8, 0.2);
+      const textMaterial = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.8,
+        side: THREE.DoubleSide
+      });
+      
+      const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+      textMesh.position.y = 0.1; // Position inside the portal
+      textMesh.rotation.x = -Math.PI / 2; // Match portal orientation
+      textMesh.rotation.z = -Math.PI / 2; // Rotate text to be right-side up
+      group.add(textMesh);
+    }
+    
+    // Add energy particles
+    const particleCount = 50;
+    const particles = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    
+    for (let i = 0; i < particleCount; i++) {
+      const i3 = i * 3;
+      // Random position within the ring
+      const radius = Math.random() * 0.8;
+      const angle = Math.random() * Math.PI * 2;
+      positions[i3] = Math.cos(angle) * radius;
+      positions[i3 + 1] = (Math.random() - 0.5) * 0.2; // Slight vertical spread
+      positions[i3 + 2] = Math.sin(angle) * radius;
+      
+      // Color based on portal color
+      const color = new THREE.Color(renderable.color);
+      colors[i3] = color.r;
+      colors[i3 + 1] = color.g;
+      colors[i3 + 2] = color.b;
+    }
+    
+    particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    
+    const particleMaterial = new THREE.PointsMaterial({
+      size: 0.05,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.8
+    });
+    
+    const particleSystem = new THREE.Points(particles, particleMaterial);
+    group.add(particleSystem);
+    
+    // Add energy arcs
+    const arcCount = 8;
+    for (let i = 0; i < arcCount; i++) {
+      const arcGeometry = new THREE.BufferGeometry();
+      const arcPoints = [];
+      const segments = 10;
+      
+      for (let j = 0; j <= segments; j++) {
+        const t = j / segments;
+        const angle = (i / arcCount) * Math.PI * 2 + t * Math.PI * 2;
+        const radius = 0.8 + Math.sin(t * Math.PI * 4) * 0.1;
+        arcPoints.push(
+          Math.cos(angle) * radius,
+          Math.sin(t * Math.PI * 2) * 0.1,
+          Math.sin(angle) * radius
+        );
+      }
+      
+      arcGeometry.setAttribute('position', new THREE.Float32BufferAttribute(arcPoints, 3));
+      
+      const arcMaterial = new THREE.LineBasicMaterial({
+        color: renderable.color,
+        transparent: true,
+        opacity: 0.5
+      });
+      
+      const arc = new THREE.Line(arcGeometry, arcMaterial);
+      group.add(arc);
+    }
     
     // Apply scale
     group.scale.set(renderable.scale, renderable.scale, renderable.scale);

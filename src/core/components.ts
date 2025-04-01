@@ -277,6 +277,15 @@ export interface HealthBarComponent {
   showWhenDamaged: boolean; // Only show health bar when entity is damaged
 }
 
+export interface Portal {
+  type: 'entry' | 'exit';  // Whether this is an entry or exit portal
+  label: string;          // Display label for the portal
+  targetUrl: string;      // URL to redirect to when entering the portal
+  isActive: boolean;      // Whether the portal is currently active
+  radius: number;         // Radius of the portal's trigger area
+  rotationSpeed: number;  // Speed at which the portal rotates
+}
+
 // Developer mode component for debugging and inspection
 export interface DevMode {
   isActive: boolean;        // Whether dev mode is active

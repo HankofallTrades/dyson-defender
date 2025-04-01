@@ -60,5 +60,9 @@ export const COLORS = {
   // Wormhole colors
   WORMHOLE_RING: 0x9900ff,    // Bright purple for the outer ring
   WORMHOLE_SPIRAL: 0x6600cc,  // Deep purple for the spiral effect
-  WORMHOLE_GLOW: 0xaa00ff     // Medium purple for the glow effect
+  WORMHOLE_GLOW: 0xaa00ff,     // Medium purple for the glow effect
+  
+  // Portal colors
+  PORTAL_ENTRY: 0x00ff00,  // Green for entry portal
+  PORTAL_EXIT: 0xff0000,   // Red for exit portal
 }; 

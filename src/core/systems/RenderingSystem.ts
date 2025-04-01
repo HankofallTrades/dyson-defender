@@ -95,6 +95,11 @@ export class RenderingSystem implements System {
       if (renderable.modelId === 'powerUpOrb') {
         this.updatePowerUpVisuals(mesh, deltaTime);
       }
+      
+      // Special case for portals: Handle portal animations
+      if (renderable.modelId === 'portal') {
+        this.updatePortalVisuals(mesh, deltaTime);
+      }
     }
 
     // Clean up meshes for entities that no longer exist
@@ -203,6 +208,57 @@ export class RenderingSystem implements System {
       // Only update the Y position, preserving X and Z
       mesh.position.y = floatY;
     }
+  }
+
+  /**
+   * Updates portal animations and effects
+   */
+  private updatePortalVisuals(mesh: THREE.Object3D, deltaTime: number): void {
+    // Rotate the entire portal
+    mesh.rotation.y += Math.PI * 0.5 * deltaTime;
+    
+    // Update particle system
+    mesh.traverse((child) => {
+      if (child instanceof THREE.Points) {
+        // Rotate particles around the portal
+        const positions = child.geometry.attributes.position.array as Float32Array;
+        for (let i = 0; i < positions.length; i += 3) {
+          const x = positions[i];
+          const z = positions[i + 2];
+          const angle = Math.atan2(z, x) + deltaTime * 2;
+          const radius = Math.sqrt(x * x + z * z);
+          positions[i] = Math.cos(angle) * radius;
+          positions[i + 2] = Math.sin(angle) * radius;
+        }
+        child.geometry.attributes.position.needsUpdate = true;
+      }
+      
+      // Update energy arcs
+      if (child instanceof THREE.Line) {
+        const positions = child.geometry.attributes.position.array as Float32Array;
+        for (let i = 0; i < positions.length; i += 3) {
+          const x = positions[i];
+          const z = positions[i + 2];
+          const angle = Math.atan2(z, x) + deltaTime;
+          const radius = Math.sqrt(x * x + z * z);
+          positions[i] = Math.cos(angle) * radius;
+          positions[i + 2] = Math.sin(angle) * radius;
+        }
+        child.geometry.attributes.position.needsUpdate = true;
+      }
+    });
+    
+    // Pulse the energy field
+    mesh.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.geometry instanceof THREE.CircleGeometry) {
+        const material = child.material as THREE.MeshPhongMaterial;
+        if (material) {
+          const pulseValue = (Math.sin(performance.now() * 0.002) + 1) * 0.5;
+          material.emissiveIntensity = 0.3 + pulseValue * 0.2;
+          material.opacity = 0.6 + pulseValue * 0.1;
+        }
+      }
+    });
   }
 
   public dispose(): void {

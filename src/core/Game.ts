@@ -8,6 +8,7 @@ import { createCamera } from './entities/CameraEntity';
 import { createHUD } from './entities/HUDEntity';
 import { createStarfieldBackground } from './entities/StarfieldEntity';
 import { createCentralStar } from './entities/StarEntity';
+import { createPortal } from './entities/PortalEntity';
 import { InputSystem } from './systems/InputSystem';
 import { MovementSystem } from './systems/MovementSystem';
 import { RenderingSystem } from './systems/RenderingSystem';
@@ -30,6 +31,7 @@ import { createFireRatePowerUp } from './entities/PowerUpEntity';
 import { WaveInfo } from './components';
 import { DevSystem } from './systems/DevSystem';
 import { AudioManager } from './AudioManager';
+import { PortalSystem } from './systems/PortalSystem';
 
 /**
  * Main Game Controller
@@ -106,23 +108,37 @@ class Game {
   }
 
   private initSystems(): void {
+    // Create and store reference to systems that need to be accessed later
+    this.hudSystem = new HUDSystem(this.world);
+    this.waveSystem = new WaveSystem(this.world);
+    this.floatingScoreSystem = new FloatingScoreSystem(this.world);
+    this.animationSystem = new AnimationSystem(this.world, this.sceneManager.getScene());
+    this.devSystem = new DevSystem(this.world, this.sceneManager, this.container);
+    
+    // Create and store reference to systems that need to be connected
+    const collisionSystem = new CollisionSystem(this.world, this.audioManager);
+    const powerUpSystem = new PowerUpSystem(this.world, this.sceneManager.getScene());
+    const weaponSystem = new WeaponSystem(this.world, this.sceneManager, this.audioManager);
+    
+    // Initialize all game systems
     this.world.addSystem(new InputSystem(this.world, this.sceneManager));
     this.world.addSystem(new MovementSystem(this.sceneManager, this.world, this.audioManager));
     this.world.addSystem(new CameraSystem(this.sceneManager, this.world));
-    
-    // Create and add WeaponSystem with audio manager
-    const weaponSystem = new WeaponSystem(this.world, this.sceneManager, this.audioManager);
-    this.world.addSystem(weaponSystem);
-    
-    this.world.addSystem(new EnemySystem(this.world, this.sceneManager.getScene()));
-    
-    // Create and store reference to CollisionSystem with audio manager
-    const collisionSystem = new CollisionSystem(this.world, this.audioManager);
     this.world.addSystem(collisionSystem);
-    
-    // Create and store reference to PowerUpSystem
-    const powerUpSystem = new PowerUpSystem(this.world, this.sceneManager.getScene());
     this.world.addSystem(powerUpSystem);
+    this.world.addSystem(new PortalSystem(this.world));
+    this.world.addSystem(weaponSystem);
+    this.world.addSystem(new EnemySystem(this.world, this.sceneManager.getScene()));
+    this.world.addSystem(new ShieldSystem(this.world));
+    this.world.addSystem(new ShieldBubbleSystem(this.world));
+    this.world.addSystem(new HealthBarSystem(this.world));
+    this.world.addSystem(this.hudSystem);
+    this.world.addSystem(this.waveSystem);
+    this.world.addSystem(this.floatingScoreSystem);
+    this.world.addSystem(this.animationSystem);
+    this.world.addSystem(this.devSystem);
+    this.world.addSystem(new AutoRotateSystem(this.world));
+    this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
     
     // Make systems globally accessible for debugging
     (window as any).powerUpSystem = powerUpSystem;
@@ -160,49 +176,16 @@ class Game {
       collisionSystem.handlePlayerPowerUpCollision(playerEntity, powerUpEntity);
     };
     
-    this.world.addSystem(new ShieldSystem(this.world));
-    this.world.addSystem(new ShieldBubbleSystem(this.world));
-    this.world.addSystem(new HealthBarSystem(this.world));
-    
-    // Create and store reference to HUD system
-    this.hudSystem = new HUDSystem(this.world);
-    this.world.addSystem(this.hudSystem);
-    
-    // Create and store reference to Wave system
-    this.waveSystem = new WaveSystem(this.world);
-    this.world.addSystem(this.waveSystem);
-    
-    // Create and store reference to FloatingScore system
-    this.floatingScoreSystem = new FloatingScoreSystem(this.world);
-    this.world.addSystem(this.floatingScoreSystem);
-    
-    // Create and store reference to Animation system
-    this.animationSystem = new AnimationSystem(this.world, this.sceneManager.getScene());
-    this.world.addSystem(this.animationSystem);
-    
-    // Connect the WaveSystem with the AnimationSystem and HUDSystem
+    // Connect systems that need to communicate with each other
     this.waveSystem.setAnimationSystem(this.animationSystem);
     this.waveSystem.setHUDSystem(this.hudSystem);
-    
-    // Connect the CollisionSystem with the AnimationSystem and PowerUpSystem
     collisionSystem.setAnimationSystem(this.animationSystem);
     collisionSystem.setPowerUpSystem(powerUpSystem);
-    
-    // Create and store reference to Dev system
-    this.devSystem = new DevSystem(this.world, this.sceneManager, this.container);
-    this.world.addSystem(this.devSystem);
-    
-    // Add the AutoRotateSystem to handle rotation of entities
-    this.world.addSystem(new AutoRotateSystem(this.world));
-    
-    // Create and add the RenderingSystem
-    const renderingSystem = new RenderingSystem(this.world, this.sceneManager.getScene());
-    this.world.addSystem(renderingSystem);
     
     // Set the camera for the rendering system once the scene is set up
     const camera = this.sceneManager.getCamera();
     if (camera) {
-      renderingSystem.setCamera(camera);
+      this.floatingScoreSystem.setCamera(camera);
     }
   }
 
@@ -211,17 +194,17 @@ class Game {
     createStarfieldBackground(this.world);
     
     // Create the Dyson Sphere
-    const dysonSphere = createDysonSphere(this.world);
+    const dysonSphereEntity = createDysonSphere(this.world);
     
     // Create the central star inside the Dyson Sphere
     createCentralStar(this.world);
     
+    // Create player ship
     const playerShip = createPlayerShip(this.world);
     const cameraEntity = createCamera(this.world, playerShip);
-    createHUD(this.world, playerShip, dysonSphere);
+    createHUD(this.world, playerShip, dysonSphereEntity);
     
     // Set camera for the floating score system after entities are created
-    // Need to get the actual camera from the scene manager
     const camera = this.sceneManager.getCamera();
     if (camera) {
       this.floatingScoreSystem.setCamera(camera);
@@ -230,6 +213,33 @@ class Game {
     // Ensure the WaveSystem is properly set up
     this.waveSystem.findDysonSphereEntity();
     this.waveSystem.resetWaves();
+
+    // Handle portal parameters if present
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('portal') === 'true') {
+      const portalType = urlParams.get('type') || 'entry';
+      const portalLabel = urlParams.get('label') || 'Portal';
+      const portalX = parseFloat(urlParams.get('x') || '0');
+      const portalY = parseFloat(urlParams.get('y') || '0');
+      const portalZ = parseFloat(urlParams.get('z') || '0');
+      
+      createPortal(
+        this.world,
+        { x: portalX, y: portalY, z: portalZ },
+        portalType as 'entry' | 'exit',
+        portalLabel,
+        'http://portal.pieter.com'
+      );
+    }
+    
+    // Create exit portal at a fixed position outside the Dyson sphere but behind player spawn
+    createPortal(
+      this.world,
+      { x: 350, y: 0, z: 0 }, // Position 60 units behind player spawn (outside Dyson sphere)
+      'exit',
+      'Exit Portal',
+      'http://portal.pieter.com'
+    );
   }
 
   public startGame(): void {

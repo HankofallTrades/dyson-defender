@@ -9,7 +9,8 @@ export enum MeshType {
   PLAYER_SHIP = 'playerShip',
   GRUNT = 'grunt',
   LASER = 'laser',
-  DEBRIS = 'debris'
+  DEBRIS = 'debris',
+  PORTAL = 'portal'
 }
 
 /**
@@ -51,6 +52,12 @@ export const DEFAULT_MESH_PARAMS: Record<MeshType, Partial<MeshParams>> = {
   },
   [MeshType.DEBRIS]: {
     scale: 0.5
+  },
+  [MeshType.PORTAL]: {
+    scale: 1.0,
+    segments: 32,
+    emissiveIntensity: 1.5,
+    opacity: 0.8
   }
 };
 
