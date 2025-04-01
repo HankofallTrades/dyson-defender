@@ -42,7 +42,7 @@ const styles = {
 const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
   return (
     <>
-      <div style={{
+      <div className="start-screen-overlay" style={{
         ...styles.overlay,
         display: 'flex',
         flexDirection: 'column',
@@ -51,7 +51,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
         minHeight: '100vh',
         padding: '4rem 0'
       }}>
-        <h1 className="text-6xl font-black tracking-wider" style={{
+        <h1 className="text-6xl font-black tracking-wider start-screen-title" style={{
           fontFamily: "'Press Start 2P', system-ui, -apple-system, sans-serif",
           color: '#ff00ff',
           fontSize: '4rem',
@@ -69,7 +69,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
         }}>
           DYSON<br/>DEFENDER
         </h1>
-        <p className="retro-text text-xl" style={{
+        <p className="retro-text text-xl start-screen-description" style={{
           color: '#00ffff',
           maxWidth: '600px',
           textAlign: 'center',
@@ -81,7 +81,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
         </p>
         
         <button 
-          className="retro-button"
+          className="retro-button start-screen-button"
           onClick={onStartGame}
           style={{ 
             marginBottom: '30px',
@@ -92,7 +92,8 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
           Start Game
         </button>
         
-        <div style={{ textAlign: 'center', margin: '0 0 20px 0' }}>
+        {/* Controls Section - Hidden on mobile via CSS */}
+        <div className="start-screen-controls" style={{ textAlign: 'center', margin: '0 0 20px 0' }}>
           <h2 style={{
             fontFamily: "'Press Start 2P', system-ui, -apple-system, sans-serif",
             color: '#ff00ff',
@@ -102,7 +103,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
           }}>
             Controls
           </h2>
-          <div style={{
+          <div className="start-screen-controls-list" style={{
             display: 'flex',
             flexDirection: 'column',
             gap: '16px',
@@ -111,31 +112,39 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
             fontFamily: "'Press Start 2P', system-ui, -apple-system, sans-serif",
             textShadow: '0 0 5px #00ffff'
           }}>
-            <p style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <KeyboardKey>W</KeyboardKey>
-              <KeyboardKey>A</KeyboardKey>
-              <KeyboardKey>S</KeyboardKey>
-              <KeyboardKey>D</KeyboardKey>
+            <p className="start-screen-control-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <div> {/* Wrap keys */} 
+                <KeyboardKey>W</KeyboardKey>
+                <KeyboardKey>A</KeyboardKey>
+                <KeyboardKey>S</KeyboardKey>
+                <KeyboardKey>D</KeyboardKey>
+              </div>
               <span style={{ marginLeft: '8px' }}>or Arrow Keys to move</span>
             </p>
-            <p style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <KeyboardKey>Q</KeyboardKey>
-              <KeyboardKey>E</KeyboardKey>
+            <p className="start-screen-control-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+               <div> {/* Wrap keys */} 
+                <KeyboardKey>Q</KeyboardKey>
+                <KeyboardKey>E</KeyboardKey>
+               </div>
               <span style={{ marginLeft: '8px' }}>to move up/down</span>
             </p>
-            <p style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <KeyboardKey>Shift</KeyboardKey>
+            <p className="start-screen-control-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+               <div> {/* Wrap keys */} 
+                 <KeyboardKey>Shift</KeyboardKey>
+               </div>
               <span style={{ marginLeft: '8px' }}>to boost</span>
             </p>
-            <p style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <KeyboardKey>Space</KeyboardKey>
+            <p className="start-screen-control-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+               <div> {/* Wrap keys */} 
+                 <KeyboardKey>Space</KeyboardKey>
+               </div>
               <span style={{ marginLeft: '8px' }}>to shoot</span>
             </p>
             <p style={{ marginTop: '16px' }}>Mouse to look around</p>
           </div>
         </div>
         
-        <div style={{
+        <div className="start-screen-credits" style={{
           marginTop: '20px',
           fontSize: '0.7rem',
           color: 'rgba(255, 255, 255, 0.6)',
