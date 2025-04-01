@@ -30,13 +30,14 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ radarData, radarVisualRadiu
 
   return (
     <div style={{
-      width: '180px', // Increased from 120px
-      height: '180px', // Increased from 120px
+      width: `${radarVisualRadius * 2}px`, // Use dynamic sizing based on visual radius
+      height: `${radarVisualRadius * 2}px`, // Use dynamic sizing based on visual radius
       borderRadius: '50%',
       border: '2px solid #00ffff',
       boxShadow: 'inset 0 0 15px rgba(0, 255, 255, 0.3)',
       position: 'relative',
-      overflow: 'hidden' // Added to contain sweep
+      overflow: 'hidden', // Added to contain sweep
+      backgroundColor: 'rgba(0, 0, 0, 0.5)' // Added background for better visibility
     }}>
       {/* Center dot (Player) */}
       <div style={{

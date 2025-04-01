@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { COLORS } from '../constants/colors';
 import './styles/retro.css';
 
@@ -31,61 +31,107 @@ const styles = {
 };
 
 const GameOverScreen: React.FC<GameOverScreenProps> = ({ stats, onRestart }) => {
+  // Create a ref for the restart button
+  const restartButtonRef = useRef<HTMLButtonElement>(null);
+  
   // Ensure pointer lock is released when this component mounts
   useEffect(() => {
     if (document.pointerLockElement) {
       document.exitPointerLock();
     }
+    
+    // Focus the restart button for better accessibility and mobile interactions
+    if (restartButtonRef.current) {
+      restartButtonRef.current.focus();
+    }
   }, []);
+
+  // Handle restart function that we'll use for both onClick and touch events
+  const handleRestart = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onRestart();
+  };
 
   return (
     <div style={{
       ...styles.overlay,
-      padding: '4rem 0',
-      gap: '2rem'
+      padding: window.innerWidth < 768 ? '2rem 0' : '4rem 0',
+      gap: window.innerWidth < 768 ? '1rem' : '2rem'
     }} className="game-over-screen gradient-bg">
       <h1 className="retro-header text-5xl game-over-text" style={{
         position: 'relative',
-        fontSize: '6rem',
-        letterSpacing: '8px',
+        fontSize: window.innerWidth < 768 ? '3rem' : '6rem',
+        letterSpacing: window.innerWidth < 768 ? '4px' : '8px',
         color: '#ff0066',
-        marginBottom: '2rem',
+        marginBottom: window.innerWidth < 768 ? '1rem' : '2rem',
         textShadow: `
           0 0 20px #ff0066,
           0 0 40px #ff0066,
           0 0 60px #ff0066
-        `
+        `,
+        textAlign: 'center',
+        width: '100%'
       }}>GAME OVER</h1>
       <div className="retro-text gradient-bg" style={{
         background: 'linear-gradient(45deg, rgba(0,0,0,0.8), rgba(83,0,130,0.8))',
-        padding: '2rem',
-        marginBottom: '2rem',
+        padding: window.innerWidth < 768 ? '1rem' : '2rem',
+        marginBottom: window.innerWidth < 768 ? '1rem' : '2rem',
         borderRadius: '12px',
         border: '2px solid #ff00ff',
         boxShadow: `
           0 0 30px rgba(255, 0, 255, 0.3),
           inset 0 0 20px rgba(255, 0, 255, 0.2)
-        `
+        `,
+        fontSize: window.innerWidth < 768 ? '0.9em' : '1em'
       }}>
-        <p className="text-2xl" style={{ color: '#00ffff', marginBottom: '1.5rem' }}>Final Score: {stats.finalScore}</p>
-        <p className="text-xl" style={{ color: '#ff00ff', marginBottom: '1rem' }}>Waves Completed: {stats.wavesCompleted}</p>
-        <p className="text-xl" style={{ color: '#ff00ff', marginBottom: '1rem' }}>Enemies Defeated: {stats.enemiesDefeated}</p>
-        {stats.level && <p className="text-xl" style={{ color: '#ff00ff' }}>You reached level {stats.level}</p>}
+        <p className="text-2xl" style={{ 
+          color: '#00ffff', 
+          marginBottom: window.innerWidth < 768 ? '0.8rem' : '1.5rem',
+          fontSize: window.innerWidth < 768 ? '1.2rem' : '1.5rem'
+        }}>Final Score: {stats.finalScore}</p>
+        <p className="text-xl" style={{ 
+          color: '#ff00ff', 
+          marginBottom: window.innerWidth < 768 ? '0.6rem' : '1rem',
+          fontSize: window.innerWidth < 768 ? '1rem' : '1.25rem'
+        }}>Waves Completed: {stats.wavesCompleted}</p>
+        <p className="text-xl" style={{ 
+          color: '#ff00ff', 
+          marginBottom: window.innerWidth < 768 ? '0.6rem' : '1rem',
+          fontSize: window.innerWidth < 768 ? '1rem' : '1.25rem'
+        }}>Enemies Defeated: {stats.enemiesDefeated}</p>
+        {stats.level && <p className="text-xl" style={{ 
+          color: '#ff00ff',
+          fontSize: window.innerWidth < 768 ? '1rem' : '1.25rem'
+        }}>You reached level {stats.level}</p>}
       </div>
       <button 
+        ref={restartButtonRef}
         className="retro-button"
-        onClick={onRestart}
+        onClick={handleRestart}
         onTouchStart={(e) => {
-          e.preventDefault(); // Prevent double-firing with click event
-          onRestart();
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+        onTouchEnd={(e) => {
+          handleRestart(e);
         }}
         style={{
-          fontSize: '1.5rem',
-          padding: '1.5rem 3rem',
-          letterSpacing: '2px',
+          fontSize: window.innerWidth < 768 ? '1.2rem' : '1.5rem',
+          padding: window.innerWidth < 768 ? '1rem 2rem' : '1.5rem 3rem',
+          letterSpacing: window.innerWidth < 768 ? '1px' : '2px',
           cursor: 'pointer', // Add cursor pointer for desktop
           touchAction: 'manipulation', // Optimize for touch
           WebkitTapHighlightColor: 'transparent', // Remove tap highlight on iOS
+          userSelect: 'none', // Prevent text selection
+          WebkitUserSelect: 'none', // For iOS/Safari
+          MozUserSelect: 'none', // For Firefox
+          msUserSelect: 'none', // For IE/Edge
+          outline: 'none', // Remove outline on focus
+          border: window.innerWidth < 768 ? '2px solid #ff00ff' : '3px solid #ff00ff', // Thinner border on mobile
+          backgroundColor: 'rgba(25, 0, 50, 0.8)', // More visible background
+          boxShadow: '0 0 20px rgba(255, 0, 255, 0.5)', // More pronounced shadow
+          transition: 'all 0.2s ease'
         }}
       >
         Restart

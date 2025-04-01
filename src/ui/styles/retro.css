@@ -640,6 +640,10 @@
   border-radius: 5px;
   outline: none;
   box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .retro-button:hover {
@@ -650,6 +654,65 @@
 
 .retro-button:active {
   transform: scale(0.98);
+  background-color: rgba(0, 255, 255, 0.4);
+  box-shadow: 0 0 25px rgba(0, 255, 255, 1);
+}
+
+/* Ensure button is more tappable on mobile */
+@media (max-width: 768px) {
+  .retro-button {
+    padding: 16px 32px;
+    font-size: 18px;
+    margin: 10px 0;
+    position: relative;
+    z-index: 10000; /* Ensure button is on top of all other elements */
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+  
+  /* Create an enhanced tap target by adding a pseudo-element */
+  .retro-button::after {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    z-index: -1;
+  }
+  
+  .ship-console {
+    font-size: 0.8rem;
+    line-height: 1.3;
+    bottom: 5px;
+  }
+  
+  .console-panel {
+    transform: scale(0.85);
+    transform-origin: bottom center;
+    padding: 5px !important;
+    height: auto !important;
+    max-height: 80px !important; /* More aggressive height limit */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    font-size: 0.75em !important;
+  }
+  
+  /* Improve game over screen on mobile */
+  .game-over-screen h1 {
+    font-size: 3rem !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  .game-over-screen .retro-text {
+    padding: 1rem !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  .game-over-screen .retro-button {
+    margin-top: 0 !important;
+    padding: 1rem 2rem !important;
+  }
 }
 
 /* Instructions panel specific styles */
@@ -1479,4 +1542,16 @@
   width: 0;
   animation: typing 3s steps(40, end) forwards;
   margin-bottom: 2px;
+}
+
+/* Mobile-specific styling for radar */
+@media (max-width: 768px) {
+  .mobile-radar {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 100;
+    transform: scale(0.8);
+    transform-origin: top right;
+  }
 } 
