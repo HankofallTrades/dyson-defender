@@ -1067,17 +1067,28 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
   
   // Add handlers for pause functionality
   const handlePauseGame = () => {
-    console.log('Pause game triggered');
-    // Call the prop function passed from the parent (e.g., App.tsx)
-    onPauseGame(); 
-    // No need to set local state here, the useEffect hook watching GameStateDisplay will handle it.
+    console.log('[HUD] Pause game triggered, current gameState:', gameState);
+    
+    // Force update the local gameState to ensure UI updates
+    setGameState('paused');
+    
+    // Call the prop function passed from the parent
+    onPauseGame();
+    
+    // Force exit pointer lock to ensure UI is accessible
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    }
   };
-  
+
   const handleResumeGame = () => {
-    console.log('Resume game triggered');
-    // Let the Game class handle the state change via the prop
+    console.log('[HUD] Resume game triggered, current gameState:', gameState);
+    
+    // Force update the local state first
+    setGameState('playing');
+    
+    // Call the parent handler
     onResumeGame();
-    // No need to set local state here, the useEffect hook watching GameStateDisplay will handle it.
   };
   
   const handleSelectWave = (wave: number) => {
@@ -1088,17 +1099,26 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
   // Add keyboard event listener for Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Check if the game is currently playing before allowing pause
-      if (e.key === 'Escape' && gameState === 'playing') {
+      if (e.key === 'Escape') {
+        console.log('[HUD] Escape key pressed, current gameState:', gameState);
+        
+        // If already paused, do nothing
+        if (gameState === 'paused') {
+          console.log('[HUD] Already paused, ignoring Escape key');
+          return;
+        }
+        
+        // Always show pause screen on Escape, regardless of current state
+        // This ensures the pause screen shows even after restart
         handlePauseGame();
       }
     };
-
+    
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [gameState, onPauseGame]); // Add onPauseGame to dependencies
+  }, [gameState, onPauseGame]); // Dependencies are correct
   
   // Add effect to handle mouse movement for reticle bracket lag
   useEffect(() => {

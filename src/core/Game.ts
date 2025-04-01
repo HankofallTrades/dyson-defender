@@ -274,12 +274,30 @@ class Game {
     // Resume soundtrack if it was paused
     this.audioManager.resumeSoundtrack();
     
-    // Start the game
-    this.startGame();
+    // Start the game - this updates HUD to 'playing' state
+    this.hudSystem.startGame();
     
-    // Reset the game state to running
+    // Make sure the global game state is also properly synchronized
     this.isRunning = true;
+    this.stateManager.updateState({ isPaused: false });
     this.lastFrameTime = performance.now();
+    
+    // Double-check that GameStateDisplay is properly set to 'playing'
+    // This ensures consistency between global state and component state
+    const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
+    if (hudEntities.length > 0) {
+      const hudEntity = hudEntities[0];
+      const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
+      
+      if (gameStateDisplay && gameStateDisplay.currentState !== 'playing') {
+        // Force update to playing state using the same method as resumeGame
+        this.world.removeComponent(hudEntity, 'GameStateDisplay');
+        this.world.addComponent(hudEntity, 'GameStateDisplay', {
+          ...gameStateDisplay,
+          currentState: 'playing'
+        });
+      }
+    }
     
     // Request pointer lock when restarting the game
     const inputManager = InputManager.getInstance(this.container);
@@ -482,7 +500,7 @@ class Game {
     this.initSystems();
     this.initEntities();
     
-    // Start the game
+    // Start the game - this updates HUD to 'playing' state
     this.hudSystem.startGame();
     
     // Set the specific wave number
@@ -507,9 +525,27 @@ class Game {
     // Resume soundtrack if it was paused
     this.audioManager.resumeSoundtrack();
     
-    // Reset the game state to running
+    // Make sure the global game state is also properly synchronized
     this.isRunning = true;
+    this.stateManager.updateState({ isPaused: false });
     this.lastFrameTime = performance.now();
+    
+    // Double-check that GameStateDisplay is properly set to 'playing'
+    // This ensures consistency between global state and component state
+    const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
+    if (hudEntities.length > 0) {
+      const hudEntity = hudEntities[0];
+      const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
+      
+      if (gameStateDisplay && gameStateDisplay.currentState !== 'playing') {
+        // Force update to playing state using the same method as resumeGame
+        this.world.removeComponent(hudEntity, 'GameStateDisplay');
+        this.world.addComponent(hudEntity, 'GameStateDisplay', {
+          ...gameStateDisplay,
+          currentState: 'playing'
+        });
+      }
+    }
     
     // Request pointer lock when restarting the game
     const inputManager = InputManager.getInstance(this.container);
