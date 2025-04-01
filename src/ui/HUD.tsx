@@ -981,9 +981,9 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           percent: number;
         }>;
         
-        if (JSON.stringify(newShieldBars) !== JSON.stringify(shieldBars)) {
+        // if (JSON.stringify(newShieldBars) !== JSON.stringify(shieldBars)) {
              setShieldBars(newShieldBars);
-        }
+        // }
         
         // Update health bars
         const healthBarEntities = world.getEntitiesWith(['HealthBarComponent', 'Position']);
@@ -1024,9 +1024,9 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           percent: number;
         }>;
         
-         if (JSON.stringify(newHealthBars) !== JSON.stringify(healthBars)) {
+        //  if (JSON.stringify(newHealthBars) !== JSON.stringify(healthBars)) {
             setHealthBars(newHealthBars);
-         }
+        //  }
       }
       
       // Request next frame update
