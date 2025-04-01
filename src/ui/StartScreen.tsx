@@ -134,6 +134,32 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
             <p style={{ marginTop: '16px' }}>Mouse to look around</p>
           </div>
         </div>
+        
+        <div style={{
+          marginTop: '20px',
+          fontSize: '0.7rem',
+          color: 'rgba(255, 255, 255, 0.6)',
+          textAlign: 'center',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+        }}>
+          <a 
+            href="https://x.com/hankofalltrades" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ 
+              color: 'rgba(255, 255, 255, 0.6)', 
+              textDecoration: 'none',
+              transition: 'color 0.2s ease'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.color = '#00ffff'}
+            onMouseOut={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)'}
+          >
+            Created by @hankofalltrades on X
+          </a>
+          <div style={{ marginTop: '5px' }}>
+            Music by REMNANT.EXE
+          </div>
+        </div>
       </div>
       <a 
         href="https://jam.pieter.com" 
