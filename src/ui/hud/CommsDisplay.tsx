@@ -23,6 +23,13 @@ const CommsDisplay: React.FC<CommsDisplayProps> = ({ messages }) => {
     }
   }, [messages]);
 
+  // Filter out messages that should appear in the AlertsDisplay
+  const filteredMessages = messages.filter(msg => 
+    // Only show messages in CommsDisplay that don't contain these terms
+    // as they will be shown in the AlertsDisplay
+    !msg.includes("WAVE") && !msg.includes("THREATS") && !msg.includes("INCOMING")
+  );
+
   return (
     <div style={{
       width: '280px', 
@@ -52,7 +59,7 @@ const CommsDisplay: React.FC<CommsDisplayProps> = ({ messages }) => {
         COMMS LOG
       </div>
       <div style={{ flexGrow: 1, overflowY: 'auto', scrollBehavior: 'smooth' }}>
-        {messages.map((alert, index) => {
+        {filteredMessages.map((alert, index) => {
           const uniqueKey = `${index}-${alert}`; // More robust key
           const shouldAnimate = !animatedMessagesRef.current.has(uniqueKey);
 
@@ -115,7 +122,7 @@ const CommsDisplay: React.FC<CommsDisplayProps> = ({ messages }) => {
             </div>
           );
         })}
-        {messages.length === 0 && (
+        {filteredMessages.length === 0 && (
           <div style={{ color: '#666666', fontStyle: 'italic' }}>
             {'> '} No messages
           </div>

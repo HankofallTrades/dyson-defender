@@ -9,6 +9,7 @@ import './styles/retro.css';
 import { Vector3, Camera, WebGLRenderer, Scene, PerspectiveCamera, MeshBasicMaterial, BoxGeometry, SphereGeometry, IcosahedronGeometry, EdgesGeometry, LineSegments, LineBasicMaterial, DoubleSide, Group, AmbientLight, MathUtils, TorusGeometry, PointLight, BufferGeometry, Line } from 'three';
 import RadarDisplay from './hud/RadarDisplay';
 import CommsDisplay from './hud/CommsDisplay'; // ADDED IMPORT
+import AlertsDisplay from './hud/AlertsDisplay'; // Add import for new AlertsDisplay
 
 // Hologram component for rendering small 3D wireframe models
 const Hologram: React.FC<{
@@ -1256,24 +1257,24 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         }} />
       )}
       
-      {/* Floating Score Indicators */}
+      {/* Floating score numbers */}
       {floatingScores.map(score => (
         <div
           key={score.id}
           className="floating-score"
           style={{
             position: 'absolute',
-            top: score.position.y,
-            left: score.position.x,
-            transform: 'translate(-50%, -50%)',
+            top: `${score.position.y}px`,
+            left: `${score.position.x}px`,
             color: score.color,
             opacity: score.opacity,
             fontFamily: "'Press Start 2P', monospace",
             fontSize: '1.2rem',
             fontWeight: 'bold',
-            textShadow: `0 0 8px ${score.color}`,
-            zIndex: 20,
-            pointerEvents: 'none'
+            textShadow: '0 0 5px rgba(0,0,0,0.7)',
+            zIndex: 500,
+            pointerEvents: 'none',
+            transform: 'translate(-50%, -50%)',
           }}
         >
           +{score.value}
@@ -1499,65 +1500,6 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         </div>
       )}
       
-      {/* --- NEW: Central Wave Alert --- */}
-      {waveCountdown && waveCountdown > 0 && gameState === 'playing' && (
-        <div
-          className="wave-alert-overlay"
-          style={{
-            position: 'absolute',
-            top: '40%', // Adjust vertical position
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 100,
-            textAlign: 'center',
-            pointerEvents: 'none',
-            // Apply flicker animation directly if needed, or rely on CSS
-            animation: waveComplete ? 'wave-alert-flicker 0.5s infinite' : 'none',
-            padding: '2rem', // Add padding for better visual separation
-            background: 'rgba(0,0,0,0.7)', // Dark background for contrast
-            border: '2px solid #ff00ff', // Magenta border
-            borderRadius: '15px',
-            boxShadow: '0 0 20px #ff00ff, inset 0 0 10px rgba(0, 255, 255, 0.2)', // Added inner glow
-          }}
-        >
-          {waveComplete ? (
-            <div
-              style={{
-                color: '#4CAF50', // Green for completion
-                fontSize: '2.5rem', // Larger font
-                textShadow: '0 0 15px #4CAF50', // Green shadow
-                animation: 'alert-text-blink 1.5s infinite', // Slower blink for complete
-                fontFamily: "'Press Start 2P', monospace",
-                marginBottom: '0.5rem',
-                 letterSpacing: '0.2rem'
-              }}
-            >
-              WAVE {currentWave} COMPLETE
-            </div>
-          ) : (
-             <div
-              style={{
-                color: '#ff9900', // Orange for incoming
-                fontSize: '2.5rem',
-                textShadow: '0 0 15px #ff9900',
-                animation: 'alert-text-blink 1s infinite', // Standard blink
-                fontFamily: "'Press Start 2P', monospace",
-                 marginBottom: '0.5rem',
-                  letterSpacing: '0.2rem'
-              }}
-            >
-              {/* Show "First Wave" only if currentWave is 0 (before first wave starts) */}
-              WARNING: INCOMING THREATS DETECTED
-            </div>
-          )}
-           <div style={{ fontSize: '2.5rem', color: '#ffffff', fontFamily: "'Press Start 2P', monospace" }}>
-             {waveCountdown}
-           </div>
-           {/* Add scanlines effect within this overlay */}
-           <div className="wave-notification-scan"></div>
-        </div>
-      )}
-      
       {/* --- NEW: Comms Log Display --- */}
       {/* Render CommsDisplay, passing the collected alertMessages */}
       {/* Moved to bottom left */}
@@ -1609,13 +1551,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
                 WAVE: {currentWave > 0 ? currentWave : '-'}
               </div>
             </div>
-            <CommsDisplay messages={alertMessages.filter(msg => 
-              // Keep messages that:
-              // 1. Contain "OBJECTIVE", 
-              // 2. Don't contain "WAVE"
-              // This ensures the objective message shows while wave alerts are hidden
-              msg.includes("OBJECTIVE") || (!msg.includes("WAVE"))
-            )} />
+            <CommsDisplay messages={alertMessages} />
           </div>
         )}
 
@@ -1782,6 +1718,22 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           </div>
         )}
       </div> {/* End ship-console */}
+      
+      {/* Replace the inline wave countdown display with our new AlertsDisplay component */}
+      {gameState === 'playing' && (
+        <AlertsDisplay 
+          waveCountdown={waveCountdown} 
+          waveComplete={waveComplete} 
+          currentWave={currentWave} 
+        />
+      )}
+      
+      {/* --- NEW: Comms Log Display --- */}
+      {/* Render CommsDisplay, passing the collected alertMessages */}
+      {/* Moved to bottom left */}
+      
+      {/* Top Right Radar (as before, Wave display added back below) */}
+      {/* Moved to bottom right */}
     </>
   );
 };
