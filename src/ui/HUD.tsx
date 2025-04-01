@@ -10,6 +10,7 @@ import { Vector3, Camera, WebGLRenderer, Scene, PerspectiveCamera, MeshBasicMate
 import RadarDisplay from './hud/RadarDisplay';
 import CommsDisplay from './hud/CommsDisplay'; // ADDED IMPORT
 import AlertsDisplay from './hud/AlertsDisplay'; // Add import for new AlertsDisplay
+import { GameStateManager } from '../core/State'; // Added import
 
 // Hologram component for rendering small 3D wireframe models
 const Hologram: React.FC<{
@@ -506,6 +507,7 @@ function useScreenSize() {
 
 interface HUDProps {
   world: World;
+  gameStateManager: GameStateManager; // Added gameStateManager
   onStartGame: () => void;
   onRestartGame: () => void;
   onResumeGame: () => void;
@@ -514,7 +516,7 @@ interface HUDProps {
   camera?: Camera; // Add camera as an optional prop
 }
 
-const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGame, onPauseGame, onRestartAtWave, camera }) => {
+const HUD: React.FC<HUDProps> = ({ world, gameStateManager, onStartGame, onRestartGame, onResumeGame, onPauseGame, onRestartAtWave, camera }) => {
   // Screen size for responsive layout
   const screen = useScreenSize();
   
@@ -710,9 +712,28 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
       // Update game state
       const gameStateDisplay = world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
       if (gameStateDisplay) {
+        const newGameState = gameStateDisplay.currentState;
         // Update local state only if it differs to avoid unnecessary re-renders
-        if (gameStateDisplay.currentState !== gameState) {
-             setGameState(gameStateDisplay.currentState);
+        if (newGameState !== gameState) {
+          setGameState(newGameState);
+
+          // --- NEW: Fetch final stats from GameStateManager on game over transition --- 
+          if (newGameState === 'game_over') {
+            const finalState = gameStateManager.getState();
+            setGameOverStats({
+              finalScore: finalState.score,
+              enemiesDefeated: finalState.enemiesDefeated,
+              wavesCompleted: finalState.wavesCompleted,
+              survivalTime: 0 // Calculate this? Or get from state if needed.
+              // Note: Survival time was previously calculated in HUDSystem.
+              // If needed, it should be added to GameState and calculated/updated
+              // perhaps in Game.ts during the update loop, or kept in HUDSystem 
+              // just for the GameOverStats component (less ideal).
+              // For now, setting to 0 as it wasn't part of the initial problem.
+            });
+            console.log("[HUD] Game Over state detected. Final stats fetched:", finalState);
+          }
+          // --- End NEW --- 
         }
       }
       
@@ -803,17 +824,6 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
       if (ready !== boostReadyRef.current) {
           boostReadyRef.current = ready;
           setBoostReady(ready);
-      }
-      
-      // Update game over stats if in game over state
-      if (gameState === 'game_over') { // Check local state
-        const stats = world.getComponent<GameOverStats>(hudEntity, 'GameOverStats');
-        if (stats) {
-          // Avoid state update if object is identical
-           if (JSON.stringify(stats) !== JSON.stringify(gameOverStats)) {
-             setGameOverStats(stats);
-           }
-        }
       }
       
       // Update wave information

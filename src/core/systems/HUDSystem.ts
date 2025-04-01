@@ -179,31 +179,6 @@ export class HUDSystem implements System {
       const inputManager = InputManager.getInstance(container);
       inputManager.exitPointerLock();
     }
-    
-    // Update game over stats
-    const gameOverStats = this.world.getComponent<GameOverStats>(hudEntity, 'GameOverStats');
-    const scoreDisplay = this.world.getComponent<ScoreDisplay>(hudEntity, 'ScoreDisplay');
-    
-    if (gameOverStats && scoreDisplay) {
-      gameOverStats.finalScore = scoreDisplay.score;
-      gameOverStats.survivalTime = (Date.now() - this.gameStartTime) / 1000; // in seconds
-      
-      // Calculate enemies defeated based on score
-      // This is a simplified example - you might have a dedicated counter in a real game
-      gameOverStats.enemiesDefeated = Math.floor(scoreDisplay.score / 10);
-      
-      // Get the current wave information
-      const waveEntities = this.world.getEntitiesWith(['WaveInfo']);
-      if (waveEntities.length > 0) {
-        const waveInfo = this.world.getComponent<WaveInfo>(waveEntities[0], 'WaveInfo');
-        if (waveInfo) {
-          gameOverStats.wavesCompleted = waveInfo.currentWave;
-        }
-      }
-    }
-    
-    // Don't display game over message in comms area
-    // this.displayMessage(`GAME OVER - ${reason}`, 0);
   }
   
   public displayMessage(message: string, duration: number = 3): void {

@@ -193,9 +193,10 @@ function App() {
     <>
       <div className="app">
         <div id="game-container" className="game-container" ref={containerRef}></div>
-        {world && (
+        {world && gameRef.current && (
           <HUD 
             world={world} 
+            gameStateManager={gameRef.current.getStateManager()}
             camera={camera as Camera | undefined}
             onStartGame={handleStartGame}
             onRestartGame={handleRestartGame}

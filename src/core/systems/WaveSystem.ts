@@ -8,6 +8,7 @@ import { createAsteroid } from '../entities/AsteroidEntity';
 import { AnimationSystem } from './AnimationSystem';
 import { HUDSystem } from './HUDSystem';
 import * as THREE from 'three';
+import { GameStateManager } from '../State';
 
 export class WaveSystem implements System {
   private dysonSphereEntity: number = -1; // Initialize with invalid entity ID
@@ -22,8 +23,10 @@ export class WaveSystem implements System {
   private hasAnnouncedShieldGuardian: boolean = false;
   private hasAnnouncedWarpRaider: boolean = false;
   private hasAnnouncedAsteroid: boolean = false;
+  private gameStateManager: GameStateManager;
   
-  constructor(private world: World) {
+  constructor(private world: World, gameStateManager: GameStateManager) {
+    this.gameStateManager = gameStateManager;
     // Create a special entity just to hold the wave information
     this.waveEntity = this.world.createEntity();
     this.world.addComponent(this.waveEntity, 'WaveInfo', {
@@ -154,6 +157,10 @@ export class WaveSystem implements System {
     waveInfo.isActive = false;
     waveInfo.nextWaveTimer = 5; // 5 seconds until next wave
     this.hasAnnouncedWave = false; // Reset for next wave
+
+    // Increment wavesCompleted in global state
+    const currentState = this.gameStateManager.getState();
+    this.gameStateManager.updateState({ wavesCompleted: currentState.wavesCompleted + 1 });
   }
   
   private startNextWave(waveInfo: WaveInfo): void {

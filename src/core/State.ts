@@ -26,6 +26,7 @@ export interface GameState {
   
   // Player stats
   score: number;
+  enemiesDefeated: number;
   
   // Dyson Sphere properties
   dysonSphereHealth: number;
@@ -33,6 +34,7 @@ export interface GameState {
   
   // Wave information
   currentWave: number;
+  wavesCompleted: number;
   enemiesRemaining: number;
   
   // Timing information
@@ -52,11 +54,13 @@ export const initialGameState: GameState = {
   isPaused: false,
   
   score: 0,
+  enemiesDefeated: 0,
   
   dysonSphereHealth: 100,
   dysonSphereMaxHealth: 100,
   
   currentWave: 1,
+  wavesCompleted: 0,
   enemiesRemaining: 0,
   
   lastUpdateTime: 0,

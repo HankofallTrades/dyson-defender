@@ -111,13 +111,13 @@ class Game {
   private initSystems(): void {
     // Create and store reference to systems that need to be accessed later
     this.hudSystem = new HUDSystem(this.world);
-    this.waveSystem = new WaveSystem(this.world);
+    this.waveSystem = new WaveSystem(this.world, this.stateManager);
     this.floatingScoreSystem = new FloatingScoreSystem(this.world);
     this.animationSystem = new AnimationSystem(this.world, this.sceneManager.getScene());
     this.devSystem = new DevSystem(this.world, this.sceneManager, this.container);
     
     // Create and store reference to systems that need to be connected
-    const collisionSystem = new CollisionSystem(this.world, this.audioManager);
+    const collisionSystem = new CollisionSystem(this.world, this.stateManager, this.audioManager);
     const powerUpSystem = new PowerUpSystem(this.world, this.sceneManager.getScene());
     const weaponSystem = new WeaponSystem(this.world, this.sceneManager, this.audioManager);
     
@@ -457,6 +457,10 @@ class Game {
 
   public getWorld(): World {
     return this.world;
+  }
+
+  public getStateManager(): GameStateManager {
+    return this.stateManager;
   }
 
   public getCamera(): THREE.Camera | null {

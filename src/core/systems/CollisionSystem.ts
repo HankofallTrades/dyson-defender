@@ -8,6 +8,7 @@ import { PowerUpSystem } from './PowerUpSystem';
 import { createFloatingScore } from '../entities/FloatingScoreEntity';
 import { AudioManager } from '../AudioManager';
 import { UISystem } from './UISystem';
+import { GameStateManager } from '../State';
 
 /**
  * Collision System
@@ -29,13 +30,15 @@ export class CollisionSystem implements System {
   private powerUpSystem: PowerUpSystem | null = null;
   private audioManager: AudioManager | null = null;
   private uiSystem: UISystem | null = null;
+  private gameStateManager: GameStateManager;
   
   // Reusable vectors to avoid GC pressure
   private reusableVectorA = new THREE.Vector3();
   private reusableVectorB = new THREE.Vector3();
 
-  constructor(world: World, audioManager?: AudioManager) {
+  constructor(world: World, gameStateManager: GameStateManager, audioManager?: AudioManager) {
     this.world = world;
+    this.gameStateManager = gameStateManager;
     this.audioManager = audioManager || null;
     
     // Set up collision matrix - which layers can collide with which
@@ -402,74 +405,78 @@ export class CollisionSystem implements System {
               this.audioManager.playSound('explosion', false, 0.5);
             }
             
-            if (hudSystem) {
-              // Get the enemy position for the floating score
-              const enemyPosition = this.world.getComponent<Position>(targetEntity, 'Position');
+            // Get the enemy position for the floating score
+            const enemyPosition = this.world.getComponent<Position>(targetEntity, 'Position');
+            
+            if (enemyPosition && enemy) {
+              // Add score based on enemy type
+              let scoreValue = 10; // Default for 'grunt' enemies
               
-              if (enemyPosition && enemy) {
-                // Add score based on enemy type
-                let scoreValue = 10; // Default for 'grunt' enemies
+              // Special score values for different enemy types
+              if (enemy.type === 'warpRaider') {
+                scoreValue = 25; // Warp Raiders are worth more points
+              } else if (enemy.type === 'asteroid') {
+                scoreValue = 50; // Asteroids are worth even more points
                 
-                // Special score values for different enemy types
-                if (enemy.type === 'warpRaider') {
-                  scoreValue = 25; // Warp Raiders are worth more points
-                } else if (enemy.type === 'asteroid') {
-                  scoreValue = 50; // Asteroids are worth even more points
-                  
-                  // Create a special explosion effect for asteroids
-                  if (this.world.hasComponent(targetEntity, 'Position')) {
-                    // Add an explosion animation at the asteroid's position
-                    if (this.animationSystem) {
-                      const asteroidPos = this.world.getComponent<Position>(targetEntity, 'Position');
-                      if (asteroidPos) {
-                        this.animationSystem.createExplosion(
-                          asteroidPos, 
-                          3.0,  // Larger explosion
-                          1.5,  // Longer duration
-                          50   // More particles
-                        );
-                        
-                        // Play a louder explosion sound for asteroids
-                        if (this.audioManager) {
-                          this.audioManager.playSound('explosion', false, 0.8);
-                        }
+                // Create a special explosion effect for asteroids
+                if (this.world.hasComponent(targetEntity, 'Position')) {
+                  // Add an explosion animation at the asteroid's position
+                  if (this.animationSystem) {
+                    const asteroidPos = this.world.getComponent<Position>(targetEntity, 'Position');
+                    if (asteroidPos) {
+                      this.animationSystem.createExplosion(
+                        asteroidPos, 
+                        3.0,  // Larger explosion
+                        1.5,  // Longer duration
+                        50   // More particles
+                      );
+                      
+                      // Play a louder explosion sound for asteroids
+                      if (this.audioManager) {
+                        this.audioManager.playSound('explosion', false, 0.8);
                       }
                     }
-                    
-                    // Display a special message when destroying an asteroid
-                    if (hudSystem) {
-                      hudSystem.displayMessage("Asteroid Destroyed!", 3);
-                    }
+                  }
+                  
+                  // Display a special message when destroying an asteroid
+                  const localHudSystem = this.getHUDSystem();
+                  if (localHudSystem) {
+                    localHudSystem.displayMessage("Asteroid Destroyed!", 3);
                   }
                 }
-                
-                // Create proper copy of position
-                const scorePosition = { 
+              }
+              
+              // Create proper copy of position
+              const scorePosition = {
+                x: enemyPosition.x,
+                y: enemyPosition.y,
+                z: enemyPosition.z
+              };
+              
+              // Create floating score at enemy position (Visual only)
+              createFloatingScore(this.world, scorePosition, scoreValue);
+
+              // --- Update Score and Enemies Defeated in Global State --- 
+              const currentState = this.gameStateManager.getState();
+              this.gameStateManager.updateState({
+                score: currentState.score + scoreValue,
+                enemiesDefeated: currentState.enemiesDefeated + 1
+              });
+              // --- End State Update --- 
+              
+              // Spawn a power-up at the enemy's position (15% chance)
+              if (this.powerUpSystem && Math.random() < 0.15) {
+                // Create a fresh copy of the enemy position to avoid reference issues
+                const powerUpPosition = {
                   x: enemyPosition.x,
                   y: enemyPosition.y,
                   z: enemyPosition.z
                 };
                 
-                // Create floating score at enemy position
-                createFloatingScore(this.world, scorePosition, scoreValue);
+                // Debug enemy position before spawning
+                console.log(`Enemy destroyed: ${enemy.type} at position X=${powerUpPosition.x.toFixed(2)}, Y=${powerUpPosition.y.toFixed(2)}, Z=${powerUpPosition.z.toFixed(2)}`);
                 
-                // Still update the score in HUD
-                hudSystem.incrementScore(scoreValue);
-                
-                // Spawn a power-up at the enemy's position (15% chance)
-                if (this.powerUpSystem && Math.random() < 0.15) {
-                  // Create a fresh copy of the enemy position to avoid reference issues
-                  const powerUpPosition = {
-                    x: enemyPosition.x,
-                    y: enemyPosition.y,
-                    z: enemyPosition.z
-                  };
-                  
-                  // Debug enemy position before spawning
-                  console.log(`Enemy destroyed: ${enemy.type} at position X=${powerUpPosition.x.toFixed(2)}, Y=${powerUpPosition.y.toFixed(2)}, Z=${powerUpPosition.z.toFixed(2)}`);
-                  
-                  this.powerUpSystem.spawnPowerUpAtPosition(powerUpPosition);
-                }
+                this.powerUpSystem.spawnPowerUpAtPosition(powerUpPosition);
               }
             }
             
@@ -678,20 +685,28 @@ export class CollisionSystem implements System {
       // Now destroy the guardian itself
       this.world.removeEntity(guardianEntity);
       
-      // Create score entity if the HUD system is available
-      const hudSystem = this.getHUDSystem();
-      if (hudSystem && bubblePos) {
+      // Create score entity if the bubble position is known
+      if (bubblePos) {
+        // Score value for Shield Guardian
+        const scoreValue = 20; 
+
         // Create a proper copy of the position
         const scorePosition = {
           x: bubblePos.x,
           y: bubblePos.y,
           z: bubblePos.z
         };
-        
-        createFloatingScore(this.world, scorePosition, 20); // 20 points for killing a Shield Guardian
-        
-        // Update the actual score in HUD
-        hudSystem.incrementScore(20);
+
+        // Create floating score (Visual only)
+        createFloatingScore(this.world, scorePosition, scoreValue);
+
+        // --- Update Score and Enemies Defeated in Global State --- 
+        const currentState = this.gameStateManager.getState();
+        this.gameStateManager.updateState({
+          score: currentState.score + scoreValue,
+          enemiesDefeated: currentState.enemiesDefeated + 1 // Count guardian as defeated enemy
+        });
+        // --- End State Update ---
       }
     }
     
