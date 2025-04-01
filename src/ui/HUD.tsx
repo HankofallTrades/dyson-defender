@@ -1551,7 +1551,11 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
                 WAVE: {currentWave > 0 ? currentWave : '-'}
               </div>
             </div>
-            <CommsDisplay messages={alertMessages} />
+            <CommsDisplay 
+              messages={alertMessages} 
+              waveCountdown={waveCountdown}
+              currentWave={currentWave}
+            />
           </div>
         )}
 
@@ -1718,15 +1722,6 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           </div>
         )}
       </div> {/* End ship-console */}
-      
-      {/* Replace the inline wave countdown display with our new AlertsDisplay component */}
-      {gameState === 'playing' && (
-        <AlertsDisplay 
-          waveCountdown={waveCountdown} 
-          waveComplete={waveComplete} 
-          currentWave={currentWave} 
-        />
-      )}
       
       {/* --- NEW: Comms Log Display --- */}
       {/* Render CommsDisplay, passing the collected alertMessages */}

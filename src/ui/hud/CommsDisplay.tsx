@@ -1,133 +1,241 @@
 // src/ui/hud/CommsDisplay.tsx
-import React, { useEffect, useRef } from 'react';
-import '../styles/retro.css'; // Ensure styles are imported
+// This component displays a log of communications messages in the game UI
+// It also handles the display of alert overlays during wave transitions
+import React, { useEffect, useRef, useState } from 'react';
+import '../styles/retro.css';
 
 interface CommsDisplayProps {
   messages: string[];
+  waveCountdown?: number | null;
+  currentWave?: number;
 }
 
-const CommsDisplay: React.FC<CommsDisplayProps> = ({ messages }) => {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const animatedMessagesRef = useRef<Set<string>>(new Set()); // Use ref for immediate access
+// Message with tracking for animation state
+interface TrackedMessage {
+  id: number;
+  message: string;
+  isNew: boolean;
+  isLatest: boolean; // Flag to indicate if it's the latest animating message
+}
 
+// Format message with line breaks to prevent text from being cut off
+// Using larger maxCharsPerLine for VT323 font which is more compact
+const formatMessageWithBreaks = (message: string, maxCharsPerLine = 40): string[] => {
+  // Convert to uppercase before processing
+  const upperMessage = message.toUpperCase();
+  const words = upperMessage.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  words.forEach(word => {
+    // If adding this word would make the line too long
+    if ((currentLine + word).length > maxCharsPerLine) {
+      lines.push(currentLine.trim());
+      currentLine = word + ' ';
+    } else {
+      currentLine += word + ' ';
+    }
+  });
+
+  if (currentLine.trim()) {
+    lines.push(currentLine.trim());
+  }
+
+  return lines;
+};
+
+const CommsDisplay: React.FC<CommsDisplayProps> = ({ 
+  messages, 
+  waveCountdown = null, 
+  currentWave = 0 
+}) => {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [trackedMessages, setTrackedMessages] = useState<TrackedMessage[]>([]);
+  const [nextId, setNextId] = useState(1);
+  
+  // Process incoming messages and add new ones to tracked state
+  useEffect(() => {
+    // Filter out non-display messages
+    const filteredDisplayMessages = messages.filter(msg => 
+      !msg.includes("WAVE") && !msg.includes("INCOMING") // Allow THREATS
+    );
+
+    // Find messages not yet tracked
+    const currentTrackedContent = trackedMessages.map(tm => tm.message);
+    // Convert incoming messages to uppercase here for comparison and storage
+    const newMessagesToAdd = filteredDisplayMessages
+        .map(msg => msg.toUpperCase())
+        .filter(upperMsg => !currentTrackedContent.includes(upperMsg));
+
+    if (newMessagesToAdd.length > 0) {
+      let latestId = -1;
+      const newTrackedEntries = newMessagesToAdd.map((upperMsg, index) => {
+        const currentId = nextId + index;
+        latestId = currentId; // Keep track of the last ID added
+        return {
+          id: currentId,
+          message: upperMsg,
+          isNew: true,
+          isLatest: false // Set isLatest later
+        };
+      });
+
+      setTrackedMessages(prev => {
+        // Mark previous latest message as not latest
+        const updatedPrev = prev.map(m => ({...m, isLatest: false}));
+        // Mark the new latest message
+        const finalNewEntries = newTrackedEntries.map(entry => 
+           entry.id === latestId ? { ...entry, isLatest: true } : entry
+        );
+        return [...updatedPrev, ...finalNewEntries];
+      });
+      setNextId(prev => prev + newMessagesToAdd.length);
+
+      // Set timer to remove 'isNew' flag after animation duration
+      const animationDuration = 2500; // Match CSS animation duration + small buffer
+      const timer = setTimeout(() => {
+        setTrackedMessages(prev =>
+          prev.map(msg => msg.isNew ? { ...msg, isNew: false, isLatest: false } : msg)
+        );
+      }, animationDuration);
+
+      return () => clearTimeout(timer);
+    }
+  }, [messages, trackedMessages, nextId]); // Include trackedMessages dependency
+
+  // Add objective message when conditions are met
+  useEffect(() => {
+    const objectiveMessageText = "OBJECTIVE: DEFEND THE DYSON SPHERE"; // Already uppercase
+    const shouldAddObjective = waveCountdown === null && currentWave === 1;
+    const objectiveExists = trackedMessages.some(msg => msg.message === objectiveMessageText);
+
+    if (shouldAddObjective && !objectiveExists) {
+      const newObjectiveEntry: TrackedMessage = {
+        id: nextId,
+        message: objectiveMessageText,
+        isNew: true,
+        isLatest: true // Assume objective is the latest when added
+      };
+
+      setTrackedMessages(prev => {
+        // Mark previous latest as not latest
+        const updatedPrev = prev.map(m => ({...m, isLatest: false}));
+        return [...updatedPrev, newObjectiveEntry];
+      });
+      setNextId(prev => prev + 1);
+      
+      // Set timer to remove 'isNew' flag after animation duration
+      const animationDuration = 3500; // Match objective CSS animation + buffer
+       const timer = setTimeout(() => {
+        setTrackedMessages(prev =>
+          prev.map(msg => msg.id === newObjectiveEntry.id ? { ...msg, isNew: false, isLatest: false } : msg)
+        );
+      }, animationDuration);
+
+      return () => clearTimeout(timer);
+    }
+  }, [waveCountdown, currentWave, trackedMessages, nextId]);
+
+  // Auto-scroll to the bottom when trackedMessages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [trackedMessages]);
 
-  // Reset animated messages when messages array clears (e.g., new game)
-  useEffect(() => {
-    if (messages.length === 0) {
-      animatedMessagesRef.current = new Set();
-    }
-  }, [messages]);
+  // Create alert overlay for wave transitions
+  const renderAlertOverlay = () => {
+    if (waveCountdown === null) return null;
+    
+    const isFirstWave = currentWave === 0;
+    
+    return (
+      <div className="comms-content-alert-overlay">
+        {isFirstWave ? (
+          <div className="comms-alert-warning">
+            WARNING: INCOMING THREATS DETECTED
+          </div>
+        ) : (
+          <div className="comms-alert-wave">
+            WAVE {currentWave + 1} INCOMING
+          </div>
+        )}
+        <div className="comms-alert-countdown">
+          {waveCountdown}
+        </div>
+        <div className="wave-notification-scan"></div>
+      </div>
+    );
+  };
 
-  // Filter out messages that should appear in the AlertsDisplay
-  const filteredMessages = messages.filter(msg => 
-    // Only show messages in CommsDisplay that don't contain these terms
-    // as they will be shown in the AlertsDisplay
-    !msg.includes("WAVE") && !msg.includes("THREATS") && !msg.includes("INCOMING")
-  );
+  // Helper to check if a message is a threat message
+  const isThreatMessage = (message: string): boolean => {
+    // Use the already uppercased message
+    return message.includes("THREAT");
+  };
+  
+  const isObjectiveMessage = (message: string): boolean => {
+    // Use the already uppercased message
+    return message.includes("OBJECTIVE: DEFEND");
+  }
 
   return (
-    <div style={{
-      width: '280px', 
-      height: '180px',
-      background: 'rgba(0, 0, 0, 0.7)',
-      borderTop: '2px solid #ff00ff',
-      borderLeft: '2px solid #ff00ff',
-      borderRight: '2px solid #ff00ff',
-      borderTopLeftRadius: '15px',
-      borderTopRightRadius: '15px',
-      boxShadow: '0 0 15px rgba(255, 0, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2)',
-      padding: '12px',
-      overflowY: 'auto',
-      fontFamily: "'Press Start 2P', monospace",
-      fontSize: '0.7rem',
-      color: '#00ff00',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
-      <div style={{
-        borderBottom: '1px solid #ff00ff',
-        paddingBottom: '5px',
-        marginBottom: '5px',
-        color: '#ff00ff',
-        fontSize: '0.6rem'
-      }}>
-        COMMS LOG
-      </div>
-      <div style={{ flexGrow: 1, overflowY: 'auto', scrollBehavior: 'smooth' }}>
-        {filteredMessages.map((alert, index) => {
-          const uniqueKey = `${index}-${alert}`; // More robust key
-          const shouldAnimate = !animatedMessagesRef.current.has(uniqueKey);
-
-          if (shouldAnimate) {
-            // Use timeout to mark as animated *after* the animation duration
-            // Add a small buffer
-            setTimeout(() => {
-              animatedMessagesRef.current.add(uniqueKey);
-            }, 1000 + 100); // Assumes 1s animation + buffer
-          }
-
-          const words = alert.split(' ');
-          let lines: string[] = [];
-          let currentLine = '';
-          const maxChars = 30; // Slightly reduced to fit the new width
-
-          words.forEach(word => {
-            if (currentLine.length + word.length + 1 > maxChars) {
-              lines.push(currentLine.trim());
-              currentLine = word;
-            } else {
-              currentLine += (currentLine ? ' ' : '') + word;
-            }
-          });
-          if (currentLine) {
-            lines.push(currentLine.trim());
-          }
-
+    <div className="comms-display retro-hud-container">
+      <div className="comms-header retro-hud-label">COMMS LOG</div>
+      <div className="comms-content console-content">
+        {renderAlertOverlay()}
+        
+        {/* Messages with line breaks */}
+        {trackedMessages.map((trackedMsg) => {
+          const formattedLines = formatMessageWithBreaks(trackedMsg.message);
+          const isThreat = isThreatMessage(trackedMsg.message);
+          const isObjective = isObjectiveMessage(trackedMsg.message);
+          
           return (
-            <div
-              key={uniqueKey} // Use the unique key
-              style={{
-                color: alert.includes('OBJECTIVE') ? '#00ff00' : alert.includes('THREAT') ? '#ff5555' : '#00ffff',
-                marginBottom: '8px',
-                width: '100%',
-                lineHeight: '1.2'
-              }}
+            <div 
+              key={`msg-${trackedMsg.id}`} 
+              className="comms-message-container"
             >
-              {'> '} {lines.map((line, lineIndex) => (
-                <div
-                  key={`line-${lineIndex}`}
-                  style={{
-                    display: 'block',
-                    marginLeft: lineIndex > 0 ? '12px' : '0'
-                  }}
-                >
-                  <span
-                    className={shouldAnimate ? `typing-animation line-${lineIndex}` : ""}
-                    style={{
-                      display: 'inline-block',
-                      maxWidth: 'calc(100% - 15px)',
-                      wordBreak: 'break-word',
-                      '--delay': lineIndex * 0.8, // Faster typing per line
-                    } as React.CSSProperties}
+              {formattedLines.map((line, lineIndex) => {
+                const isFirstLine = lineIndex === 0;
+                const classes = ["comms-message-line"];
+                
+                if (isFirstLine) {
+                  classes.push("first-line");
+                  if (trackedMsg.isNew) {
+                    classes.push(isObjective ? "objective-typing" : "message-typing");
+                  }
+                  if (isThreat) classes.push("threat-message");
+                  if (isObjective) classes.push("objective-message");
+                } else {
+                  classes.push("continuation-line");
+                }
+                
+                const textColor = isObjective ? '#00ff00' : 
+                                 isThreat ? '#ff5555' : '#00ffff';
+                
+                return (
+                  <div 
+                    key={`line-${lineIndex}`}
+                    className={classes.join(" ")}
+                    style={{ color: textColor }}
                   >
-                    {line}
-                  </span>
-                </div>
-              ))}
+                    <span className="line-content">{isFirstLine ? '> ' : '  '}{line}</span>
+                    {/* Inline cursor only on the first line of the *latest* new message */}
+                    {(isFirstLine && trackedMsg.isNew && trackedMsg.isLatest) && (
+                      <span className="inline-cursor">▌</span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           );
         })}
-        {filteredMessages.length === 0 && (
-          <div style={{ color: '#666666', fontStyle: 'italic' }}>
-            {'> '} No messages
-          </div>
-        )}
         <div ref={messagesEndRef} />
+      </div>
+      <div className="console-scanner">
+        <div></div>
+        <div></div>
       </div>
     </div>
   );

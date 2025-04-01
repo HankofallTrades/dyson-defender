@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 
 @keyframes scanlines {
   from {
@@ -943,73 +944,29 @@
 }
 
 @keyframes cursor-blink {
-  from, to { border-color: transparent; }
-  50% { border-color: inherit; }
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
 }
 
 .typing-animation {
-  display: inline-block;
+  position: relative;
   overflow: hidden;
   white-space: nowrap;
-  width: 0;
-  animation: typewriter 1s steps(25, end) forwards;
-  animation-delay: calc(var(--delay, 0) * 1s);
-  vertical-align: bottom;
+  border-right: 0.15em solid #00ff00;
+  width: fit-content;
+  animation: 
+    typing 3.5s steps(40, end),
+    blink-caret 0.75s step-end infinite;
 }
 
-/* Only show cursor on the current line being typed */
-.typing-animation::after {
-  content: '';
-  display: inline-block;
-  width: 2px;
-  height: 1em;
-  background-color: currentColor;
-  margin-left: 1px;
-  vertical-align: bottom;
-  opacity: 0;
-  animation: cursor-blink 0.75s step-end infinite;
-  animation-delay: calc(var(--delay, 0) * 1s);
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
 }
 
-/* Show cursor only when it's this line's turn to animate */
-.typing-animation.line-0::after {
-  opacity: 1;
-  animation-play-state: running;
-}
-
-.typing-animation:not(.line-0)::after {
-  opacity: 0;
-  animation-play-state: paused;
-}
-
-/* For subsequent lines, show cursor only after previous line is done */
-.typing-animation[class*="line-"]::after {
-  opacity: 0;
-  animation-play-state: paused;
-}
-
-.typing-animation.line-1::after {
-  opacity: 1;
-  animation-play-state: running;
-  animation-delay: calc(1 * 1.2s);
-}
-
-.typing-animation.line-2::after {
-  opacity: 1;
-  animation-play-state: running;
-  animation-delay: calc(2 * 1.2s);
-}
-
-.typing-animation.line-3::after {
-  opacity: 1;
-  animation-play-state: running;
-  animation-delay: calc(3 * 1.2s);
-}
-
-.typing-animation.line-4::after {
-  opacity: 1;
-  animation-play-state: running;
-  animation-delay: calc(4 * 1.2s);
+@keyframes blink-caret {
+  from, to { border-color: transparent; }
+  50% { border-color: inherit; }
 }
 
 /* Add these hologram-specific animations */
@@ -1185,4 +1142,341 @@
 /* Hologram Container - Ensure it doesn't capture pointer events */
 .hologram-container {
   pointer-events: none;
+}
+
+/* CommsDisplay Styles */
+.comms-display {
+  width: 280px;
+  height: 180px;
+  background: rgba(0, 0, 0, 0.7);
+  border-top: 2px solid #ff00ff;
+  border-left: 2px solid #ff00ff;
+  border-right: 2px solid #ff00ff;
+  border-top-left-radius: 15px;
+  border-top-right-radius: 15px;
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2);
+  padding: 12px;
+  overflow-y: auto;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+  color: #00ff00;
+  display: flex;
+  flex-direction: column;
+  position: relative; /* For positioning the alerts overlay */
+}
+
+.comms-header {
+  border-bottom: 1px solid #ff00ff;
+  padding-bottom: 5px;
+  margin-bottom: 5px;
+  color: #ff00ff;
+  font-size: 0.6rem;
+}
+
+.comms-content {
+  flex-grow: 1;
+  overflow-y: auto; /* Keep scrolling enabled */
+  scroll-behavior: smooth;
+  position: relative;
+  max-height: 130px;
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+  -ms-overflow-style: none; /* Hide scrollbar for IE/Edge */
+}
+
+/* Hide scrollbar for WebKit browsers */
+.comms-content::-webkit-scrollbar {
+  display: none;
+}
+
+.comms-message {
+  margin-bottom: 8px;
+  width: 100%;
+  line-height: 1.2;
+  word-break: break-word;
+  transition: color 0.3s ease-in-out;
+}
+
+.comms-empty {
+  color: #666666;
+  font-style: italic;
+}
+
+/* Alerts overlay for CommsDisplay */
+.comms-content-alert-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: -2px; /* Extend slightly below to ensure full coverage */
+  background-color: rgb(0, 0, 0); /* Solid black background */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  padding: 10px; /* Increase padding slightly */
+  box-sizing: border-box; /* Ensure padding is included */
+}
+
+/* This is the old overlay that covered the whole comms display (including header) */
+.comms-alert-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  padding: 10px;
+  border-radius: 15px;
+}
+
+.comms-alert-warning {
+  color: #ff9900;
+  font-size: 0.8rem;
+  text-shadow: 0 0 15px #ff9900;
+  animation: alert-text-blink 1s infinite;
+  font-family: 'Press Start 2P', monospace;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.1rem;
+  text-align: center;
+}
+
+.comms-alert-wave {
+  color: #ff5555;
+  font-size: 0.8rem;
+  text-shadow: 0 0 15px #ff5555;
+  animation: alert-text-blink 1s infinite;
+  font-family: 'Press Start 2P', monospace;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.1rem;
+  text-align: center;
+}
+
+.comms-alert-countdown {
+  font-size: 1.2rem;
+  color: #ffffff;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.typing-objective {
+  display: flex;
+  align-items: center;
+  color: #00ff00 !important;
+  margin-top: 5px;
+}
+
+.cursor-blink {
+  display: inline-block;
+  margin-left: 2px;
+  animation: cursor-blink 0.8s infinite;
+  color: inherit;
+}
+
+@keyframes cursor-blink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0;
+  }
+}
+
+@keyframes alert-text-blink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 59% {
+    opacity: 0.7;
+  }
+  60%, 100% {
+    opacity: 1;
+  }
+}
+
+/* Comms message container */
+.comms-message-container {
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+/* Comms message line styling */
+.comms-message-line {
+  font-family: 'VT323', 'Courier New', monospace;
+  word-break: keep-all;
+  line-height: 1.2;
+  letter-spacing: 0.1em;
+  margin-bottom: 2px;
+  white-space: pre;
+  position: relative;
+  text-shadow: 
+    0 0 2px currentColor,
+    0 0 4px rgba(0, 255, 0, 0.4);
+  font-weight: normal;
+  font-size: 0.8rem;
+}
+
+/* Container for the text content to allow inline cursor */
+.line-content {
+  display: inline;
+}
+
+/* Inline cursor styling */
+.inline-cursor {
+  display: inline-block;
+  color: inherit;
+  animation: cursor-blink 0.8s step-end infinite;
+  vertical-align: baseline;
+  /* No margin needed if placed directly after text span */
+}
+
+/* Typing animation for new messages (objective and regular) */
+.comms-message-line.first-line.objective-typing,
+.comms-message-line.first-line.message-typing {
+  overflow: hidden;
+  white-space: nowrap;
+  width: 0;
+  animation-name: typing-reveal;
+  animation-timing-function: steps(40, end);
+  animation-fill-mode: forwards;
+}
+
+/* Different durations for objective vs regular */
+.comms-message-line.first-line.objective-typing {
+  animation-duration: 3s;
+}
+
+.comms-message-line.first-line.message-typing {
+  animation-duration: 2s;
+}
+
+/* Keyframes for typing reveal animation */
+@keyframes typing-reveal {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+/* Styling for threat messages */
+.comms-message-line.threat-message {
+  /* Ensure specific threat styling if needed, otherwise handled inline */
+}
+
+/* Styling for objective messages */
+.comms-message-line.objective-message {
+  /* Ensure specific objective styling if needed, otherwise handled inline */
+}
+
+/* Ensure blocky text shadow applies */
+.comms-message-line {
+  text-shadow: 
+    0 0 2px currentColor,
+    0 0 4px rgba(0, 255, 0, 0.4);
+  font-weight: normal;
+  font-size: 0.8rem;
+}
+
+/* Retro terminal text styling */
+.retro-terminal-text {
+  font-family: 'VT323', 'Courier New', monospace;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+/* Typing animation for the objective message with continuous blinking */
+.typing-animation-line {
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 0;
+  animation: typing 3s steps(40, end) forwards;
+  margin-bottom: 2px;
+}
+
+/* Make the cursor stay visible and keep blinking indefinitely */
+.typing-animation-line.first-line::after {
+  content: "▌"; /* Use a block character for cursor */
+  display: inline-block;
+  color: inherit;
+  animation: cursor-blink 0.8s step-end infinite; /* Blink indefinitely */
+  position: absolute;
+  right: -0.25em;
+  opacity: 1;
+}
+
+/* Typing animation for any message containing THREAT - new messages get the animation */
+.comms-message-line.first-line.new-message {
+  position: relative;
+  white-space: nowrap;
+  animation: typing-text 2s steps(40, end);
+}
+
+/* Special styling for threat messages */
+.comms-message-line.first-line.threat-message {
+  /* Ensure specific threat styling if needed, otherwise handled inline */
+}
+
+/* Remove the absolute positioned cursors */
+.comms-message-line.first-line.threat-message::after,
+.typing-animation-line.first-line::after {
+  content: none;
+}
+
+@keyframes typing-text {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+/* Create blocky text shadow for retro terminal look */
+.typing-animation-line, .comms-message-line {
+  text-shadow: 
+    0 0 2px currentColor,
+    0 0 4px rgba(0, 255, 0, 0.4);
+  font-weight: normal;
+  font-size: 0.8rem;
+}
+
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}
+
+/* Remove the absolute positioning for cursors and use inline style instead */
+.inline-cursor {
+  display: inline-block;
+  color: inherit;
+  animation: cursor-blink 0.8s step-end infinite;
+  margin-left: 2px;
+  vertical-align: baseline;
+}
+
+/* Typing animation for any message containing THREAT - new messages get the animation */
+.comms-message-line.first-line.new-message {
+  position: relative;
+  white-space: nowrap;
+  animation: typing-text 2s steps(40, end);
+}
+
+/* Special styling for threat messages */
+.comms-message-line.first-line.threat-message {
+  /* Ensure specific threat styling if needed, otherwise handled inline */
+}
+
+/* Remove the absolute positioned cursors */
+.comms-message-line.first-line.threat-message::after,
+.typing-animation-line.first-line::after {
+  content: none;
+}
+
+/* Typing animation for the objective message */
+.typing-animation-line {
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 0;
+  animation: typing 3s steps(40, end) forwards;
+  margin-bottom: 2px;
 } 
