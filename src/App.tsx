@@ -152,9 +152,17 @@ function App() {
     }
   };
 
+  const handlePauseGame = () => {
+    if (gameRef.current) {
+      gameRef.current.pause();
+      // No need to exit pointer lock here, Game.ts handles it based on state change
+    }
+  };
+
   const handleResumeGame = () => {
     if (gameRef.current) {
       gameRef.current.resumeGame();
+      gameRef.current.requestPointerLock(); // Re-request pointer lock on resume
       
       // Ensure audio is playing when game resumes
       if (!audioInitialized) {
@@ -192,6 +200,7 @@ function App() {
             onStartGame={handleStartGame}
             onRestartGame={handleRestartGame}
             onResumeGame={handleResumeGame}
+            onPauseGame={handlePauseGame}
             onRestartAtWave={handleRestartAtWave}
           />
         )}

@@ -298,6 +298,22 @@ class Game {
       this.isRunning = false;
       this.stateManager.updateState({ isPaused: true });
       
+      // Directly update the GameStateDisplay component (similar to resumeGame)
+      const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
+      if (hudEntities.length > 0) {
+        const hudEntity = hudEntities[0];
+        const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
+        
+        if (gameStateDisplay) {
+          // Remove and add component to update game state
+          this.world.removeComponent(hudEntity, 'GameStateDisplay');
+          this.world.addComponent(hudEntity, 'GameStateDisplay', {
+            ...gameStateDisplay,
+            currentState: 'paused'
+          });
+        }
+      }
+      
       // Pause the soundtrack when game is paused
       this.audioManager.pauseSoundtrack();
     }

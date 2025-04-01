@@ -508,11 +508,12 @@ interface HUDProps {
   onStartGame: () => void;
   onRestartGame: () => void;
   onResumeGame: () => void;
+  onPauseGame: () => void; // ADD this prop
   onRestartAtWave: (waveNumber: number) => void;
   camera?: Camera; // Add camera as an optional prop
 }
 
-const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGame, onRestartAtWave, camera }) => {
+const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGame, onPauseGame, onRestartAtWave, camera }) => {
   // Screen size for responsive layout
   const screen = useScreenSize();
   
@@ -1066,44 +1067,17 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
   
   // Add handlers for pause functionality
   const handlePauseGame = () => {
-    if (gameState === 'playing') {
-      // Update world gameState
-      const hudEntities = world.getEntitiesWith(['UIDisplay']);
-      if (hudEntities.length > 0) {
-        const hudEntity = hudEntities[0];
-        const gameStateDisplay = world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
-        
-        if (gameStateDisplay) {
-          // Remove the old component and add the updated one
-          world.removeComponent(hudEntity, 'GameStateDisplay');
-          world.addComponent(hudEntity, 'GameStateDisplay', {
-            ...gameStateDisplay,
-            currentState: 'paused'
-          });
-        }
-      }
-    }
+    console.log('Pause game triggered');
+    // Call the prop function passed from the parent (e.g., App.tsx)
+    onPauseGame(); 
+    // No need to set local state here, the useEffect hook watching GameStateDisplay will handle it.
   };
   
   const handleResumeGame = () => {
-    // Call the prop function to handle resuming the game at the App level
+    console.log('Resume game triggered');
+    // Let the Game class handle the state change via the prop
     onResumeGame();
-    
-    // Update world gameState
-    const hudEntities = world.getEntitiesWith(['UIDisplay']);
-    if (hudEntities.length > 0) {
-      const hudEntity = hudEntities[0];
-      const gameStateDisplay = world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
-      
-      if (gameStateDisplay) {
-        // Remove the old component and add the updated one
-        world.removeComponent(hudEntity, 'GameStateDisplay');
-        world.addComponent(hudEntity, 'GameStateDisplay', {
-          ...gameStateDisplay,
-          currentState: 'playing'
-        });
-      }
-    }
+    // No need to set local state here, the useEffect hook watching GameStateDisplay will handle it.
   };
   
   const handleSelectWave = (wave: number) => {
@@ -1114,16 +1088,17 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
   // Add keyboard event listener for Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if the game is currently playing before allowing pause
       if (e.key === 'Escape' && gameState === 'playing') {
         handlePauseGame();
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [gameState]); // Dependency is correct
+  }, [gameState, onPauseGame]); // Add onPauseGame to dependencies
   
   // Add effect to handle mouse movement for reticle bracket lag
   useEffect(() => {

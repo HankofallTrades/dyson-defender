@@ -100,37 +100,69 @@ export class HUDSystem implements System {
   private updateGameState(hudEntity: number): void {
     const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
     if (!gameStateDisplay) return;
-    
-    // Only check for game over conditions if we're currently playing
-    if (gameStateDisplay.currentState !== 'playing') return;
-    
-    // Check for game over condition - Dyson Sphere destroyed
-    const dysonSphereEntities = this.world.getEntitiesWith(['Health', 'Renderable']);
-    for (const entity of dysonSphereEntities) {
-      const renderable = this.world.getComponent<Renderable>(entity, 'Renderable');
-      if (renderable && renderable.modelId === 'dysonSphere') {
-        const health = this.world.getComponent<Health>(entity, 'Health');
-        if (health && health.current <= 0) {
-          // Trigger game over but don't remove the Dyson Sphere
-          // We'll just change its color to indicate it's destroyed
-          if (renderable) {
-            renderable.color = 0x444444; // Gray color to indicate destroyed state
+
+    const globalState = this.world.getGameState();
+    if (!globalState) return; // Should not happen, but good practice
+
+    const currentComponentState = gameStateDisplay.currentState;
+    let newComponentState = currentComponentState;
+
+    // --- Sync with global pause state --- 
+    if (globalState.isPaused) {
+      // If globally paused, but component thinks it's playing, update component state
+      if (currentComponentState === 'playing') {
+        newComponentState = 'paused';
+      }
+      // If component is already 'paused', 'game_over', or 'not_started', leave it.
+    } else { // Global state is NOT paused
+      // If globally not paused, but component thinks it's paused, update component state
+      if (currentComponentState === 'paused') {
+        newComponentState = 'playing';
+      }
+      // If component is already 'playing', 'game_over', or 'not_started', leave it.
+    }
+    // --- End Sync ---
+
+    // Check for game over conditions ONLY if the potentially new state is 'playing'
+    // This prevents triggering game over logic while paused or on other screens.
+    if (newComponentState === 'playing') {
+      // Check for game over condition - Dyson Sphere destroyed
+      const dysonSphereEntities = this.world.getEntitiesWith(['Health', 'Renderable']);
+      let dysonDestroyed = false;
+      for (const entity of dysonSphereEntities) {
+        const renderable = this.world.getComponent<Renderable>(entity, 'Renderable');
+        if (renderable && renderable.modelId === 'dysonSphere') {
+          const health = this.world.getComponent<Health>(entity, 'Health');
+          if (health && health.current <= 0) {
+            // Trigger game over but don't remove the Dyson Sphere
+            if (renderable) {
+              renderable.color = 0x444444; // Gray color to indicate destroyed state
+            }
+            this.triggerGameOver(hudEntity, 'Dyson Sphere Destroyed');
+            newComponentState = 'game_over'; // Update state immediately
+            dysonDestroyed = true;
+            break; // Exit loop once Dyson Sphere found and destroyed
           }
-          this.triggerGameOver(hudEntity, 'Dyson Sphere Destroyed');
-          return;
+        }
+      }
+
+      // Check for game over condition - Player destroyed (only if Dyson Sphere is not destroyed)
+      if (!dysonDestroyed) {
+        const playerEntities = this.world.getEntitiesWith(['Health', 'InputReceiver']);
+        if (playerEntities.length > 0) {
+          const playerEntity = playerEntities[0];
+          const health = this.world.getComponent<Health>(playerEntity, 'Health');
+          if (health && health.current <= 0) {
+            this.triggerGameOver(hudEntity, 'Player Ship Destroyed');
+            newComponentState = 'game_over'; // Update state immediately
+          }
         }
       }
     }
-    
-    // Check for game over condition - Player destroyed
-    const playerEntities = this.world.getEntitiesWith(['Health', 'InputReceiver']);
-    if (playerEntities.length > 0) {
-      const playerEntity = playerEntities[0];
-      const health = this.world.getComponent<Health>(playerEntity, 'Health');
-      if (health && health.current <= 0) {
-        this.triggerGameOver(hudEntity, 'Player Ship Destroyed');
-        return;
-      }
+
+    // Update the component state ONLY if it has actually changed
+    if (newComponentState !== currentComponentState) {
+      gameStateDisplay.currentState = newComponentState;
     }
   }
   
