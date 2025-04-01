@@ -11,6 +11,7 @@ interface GameOverScreenProps {
     level?: number; // Optional level property
   };
   onRestart: () => void;
+  onExit: () => void; // Add an exit callback
 }
 
 const styles = {
@@ -30,7 +31,7 @@ const styles = {
   },
 };
 
-const GameOverScreen: React.FC<GameOverScreenProps> = ({ stats, onRestart }) => {
+const GameOverScreen: React.FC<GameOverScreenProps> = ({ stats, onRestart, onExit }) => {
   // Create a ref for the restart button
   const restartButtonRef = useRef<HTMLButtonElement>(null);
   
@@ -51,6 +52,13 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ stats, onRestart }) => 
     e.preventDefault();
     e.stopPropagation();
     onRestart();
+  };
+
+  // Handle exit function that we'll use for both onClick and touch events
+  const handleExit = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onExit();
   };
 
   return (
@@ -105,37 +113,75 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ stats, onRestart }) => 
           fontSize: window.innerWidth < 768 ? '1rem' : '1.25rem'
         }}>You reached level {stats.level}</p>}
       </div>
-      <button 
-        ref={restartButtonRef}
-        className="retro-button"
-        onClick={handleRestart}
-        onTouchStart={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-        }}
-        onTouchEnd={(e) => {
-          handleRestart(e);
-        }}
-        style={{
-          fontSize: window.innerWidth < 768 ? '1.2rem' : '1.5rem',
-          padding: window.innerWidth < 768 ? '1rem 2rem' : '1.5rem 3rem',
-          letterSpacing: window.innerWidth < 768 ? '1px' : '2px',
-          cursor: 'pointer', // Add cursor pointer for desktop
-          touchAction: 'manipulation', // Optimize for touch
-          WebkitTapHighlightColor: 'transparent', // Remove tap highlight on iOS
-          userSelect: 'none', // Prevent text selection
-          WebkitUserSelect: 'none', // For iOS/Safari
-          MozUserSelect: 'none', // For Firefox
-          msUserSelect: 'none', // For IE/Edge
-          outline: 'none', // Remove outline on focus
-          border: window.innerWidth < 768 ? '2px solid #ff00ff' : '3px solid #ff00ff', // Thinner border on mobile
-          backgroundColor: 'rgba(25, 0, 50, 0.8)', // More visible background
-          boxShadow: '0 0 20px rgba(255, 0, 255, 0.5)', // More pronounced shadow
-          transition: 'all 0.2s ease'
-        }}
-      >
-        Restart
-      </button>
+      
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: window.innerWidth < 768 ? '1rem' : '1.5rem'
+      }}>
+        <button 
+          ref={restartButtonRef}
+          className="retro-button"
+          onClick={handleRestart}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+          onTouchEnd={(e) => {
+            handleRestart(e);
+          }}
+          style={{
+            fontSize: window.innerWidth < 768 ? '1.2rem' : '1.5rem',
+            padding: window.innerWidth < 768 ? '1rem 2rem' : '1.5rem 3rem',
+            letterSpacing: window.innerWidth < 768 ? '1px' : '2px',
+            cursor: 'pointer', // Add cursor pointer for desktop
+            touchAction: 'manipulation', // Optimize for touch
+            WebkitTapHighlightColor: 'transparent', // Remove tap highlight on iOS
+            userSelect: 'none', // Prevent text selection
+            WebkitUserSelect: 'none', // For iOS/Safari
+            MozUserSelect: 'none', // For Firefox
+            msUserSelect: 'none', // For IE/Edge
+            outline: 'none', // Remove outline on focus
+            border: window.innerWidth < 768 ? '2px solid #ff00ff' : '3px solid #ff00ff', // Thinner border on mobile
+            backgroundColor: 'rgba(25, 0, 50, 0.8)', // More visible background
+            boxShadow: '0 0 20px rgba(255, 0, 255, 0.5)', // More pronounced shadow
+            transition: 'all 0.2s ease'
+          }}
+        >
+          Restart
+        </button>
+        
+        <button 
+          className="retro-button"
+          onClick={handleExit}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+          onTouchEnd={(e) => {
+            handleExit(e);
+          }}
+          style={{
+            fontSize: window.innerWidth < 768 ? '1.2rem' : '1.5rem',
+            padding: window.innerWidth < 768 ? '1rem 2rem' : '1.5rem 3rem',
+            letterSpacing: window.innerWidth < 768 ? '1px' : '2px',
+            cursor: 'pointer',
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            MozUserSelect: 'none',
+            msUserSelect: 'none',
+            outline: 'none',
+            border: window.innerWidth < 768 ? '2px solid #00ffff' : '3px solid #00ffff', // Different color for exit button
+            backgroundColor: 'rgba(25, 0, 50, 0.8)',
+            boxShadow: '0 0 20px rgba(0, 255, 255, 0.5)', // Different glow color
+            transition: 'all 0.2s ease'
+          }}
+        >
+          Exit
+        </button>
+      </div>
     </div>
   );
 };

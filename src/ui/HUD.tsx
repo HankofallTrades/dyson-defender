@@ -1079,41 +1079,31 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, onStartGame, onResta
   
   // Add handlers for pause functionality
   const handlePauseGame = () => {
-    console.log('[HUD] Pause game triggered, current gameState:', gameState);
+    console.log('[HUD] Pause game triggered via UI/Escape.');
     
-    // Force update the local gameState to ensure UI updates
-    setGameState('paused');
-    
-    // Call the prop function passed from the parent
+    // 1. Call the prop function passed from the parent FIRST to update core game state.
+    //    Game.ts will update the authoritative GameStateDisplay component.
     onPauseGame();
     
-    // Force exit pointer lock to ensure UI is accessible
+    // 2. Force exit pointer lock immediately since pause was explicitly requested
+    //    This ensures the pause menu will be interactive.
     if (document.pointerLockElement) {
+      console.log('[HUD handlePauseGame] Exiting pointer lock.');
       document.exitPointerLock();
     }
-  };
-
-  const handleResumeGame = () => {
-    console.log('[HUD] Resume game triggered, current gameState:', gameState);
     
-    // Force update the local state first
-    setGameState('playing');
-    
-    // Call the parent handler
-    onResumeGame();
+    // 3. REMOVED immediate local state update.
+    //    Rely on updateHUD effect reading the new world state to show the PauseScreen.
+    // setGameState('paused'); 
   };
   
   // Add keyboard event listener for Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        // Only respond to Escape key when actually playing the game
-        if (gameState === 'playing') {
-          // Call the parent handler directly to ensure we update the game state
-          onPauseGame();
-          // Also immediately update local state for quick UI response
-          setGameState('paused');
-        }
+        // Directly attempt to pause. Game.pause() should handle if already paused.
+        console.log('[HUD] Escape key pressed, attempting pause.');
+        handlePauseGame(); // Call the simplified handler
       }
     };
     
@@ -1121,43 +1111,9 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, onStartGame, onResta
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [gameState, onPauseGame]); // Add onPauseGame to dependencies
-  
-  // Add pointerlock change event listener
-  useEffect(() => {
-    // Only add this listener when in playing state
-    if (gameState !== 'playing') return;
-    
-    const handlePointerLockChange = () => {
-      // Check if pointer lock was exited
-      if (document.pointerLockElement === null && gameState === 'playing') {
-        // Check if the game is actually over by querying the world directly
-        // This ensures we don't show the pause screen when we should show game over
-        const hudEntities = world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
-        if (hudEntities.length > 0) {
-          const hudEntity = hudEntities[0];
-          const gameStateDisplay = world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
-          
-          // Only pause if the game state in the world is still 'playing'
-          // This prevents pausing when the game is over (but the local state hasn't synced yet)
-          if (gameStateDisplay && gameStateDisplay.currentState === 'playing') {
-            // Pause the game when pointer lock is exited
-            onPauseGame();
-            // Update local state immediately
-            setGameState('paused');
-          }
-        }
-      }
-    };
-    
-    // Add pointer lock change listener
-    document.addEventListener('pointerlockchange', handlePointerLockChange);
-    
-    // Cleanup
-    return () => {
-      document.removeEventListener('pointerlockchange', handlePointerLockChange);
-    };
-  }, [gameState, onPauseGame, world]);  // Add world as a dependency
+  // Dependencies: Include handlePauseGame if its definition relies on state/props, but it doesn't seem to.
+  // Re-evaluating dependencies: onPauseGame might change if App component re-renders, so include it.
+  }, [onPauseGame]); 
   
   // Add effect to handle mouse movement for reticle bracket lag
   useEffect(() => {
@@ -1260,7 +1216,7 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, onStartGame, onResta
   // Add effect to ensure that state changes from Game are reflected correctly
   useEffect(() => {
     // This effect is for when the game state needs to be manually synced
-    // with the Game component state (for example, after a reset)
+    // with the Game component state (for example, after a reset or on mount)
     const syncGameState = () => {
       const hudEntities = world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
       if (hudEntities.length === 0) return;
@@ -1268,7 +1224,9 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, onStartGame, onResta
       const hudEntity = hudEntities[0];
       const gameStateDisplay = world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
       
+      // Sync if the world state differs from the local HUD state
       if (gameStateDisplay && gameStateDisplay.currentState !== gameState) {
+        console.log(`[HUD SyncEffect] Syncing local state (${gameState}) to world state (${gameStateDisplay.currentState})`);
         setGameState(gameStateDisplay.currentState);
       }
     };
@@ -1276,13 +1234,13 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, onStartGame, onResta
     // Check on mount and whenever world changes
     syncGameState();
     
-    // Set up an interval to periodically check and sync the state
-    const intervalId = setInterval(syncGameState, 100); // Check every 100ms
+    // REMOVED: Periodic interval check - relies on updateHUD loop now.
+    // const intervalId = setInterval(syncGameState, 100); 
     
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [world, gameState]);
+    // return () => {
+    //   clearInterval(intervalId);
+    // };
+  }, [world, gameState]); // Keep dependencies
 
   // Add a dedicated handler for exit game
   const handleExitGame = () => {
@@ -1314,13 +1272,13 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, onStartGame, onResta
   }
   if (gameState === 'game_over') {
     // Pass the final wave number captured by HUDSystem directly
-    return <GameOverScreen stats={gameOverStats} onRestart={onRestartGame} />;
+    return <GameOverScreen stats={gameOverStats} onRestart={onRestartGame} onExit={handleExitGame} />;
   }
   if (gameState === 'paused') {
     return (
       <PauseScreen
-        onResume={handleResumeGame}
-        onRestart={onRestartGame}
+        onResume={onResumeGame} // Use original prop
+        onRestart={onRestartGame} // Use original prop
         onExit={handleExitGame}
       />
     );

@@ -85,7 +85,6 @@ function App() {
   const handleRestartGame = () => {
     if (gameRef.current) {
       gameRef.current.restart();
-      gameRef.current.requestPointerLock();
       // Restore setting world state after restart
       const newWorld = gameRef.current.getWorld();
       if (newWorld) {
@@ -108,7 +107,6 @@ function App() {
   const handleResumeGame = () => {
     if (gameRef.current) {
       gameRef.current.resumeGame();
-      gameRef.current.requestPointerLock(); // Re-request pointer lock on resume
 
       // Ensure audio is playing when game resumes
       console.log('[App] Attempting to ensure soundtrack is playing on resume.');

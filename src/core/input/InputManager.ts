@@ -104,29 +104,35 @@ export class InputManager {
 
     // Mouse input handling - use mousedown for reliable interaction
     const clickHandler = (event: MouseEvent) => {
-      if (!this.mouseState.isPointerLocked) {
-        try {
-          this.container.requestPointerLock();
-        } catch (e) {
-          // Silently handle errors
-        }
-      } else if (event.button === 0) { // Left mouse button
-        this.inputState.shoot = true;
-        
-        // Reset shoot state after a short delay (we want it to be a single shot per click)
-        setTimeout(() => {
-          this.inputState.shoot = false;
-        }, 100);
+      if (this.mouseState.isPointerLocked) {
+         // Only handle shooting if pointer is locked
+         if (event.button === 0) { // Left mouse button
+           this.inputState.shoot = true;
+           
+           // Reset shoot state after a short delay (we want it to be a single shot per click)
+           setTimeout(() => {
+             this.inputState.shoot = false;
+           }, 100);
+         }
+      } else {
+         // If pointer is not locked, clicking should do nothing regarding game input
+         // REMOVED: Pointer lock request on click - this is handled by Game.ts now.
+         // try {
+         //   this.container.requestPointerLock();
+         // } catch (e) {
+         //   // Silently handle errors
+         // }
       }
     };
     
     this.container.removeEventListener('mousedown', clickHandler);
     this.container.addEventListener('mousedown', clickHandler);
     
+    // REINSTATED: Pointer lock change listener to keep internal state accurate
     const pointerLockChangeHandler = () => {
       this.mouseState.isPointerLocked = document.pointerLockElement === this.container;
+      console.log(`[InputManager] Pointer lock changed. Locked: ${this.mouseState.isPointerLocked}`); // Added logging
     };
-
     document.removeEventListener('pointerlockchange', pointerLockChangeHandler);
     document.addEventListener('pointerlockchange', pointerLockChangeHandler);
 

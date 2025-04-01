@@ -395,11 +395,11 @@ class Game {
       const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
       
       if (gameStateDisplay) {
-        // If game state changed to game_over or paused, exit pointer lock
-        if (gameStateDisplay.currentState === 'game_over' || gameStateDisplay.currentState === 'paused') {
-          // Exit pointer lock when game is over or paused
+        // Exit pointer lock ONLY when game is definitively OVER
+        if (gameStateDisplay.currentState === 'game_over') {
           if (document.pointerLockElement === this.container) {
-            document.exitPointerLock();
+             console.log('[Game Animate] Game Over detected, exiting pointer lock.');
+             this.inputManager.exitPointerLock(); // Use InputManager method
           }
         }
         

@@ -63,6 +63,11 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onExit }
           onClick={onResume}
           onTouchStart={(e) => {
             e.preventDefault();
+            e.stopPropagation();
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             onResume();
           }}
           style={{
@@ -83,6 +88,11 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onExit }
           onClick={onRestart}
           onTouchStart={(e) => {
             e.preventDefault();
+            e.stopPropagation();
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             onRestart();
           }}
           style={{
@@ -103,6 +113,11 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onExit }
           onClick={onExit}
           onTouchStart={(e) => {
             e.preventDefault();
+            e.stopPropagation();
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             onExit();
           }}
           style={{
