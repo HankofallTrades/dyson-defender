@@ -1,6 +1,6 @@
 import React, { useEffect, useState, CSSProperties, useRef } from 'react';
 import { World } from '../core/World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position, WaveInfo, Radar, ShieldBarComponent, ShieldComponent, HealthBarComponent } from '../core/components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position, WaveInfo, Radar, ShieldBarComponent, ShieldComponent, HealthBarComponent, ScreenPosition } from '../core/components';
 import { COLORS } from '../constants/colors';
 import StartScreen from './StartScreen';
 import GameOverScreen from './GameOverScreen';
@@ -482,21 +482,6 @@ const Hologram: React.FC<{
   );
 };
 
-// Helper function to convert world position to screen coordinates
-function worldToScreen(position: Position, camera: Camera): { x: number, y: number } | null {
-  // Create a Three.js Vector3 from the position
-  const vec = new Vector3(position.x, position.y, position.z);
-  
-  // Project the 3D point to 2D screen coordinates
-  vec.project(camera);
-  
-  // Convert to screen coordinates
-  return {
-    x: (vec.x * 0.5 + 0.5) * window.innerWidth,
-    y: (-vec.y * 0.5 + 0.5) * window.innerHeight
-  };
-}
-
 // Hook for responsive design
 function useScreenSize() {
   const [width, setWidth] = useState(window.innerWidth);
@@ -876,36 +861,19 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
       
       // Update floating scores if camera is available
       if (camera) {
-        const scoreEntities = world.getEntitiesWith(['FloatingScore', 'Position']);
-        
-        // --- REMOVE DEBUG LOGS ---
-        // if (scoreEntities.length > 0 && Math.random() < 0.1) {
-        //   console.log(`[DEBUG] HUD: Processing ${scoreEntities.length} floating score entities for display`);
-        // }
-        // --- END DEBUG LOG ---
+        const scoreEntities = world.getEntitiesWith(['FloatingScore', 'Position', 'ScreenPosition']);
         
         const newFloatingScores = scoreEntities.map(entity => {
           const scoreComp = world.getComponent<FloatingScore>(entity, 'FloatingScore');
-          const positionComp = world.getComponent<Position>(entity, 'Position');
+          const screenPosComp = world.getComponent<ScreenPosition>(entity, 'ScreenPosition'); // Get screen position
           
-          // --- REMOVE DEBUG LOGS AND SIMPLIFY ---
-          if (!scoreComp || !positionComp) return null;
-          
-          // Convert world position to screen coordinates
-          const screenPos = worldToScreen(positionComp, camera);
-          
-          if (!screenPos) return null;
-          
-          // --- REMOVE DEBUG LOGS ---
-          // if (Math.random() < 0.1) {
-          //   console.log(`[DEBUG] HUD: Converted world pos (${positionComp.x.toFixed(2)}, ${positionComp.y.toFixed(2)}, ${positionComp.z.toFixed(2)}) to screen pos (${screenPos.x.toFixed(0)}, ${screenPos.y.toFixed(0)}) for score ${scoreComp.value}`);
-          // }
-          // --- END DEBUG LOG ---
+          // Ensure components exist and the position is valid (isOnScreen)
+          if (!scoreComp || !screenPosComp || !screenPosComp.isOnScreen) return null;
           
           return {
             id: entity,
             value: scoreComp.value,
-            position: screenPos,
+            position: { x: screenPosComp.x, y: screenPosComp.y }, // Use directly from component
             color: scoreComp.color,
             opacity: scoreComp.opacity
           };
@@ -917,15 +885,9 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           opacity: number;
         }>;
         
-        // Basic check to prevent update if array content is identical stringified
+        // Update state if changed
         if (JSON.stringify(newFloatingScores) !== JSON.stringify(floatingScores)) {
             setFloatingScores(newFloatingScores);
-          
-          // --- REMOVE DEBUG LOGS ---
-          // if (newFloatingScores.length > 0) {
-          //   console.log(`[DEBUG] HUD: Updated floating scores display with ${newFloatingScores.length} items`);
-          // }
-          // --- END DEBUG LOG ---
         }
       }
       
@@ -943,32 +905,29 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
       
       // Update shield bars if camera is available
       if (camera) {
-        const shieldBarEntities = world.getEntitiesWith(['ShieldBarComponent', 'Position']);
+        const shieldBarEntities = world.getEntitiesWith(['ShieldBarComponent', 'Position', 'ScreenPosition']);
         
         const newShieldBars = shieldBarEntities.map(entity => {
           const shieldBarComp = world.getComponent<ShieldBarComponent>(entity, 'ShieldBarComponent');
-          const positionComp = world.getComponent<Position>(entity, 'Position');
+          const screenPosComp = world.getComponent<ScreenPosition>(entity, 'ScreenPosition'); // Get screen position
           
-          if (!shieldBarComp || !positionComp || !shieldBarComp.visible) return null;
+          // Don't need Position directly anymore, but check ShieldBarComponent exists and is visible
+          if (!shieldBarComp || !shieldBarComp.visible || !screenPosComp || !screenPosComp.isOnScreen) return null;
           
           // Get the shield component to determine fill percentage
           const shieldComp = world.getComponent<ShieldComponent>(shieldBarComp.entity, 'ShieldComponent');
           if (!shieldComp) return null;
           
-          // Convert world position to screen coordinates
-          const basePos = worldToScreen({
-            x: positionComp.x,
-            y: positionComp.y + shieldBarComp.offsetY, // Apply vertical offset
-            z: positionComp.z
-          }, camera);
-          
-          if (!basePos) return null;
-          
+          // Position comes from ScreenPosition component
           const percent = (shieldComp.currentShield / shieldComp.maxShield) * 100;
+          
+          // ADDED LOGGING: Check the offsetY value being read
+          console.log(`[HUD ShieldBar] Entity ${entity}: Reading offsetY: ${shieldBarComp?.offsetY}, screenY: ${screenPosComp?.y}`);
           
           return {
             id: entity,
-            position: basePos,
+            // Apply offset directly to the pre-calculated screen Y coordinate
+            position: { x: screenPosComp.x, y: screenPosComp.y + shieldBarComp.offsetY },
             width: shieldBarComp.width,
             height: shieldBarComp.height,
             percent
@@ -981,37 +940,39 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           percent: number;
         }>;
         
-        // if (JSON.stringify(newShieldBars) !== JSON.stringify(shieldBars)) {
+        // Update state if changed
+        // REMOVED Conditional Check: Always update state to reflect current query
+        // if (newShieldBars.length !== shieldBars.length || JSON.stringify(newShieldBars) !== JSON.stringify(shieldBars)) {
              setShieldBars(newShieldBars);
         // }
         
         // Update health bars
-        const healthBarEntities = world.getEntitiesWith(['HealthBarComponent', 'Position']);
+        const healthBarEntities = world.getEntitiesWith(['HealthBarComponent', 'Position', 'ScreenPosition']);
         
         const newHealthBars = healthBarEntities.map(entity => {
           const healthBarComp = world.getComponent<HealthBarComponent>(entity, 'HealthBarComponent');
-          const positionComp = world.getComponent<Position>(entity, 'Position');
+          const screenPosComp = world.getComponent<ScreenPosition>(entity, 'ScreenPosition'); // Get screen position
           
-          if (!healthBarComp || !positionComp || !healthBarComp.visible) return null;
+          // Check HealthBarComponent exists and is visible
+          if (!healthBarComp || !healthBarComp.visible || !screenPosComp || !screenPosComp.isOnScreen) return null;
           
           // Get the health component to determine fill percentage
           const healthComp = world.getComponent<Health>(healthBarComp.entity, 'Health');
           if (!healthComp) return null;
           
-          // Convert world position to screen coordinates
-          const basePos = worldToScreen({
-            x: positionComp.x,
-            y: positionComp.y + healthBarComp.offsetY, // Apply vertical offset
-            z: positionComp.z
-          }, camera);
-          
-          if (!basePos) return null;
-          
+          // Check if health bar should be shown only when damaged
+          if (healthBarComp.showWhenDamaged && healthComp.current >= healthComp.max) return null;
+
+          // Position comes from ScreenPosition component
           const percent = (healthComp.current / healthComp.max) * 100;
+          
+          // ADDED LOGGING: Check the offsetY value being read
+          console.log(`[HUD HealthBar] Entity ${entity}: Reading offsetY: ${healthBarComp?.offsetY}, screenY: ${screenPosComp?.y}`);
           
           return {
             id: entity,
-            position: basePos,
+            // Apply offset directly to the pre-calculated screen Y coordinate
+            position: { x: screenPosComp.x, y: screenPosComp.y + healthBarComp.offsetY }, 
             width: healthBarComp.width,
             height: healthBarComp.height,
             percent
@@ -1024,9 +985,11 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           percent: number;
         }>;
         
-        //  if (JSON.stringify(newHealthBars) !== JSON.stringify(healthBars)) {
+        // Update state if changed
+        // REMOVED Conditional Check: Always update state to reflect current query
+        // if (newHealthBars.length !== healthBars.length || JSON.stringify(newHealthBars) !== JSON.stringify(healthBars)) {
             setHealthBars(newHealthBars);
-        //  }
+        // }
       }
       
       // Request next frame update

@@ -202,6 +202,12 @@ export interface FloatingScore {
   opacity: number;       // Current opacity for fade-out effect
 }
 
+export interface ScreenPosition {
+  x: number;
+  y: number;
+  isOnScreen: boolean; // Whether the entity is currently projected onto the screen viewport
+}
+
 // Boost component for player ship
 export interface Boost {
   active: boolean;       // Whether boost is currently active

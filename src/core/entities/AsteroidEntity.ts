@@ -66,11 +66,11 @@ export function createAsteroid(
   // Add health bar component that only shows when damaged
   world.addComponent(entity, 'HealthBarComponent', {
     entity: entity,
-    offsetY: 10, // Position above the entity
-    width: 50,
-    height: 5,
-    visible: false, // Start invisible
-    showWhenDamaged: true // Only show when damaged
+    width: 60,
+    height: 6,
+    offsetY: -40, // Try large negative offset
+    showWhenDamaged: true,
+    visible: false
   });
   
   // Add renderable component 

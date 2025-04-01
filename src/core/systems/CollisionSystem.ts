@@ -7,6 +7,7 @@ import { AnimationSystem } from './AnimationSystem';
 import { PowerUpSystem } from './PowerUpSystem';
 import { createFloatingScore } from '../entities/FloatingScoreEntity';
 import { AudioManager } from '../AudioManager';
+import { UISystem } from './UISystem';
 
 /**
  * Collision System
@@ -27,6 +28,7 @@ export class CollisionSystem implements System {
   private animationSystem: AnimationSystem | null = null;
   private powerUpSystem: PowerUpSystem | null = null;
   private audioManager: AudioManager | null = null;
+  private uiSystem: UISystem | null = null;
 
   constructor(world: World, audioManager?: AudioManager) {
     this.world = world;
@@ -467,7 +469,9 @@ export class CollisionSystem implements System {
               }
             }
             
-            // Remove the destroyed entity
+            console.log(`[CollisionSystem] Enemy ${targetEntity} health <= 0. Preparing to remove.`);
+
+            // Remove the destroyed entity (enemy)
             this.world.removeEntity(targetEntity);
           }
         }

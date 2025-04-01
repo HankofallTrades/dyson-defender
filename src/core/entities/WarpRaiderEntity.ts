@@ -45,18 +45,18 @@ export function createWarpRaider(
   
   // Add health component - 30 hit points as specified
   world.addComponent(entity, 'Health', { 
-    current: 50, 
-    max: 50 
+    current: 100, 
+    max: 100 
   });
   
   // Add health bar component that only shows when damaged
   world.addComponent(entity, 'HealthBarComponent', {
     entity: entity,
-    offsetY: 7, // Position above the entity
-    width: 40,
-    height: 4,
-    visible: false, // Start invisible
-    showWhenDamaged: true // Only show when damaged
+    width: 60,
+    height: 6,
+    offsetY: -50, // Try large negative offset
+    showWhenDamaged: true,
+    visible: false
   });
   
   // Add renderable component with initial small scale

@@ -55,10 +55,10 @@ export function createShieldGuardian(
   // Add shield bar component for visual display
   world.addComponent(guardian, 'ShieldBarComponent', {
     entity: guardian,
-    offsetY: 7, // Position above the guardian
-    width: 40,
-    height: 5,
-    visible: true
+    width: 60,
+    height: 6,
+    offsetY: -50, // Try large negative offset
+    visible: true // Always visible
   });
   
   // Add renderable component with initial small scale

@@ -1,24 +1,14 @@
 import { System, World } from '../World';
 import { FloatingScore, Position } from '../components';
-import { Vector3 } from 'three';
-import { Camera } from 'three';
 
 /**
  * System for managing floating score indicators that appear when enemies are destroyed
  */
 export class FloatingScoreSystem implements System {
   private world: World;
-  private camera: Camera | null = null;
   
   constructor(world: World) {
     this.world = world;
-  }
-  
-  /**
-   * Set the camera reference for 3D to 2D position conversions
-   */
-  setCamera(camera: Camera): void {
-    this.camera = camera;
   }
   
   /**
@@ -68,24 +58,5 @@ export class FloatingScoreSystem implements System {
         this.world.removeEntity(entity);
       }
     }
-  }
-  
-  /**
-   * Helper method to convert a 3D world position to 2D screen coordinates
-   */
-  worldToScreen(position: Position): { x: number, y: number } | null {
-    if (!this.camera) return null;
-    
-    // Create a Three.js Vector3 from the position
-    const vec = new Vector3(position.x, position.y, position.z);
-    
-    // Project the 3D point to 2D screen coordinates
-    vec.project(this.camera);
-    
-    // Convert to screen coordinates
-    return {
-      x: (vec.x * 0.5 + 0.5) * window.innerWidth,
-      y: (-vec.y * 0.5 + 0.5) * window.innerHeight
-    };
   }
 } 

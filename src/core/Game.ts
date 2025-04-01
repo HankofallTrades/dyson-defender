@@ -32,6 +32,7 @@ import { WaveInfo } from './components';
 import { DevSystem } from './systems/DevSystem';
 import { AudioManager } from './AudioManager';
 import { PortalSystem } from './systems/PortalSystem';
+import { UISystem } from './systems/UISystem';
 
 /**
  * Main Game Controller
@@ -138,6 +139,7 @@ class Game {
     this.world.addSystem(this.animationSystem);
     this.world.addSystem(this.devSystem);
     this.world.addSystem(new AutoRotateSystem(this.world));
+    this.world.addSystem(new UISystem(this.world, this.sceneManager));
     this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
     
     // Make systems globally accessible for debugging
@@ -181,12 +183,6 @@ class Game {
     this.waveSystem.setHUDSystem(this.hudSystem);
     collisionSystem.setAnimationSystem(this.animationSystem);
     collisionSystem.setPowerUpSystem(powerUpSystem);
-    
-    // Set the camera for the rendering system once the scene is set up
-    const camera = this.sceneManager.getCamera();
-    if (camera) {
-      this.floatingScoreSystem.setCamera(camera);
-    }
   }
 
   private initEntities(): void {
@@ -203,12 +199,6 @@ class Game {
     const playerShip = createPlayerShip(this.world);
     const cameraEntity = createCamera(this.world, playerShip);
     createHUD(this.world, playerShip, dysonSphereEntity);
-    
-    // Set camera for the floating score system after entities are created
-    const camera = this.sceneManager.getCamera();
-    if (camera) {
-      this.floatingScoreSystem.setCamera(camera);
-    }
     
     // Ensure the WaveSystem is properly set up
     this.waveSystem.findDysonSphereEntity();
