@@ -5,8 +5,6 @@ import './styles/retro.css';
 interface PauseScreenProps {
   onResume: () => void;
   onRestart: () => void;
-  currentWave: number;
-  onSelectWave: (wave: number) => void;
 }
 
 const styles = {
@@ -26,23 +24,13 @@ const styles = {
   },
 };
 
-const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, currentWave, onSelectWave }) => {
-  const [selectedWave, setSelectedWave] = useState(currentWave);
-  const maxWaves = 10; // Set the maximum number of waves
-
+const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart }) => {
   // Ensure pointer lock is released when this component mounts
   useEffect(() => {
     if (document.pointerLockElement) {
       document.exitPointerLock();
     }
   }, []);
-
-  const handleWaveSelect = (wave: number) => {
-    onSelectWave(wave);
-  };
-
-  // Generate array of wave numbers
-  const waveNumbers = Array.from({ length: maxWaves }, (_, i) => i + 1);
 
   return (
     <div style={{
@@ -108,65 +96,6 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, currentW
         >
           Restart Game
         </button>
-      </div>
-
-      <div className="retro-text gradient-bg" style={{
-        background: 'linear-gradient(45deg, rgba(0,0,0,0.8), rgba(83,0,130,0.8))',
-        padding: '2rem',
-        marginTop: '1rem',
-        borderRadius: '12px',
-        border: '2px solid #ff00ff',
-        boxShadow: `
-          0 0 30px rgba(255, 0, 255, 0.3),
-          inset 0 0 20px rgba(255, 0, 255, 0.2)
-        `,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1rem',
-        maxWidth: '400px',
-        width: '100%'
-      }}>
-        <h2 style={{
-          color: '#00ffff',
-          fontSize: '1.5rem',
-          marginBottom: '1rem',
-          textAlign: 'center',
-          textShadow: '0 0 8px #00ffff'
-        }}>
-          Wave Select
-        </h2>
-        
-        <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '0.5rem',
-          justifyContent: 'center',
-          width: '100%'
-        }}>
-          {waveNumbers.map(wave => (
-            <button 
-              key={wave}
-              className="retro-button"
-              onClick={() => handleWaveSelect(wave)}
-              onTouchStart={(e) => {
-                e.preventDefault();
-                handleWaveSelect(wave);
-              }}
-              style={{
-                fontSize: '1rem',
-                padding: '0.5rem 0.75rem',
-                color: 'white',
-                background: selectedWave === wave ? 'rgba(255, 0, 255, 0.5)' : 'transparent',
-                minWidth: '40px',
-                cursor: 'pointer',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent',
-              }}
-            >
-              {wave}
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );

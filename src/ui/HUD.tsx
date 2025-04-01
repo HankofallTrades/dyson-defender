@@ -1092,11 +1092,6 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
     onResumeGame();
   };
   
-  const handleSelectWave = (wave: number) => {
-    // Call the App-level handler to fully restart the game at the selected wave
-    onRestartAtWave(wave);
-  };
-  
   // Add keyboard event listener for Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1224,16 +1219,14 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
     return <StartScreen onStartGame={onStartGame} />;
   }
   if (gameState === 'game_over') {
-    // Pass the final wave number to game over screen if needed
-    return <GameOverScreen stats={{ ...gameOverStats, wavesCompleted: currentWave }} onRestart={onRestartGame} />;
+    // Pass the final wave number captured by HUDSystem directly
+    return <GameOverScreen stats={gameOverStats} onRestart={onRestartGame} />;
   }
   if (gameState === 'paused') {
     return (
       <PauseScreen
         onResume={handleResumeGame}
         onRestart={onRestartGame}
-        currentWave={currentWave}
-        onSelectWave={handleSelectWave}
       />
     );
   }
