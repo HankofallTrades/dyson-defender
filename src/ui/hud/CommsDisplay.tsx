@@ -15,7 +15,7 @@ interface TrackedMessage {
   id: number;
   message: string;
   isNew: boolean;
-  isLatest: boolean; // Flag to indicate if it's the latest animating message
+  isLatest: boolean;
 }
 
 // Format message with line breaks to prevent text from being cut off
@@ -44,99 +44,94 @@ const formatMessageWithBreaks = (message: string, maxCharsPerLine = 40): string[
   return lines;
 };
 
-const CommsDisplay: React.FC<CommsDisplayProps> = ({ 
-  messages, 
-  waveCountdown = null, 
-  currentWave = 0 
+const CommsDisplay: React.FC<CommsDisplayProps> = ({
+  messages,
+  waveCountdown = null,
+  currentWave = 0
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [trackedMessages, setTrackedMessages] = useState<TrackedMessage[]>([]);
   const [nextId, setNextId] = useState(1);
-  
-  // Process incoming messages and add new ones to tracked state
+  const prevWaveRef = useRef(currentWave);
+
+  // Clear everything when entering wave 0
   useEffect(() => {
-    // Filter out non-display messages
-    const filteredDisplayMessages = messages.filter(msg => 
-      !msg.includes("WAVE") && !msg.includes("INCOMING") // Allow THREATS
-    );
+    // Only clear when transitioning TO wave 0 from a different wave
+    if (currentWave === 0 && prevWaveRef.current !== 0) {
+      setTrackedMessages([]);
+      setNextId(1);
+    }
+    prevWaveRef.current = currentWave;
+  }, [currentWave]);
 
-    // Find messages not yet tracked
-    const currentTrackedContent = trackedMessages.map(tm => tm.message);
-    // Convert incoming messages to uppercase here for comparison and storage
-    const newMessagesToAdd = filteredDisplayMessages
-        .map(msg => msg.toUpperCase())
-        .filter(upperMsg => !currentTrackedContent.includes(upperMsg));
+  // Handle messages
+  useEffect(() => {
+    // Don't process any messages during wave 0
+    if (currentWave === 0) {
+      return;
+    }
 
-    if (newMessagesToAdd.length > 0) {
-      let latestId = -1;
-      const newTrackedEntries = newMessagesToAdd.map((upperMsg, index) => {
-        const currentId = nextId + index;
-        latestId = currentId; // Keep track of the last ID added
-        return {
-          id: currentId,
-          message: upperMsg,
+    // Special handling for wave 1 start - show only objective
+    if (currentWave === 1 && waveCountdown === null) {
+      const objectiveMsg = "OBJECTIVE: DEFEND THE DYSON SPHERE";
+      const hasObjective = trackedMessages.some(msg => msg.message === objectiveMsg);
+      
+      if (!hasObjective) {
+        const objectiveEntry: TrackedMessage = {
+          id: 1,
+          message: objectiveMsg,
           isNew: true,
-          isLatest: false // Set isLatest later
+          isLatest: true
         };
-      });
+        setTrackedMessages([objectiveEntry]);
+        setNextId(2);
+        
+        const timer = setTimeout(() => {
+          setTrackedMessages(prev =>
+            prev.map(msg => ({ ...msg, isNew: false, isLatest: false }))
+          );
+        }, 3500);
+        return () => clearTimeout(timer);
+      }
+      return;
+    }
 
-      setTrackedMessages(prev => {
-        // Mark previous latest message as not latest
-        const updatedPrev = prev.map(m => ({...m, isLatest: false}));
-        // Mark the new latest message
-        const finalNewEntries = newTrackedEntries.map(entry => 
-           entry.id === latestId ? { ...entry, isLatest: true } : entry
-        );
-        return [...updatedPrev, ...finalNewEntries];
-      });
-      setNextId(prev => prev + newMessagesToAdd.length);
+    // Handle regular messages
+    const newMessages = messages
+      .filter(msg => !msg.includes("WAVE") && !msg.includes("INCOMING"))
+      .map(msg => msg.toUpperCase())
+      .filter(msg => !trackedMessages.some(tracked => tracked.message === msg));
 
-      // Set timer to remove 'isNew' flag after animation duration
-      const animationDuration = 2500; // Match CSS animation duration + small buffer
+    if (newMessages.length > 0) {
+      const newEntries = newMessages.map((msg, index) => ({
+        id: nextId + index,
+        message: msg,
+        isNew: true,
+        isLatest: index === newMessages.length - 1
+      }));
+
+      setTrackedMessages(prev => [
+        ...prev.map(msg => ({ ...msg, isLatest: false })),
+        ...newEntries
+      ]);
+      
+      setNextId(prev => prev + newMessages.length);
+
       const timer = setTimeout(() => {
         setTrackedMessages(prev =>
-          prev.map(msg => msg.isNew ? { ...msg, isNew: false, isLatest: false } : msg)
+          prev.map(msg => 
+            newEntries.some(n => n.id === msg.id)
+              ? { ...msg, isNew: false, isLatest: false }
+              : msg
+          )
         );
-      }, animationDuration);
+      }, 2500);
 
       return () => clearTimeout(timer);
     }
-  }, [messages, trackedMessages, nextId]); // Include trackedMessages dependency
+  }, [messages, currentWave, waveCountdown, nextId, trackedMessages]);
 
-  // Add objective message when conditions are met
-  useEffect(() => {
-    const objectiveMessageText = "OBJECTIVE: DEFEND THE DYSON SPHERE"; // Already uppercase
-    const shouldAddObjective = waveCountdown === null && currentWave === 1;
-    const objectiveExists = trackedMessages.some(msg => msg.message === objectiveMessageText);
-
-    if (shouldAddObjective && !objectiveExists) {
-      const newObjectiveEntry: TrackedMessage = {
-        id: nextId,
-        message: objectiveMessageText,
-        isNew: true,
-        isLatest: true // Assume objective is the latest when added
-      };
-
-      setTrackedMessages(prev => {
-        // Mark previous latest as not latest
-        const updatedPrev = prev.map(m => ({...m, isLatest: false}));
-        return [...updatedPrev, newObjectiveEntry];
-      });
-      setNextId(prev => prev + 1);
-      
-      // Set timer to remove 'isNew' flag after animation duration
-      const animationDuration = 3500; // Match objective CSS animation + buffer
-       const timer = setTimeout(() => {
-        setTrackedMessages(prev =>
-          prev.map(msg => msg.id === newObjectiveEntry.id ? { ...msg, isNew: false, isLatest: false } : msg)
-        );
-      }, animationDuration);
-
-      return () => clearTimeout(timer);
-    }
-  }, [waveCountdown, currentWave, trackedMessages, nextId]);
-
-  // Auto-scroll to the bottom when trackedMessages change
+  // Auto-scroll effect
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -146,9 +141,9 @@ const CommsDisplay: React.FC<CommsDisplayProps> = ({
   // Create alert overlay for wave transitions
   const renderAlertOverlay = () => {
     if (waveCountdown === null) return null;
-    
+
     const isFirstWave = currentWave === 0;
-    
+
     return (
       <div className="comms-content-alert-overlay">
         {isFirstWave ? (
@@ -173,7 +168,7 @@ const CommsDisplay: React.FC<CommsDisplayProps> = ({
     // Use the already uppercased message
     return message.includes("THREAT");
   };
-  
+
   const isObjectiveMessage = (message: string): boolean => {
     // Use the already uppercased message
     return message.includes("OBJECTIVE: DEFEND");
@@ -184,22 +179,22 @@ const CommsDisplay: React.FC<CommsDisplayProps> = ({
       <div className="comms-header retro-hud-label">COMMS LOG</div>
       <div className="comms-content console-content">
         {renderAlertOverlay()}
-        
+
         {/* Messages with line breaks */}
         {trackedMessages.map((trackedMsg) => {
           const formattedLines = formatMessageWithBreaks(trackedMsg.message);
           const isThreat = isThreatMessage(trackedMsg.message);
           const isObjective = isObjectiveMessage(trackedMsg.message);
-          
+
           return (
-            <div 
-              key={`msg-${trackedMsg.id}`} 
+            <div
+              key={`msg-${trackedMsg.id}`}
               className="comms-message-container"
             >
               {formattedLines.map((line, lineIndex) => {
                 const isFirstLine = lineIndex === 0;
                 const classes = ["comms-message-line"];
-                
+
                 if (isFirstLine) {
                   classes.push("first-line");
                   if (trackedMsg.isNew) {
@@ -210,12 +205,12 @@ const CommsDisplay: React.FC<CommsDisplayProps> = ({
                 } else {
                   classes.push("continuation-line");
                 }
-                
-                const textColor = isObjective ? '#00ff00' : 
+
+                const textColor = isObjective ? '#00ff00' :
                                  isThreat ? '#ff5555' : '#00ffff';
-                
+
                 return (
-                  <div 
+                  <div
                     key={`line-${lineIndex}`}
                     className={classes.join(" ")}
                     style={{ color: textColor }}
