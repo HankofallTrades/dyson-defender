@@ -1131,10 +1131,22 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, onStartGame, onResta
     const handlePointerLockChange = () => {
       // Check if pointer lock was exited
       if (document.pointerLockElement === null && gameState === 'playing') {
-        // Pause the game when pointer lock is exited
-        onPauseGame();
-        // Update local state immediately
-        setGameState('paused');
+        // Check if the game is actually over by querying the world directly
+        // This ensures we don't show the pause screen when we should show game over
+        const hudEntities = world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
+        if (hudEntities.length > 0) {
+          const hudEntity = hudEntities[0];
+          const gameStateDisplay = world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
+          
+          // Only pause if the game state in the world is still 'playing'
+          // This prevents pausing when the game is over (but the local state hasn't synced yet)
+          if (gameStateDisplay && gameStateDisplay.currentState === 'playing') {
+            // Pause the game when pointer lock is exited
+            onPauseGame();
+            // Update local state immediately
+            setGameState('paused');
+          }
+        }
       }
     };
     
@@ -1145,7 +1157,7 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, onStartGame, onResta
     return () => {
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
     };
-  }, [gameState, onPauseGame]);
+  }, [gameState, onPauseGame, world]);  // Add world as a dependency
   
   // Add effect to handle mouse movement for reticle bracket lag
   useEffect(() => {
