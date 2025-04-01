@@ -29,6 +29,10 @@ export class CollisionSystem implements System {
   private powerUpSystem: PowerUpSystem | null = null;
   private audioManager: AudioManager | null = null;
   private uiSystem: UISystem | null = null;
+  
+  // Reusable vectors to avoid GC pressure
+  private reusableVectorA = new THREE.Vector3();
+  private reusableVectorB = new THREE.Vector3();
 
   constructor(world: World, audioManager?: AudioManager) {
     this.world = world;
@@ -140,12 +144,12 @@ export class CollisionSystem implements System {
     entityA: number, posA: Position, colliderA: Collider,
     entityB: number, posB: Position, colliderB: Collider
   ): boolean {
-    // Create THREE.js vectors for position
-    const positionA = new THREE.Vector3(posA.x, posA.y, posA.z);
-    const positionB = new THREE.Vector3(posB.x, posB.y, posB.z);
+    // Use reusable THREE.js vectors for position to avoid allocations
+    this.reusableVectorA.set(posA.x, posA.y, posA.z);
+    this.reusableVectorB.set(posB.x, posB.y, posB.z);
     
     // Calculate distance between entities
-    const distance = positionA.distanceTo(positionB);
+    const distance = this.reusableVectorA.distanceTo(this.reusableVectorB);
     
     // Special case for power-up collision - be extremely generous with collision detection
     if (colliderA.layer === 'powerUp' || colliderB.layer === 'powerUp') {
@@ -186,14 +190,14 @@ export class CollisionSystem implements System {
     } else if (colliderA.type === 'sphere' && colliderB.type === 'box') {
       // Sphere-box collision - simplified
       return this.checkSphereBoxCollision(
-        positionA, colliderA.radius || 0,
-        positionB, colliderB.width || 0, colliderB.height || 0, colliderB.depth || 0
+        this.reusableVectorA, colliderA.radius || 0,
+        this.reusableVectorB, colliderB.width || 0, colliderB.height || 0, colliderB.depth || 0
       );
     } else if (colliderA.type === 'box' && colliderB.type === 'sphere') {
       // Box-sphere collision
       return this.checkSphereBoxCollision(
-        positionB, colliderB.radius || 0,
-        positionA, colliderA.width || 0, colliderA.height || 0, colliderA.depth || 0
+        this.reusableVectorB, colliderB.radius || 0,
+        this.reusableVectorA, colliderA.width || 0, colliderA.height || 0, colliderA.depth || 0
       );
     }
     

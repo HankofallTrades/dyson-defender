@@ -924,7 +924,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           const percent = (shieldComp.currentShield / shieldComp.maxShield) * 100;
           
           // ADDED LOGGING: Check the offsetY value being read
-          console.log(`[HUD ShieldBar] Entity ${entity}: Reading offsetY: ${shieldBarComp?.offsetY}, screenY: ${screenPosComp?.y}`);
+          // console.log(`[HUD ShieldBar] Entity ${entity}: Reading offsetY: ${shieldBarComp?.offsetY}, screenY: ${screenPosComp?.y}`);
           
           return {
             id: entity,
@@ -969,7 +969,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
           const percent = (healthComp.current / healthComp.max) * 100;
           
           // ADDED LOGGING: Check the offsetY value being read
-          console.log(`[HUD HealthBar] Entity ${entity}: Reading offsetY: ${healthBarComp?.offsetY}, screenY: ${screenPosComp?.y}`);
+          // console.log(`[HUD HealthBar] Entity ${entity}: Reading offsetY: ${healthBarComp?.offsetY}, screenY: ${screenPosComp?.y}`);
           
           return {
             id: entity,
