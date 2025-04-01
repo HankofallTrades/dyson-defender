@@ -5,6 +5,7 @@ import './styles/retro.css';
 interface PauseScreenProps {
   onResume: () => void;
   onRestart: () => void;
+  onExit: () => void;
 }
 
 const styles = {
@@ -24,7 +25,7 @@ const styles = {
   },
 };
 
-const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart }) => {
+const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onExit }) => {
   // Ensure pointer lock is released when this component mounts
   useEffect(() => {
     if (document.pointerLockElement) {
@@ -74,7 +75,7 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart }) => {
             WebkitTapHighlightColor: 'transparent',
           }}
         >
-          Resume Game
+          RESUME
         </button>
 
         <button 
@@ -94,7 +95,27 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart }) => {
             WebkitTapHighlightColor: 'transparent',
           }}
         >
-          Restart Game
+          RESTART
+        </button>
+
+        <button 
+          className="retro-button"
+          onClick={onExit}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            onExit();
+          }}
+          style={{
+            fontSize: '1.5rem',
+            padding: '1rem 2rem',
+            letterSpacing: '2px',
+            color: 'white',
+            cursor: 'pointer',
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          EXIT
         </button>
       </div>
     </div>

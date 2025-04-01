@@ -27,7 +27,7 @@ export function createLaser(
   });
   
   // Add velocity component (based on direction)
-  const laserSpeed = 400; // Units per second - doubled for faster projectiles
+  const laserSpeed = 500; // Units per second 
   const normalizedDir = new THREE.Vector3(direction.x, direction.y, direction.z).normalize();
   
   world.addComponent(entity, 'Velocity', { 

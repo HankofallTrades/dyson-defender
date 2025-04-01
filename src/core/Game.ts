@@ -98,7 +98,6 @@ class Game {
     this.initEntities();
 
     this.render();
-    window.addEventListener('resize', this.handleResize);
     
     // Don't start the game automatically - just render the start screen
     this.animationFrameId = requestAnimationFrame(this.animate);
@@ -449,8 +448,6 @@ class Game {
     this.sceneManager.render();
   }
 
-  private handleResize = (): void => {};
-
   public getGameState(): GameState {
     return this.stateManager.getState();
   }
@@ -468,19 +465,59 @@ class Game {
   }
 
   public dispose(): void {
-    this.pause();
-    
-    if (this.animationFrameId !== null) {
+    console.log('[Game] Disposing...');
+    if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
-    
-    window.removeEventListener('resize', this.handleResize);
-    this.sceneManager.destroy();
+
+    // Remove event listeners
     this.inputManager.dispose();
     
-    // Dispose of audio resources
-    this.audioManager.dispose();
+    // Dispose Three.js related resources via SceneManager
+    this.sceneManager.destroy();
+    
+    // Clean up global references if set
+    if ((window as any).gameWorld === this.world) {
+        delete (window as any).gameWorld;
+    }
+    if ((window as any).powerUpSystem) {
+        delete (window as any).powerUpSystem;
+    }
+    if ((window as any).collisionSystem) {
+        delete (window as any).collisionSystem;
+    }
+    if ((window as any).testAudio) {
+        delete (window as any).testAudio;
+    }
+    if ((window as any).testPowerUp) {
+        delete (window as any).testPowerUp;
+    }
+    
+    // Clear references
+    // @ts-ignore - Allow setting to null for cleanup
+    this.world = null;
+    // @ts-ignore
+    this.sceneManager = null;
+    // @ts-ignore
+    this.stateManager = null;
+    // @ts-ignore
+    this.hudSystem = null;
+    // @ts-ignore
+    this.waveSystem = null;
+    // @ts-ignore
+    this.floatingScoreSystem = null;
+    // @ts-ignore
+    this.animationSystem = null;
+    // @ts-ignore
+    this.devSystem = null;
+    // @ts-ignore
+    this.inputManager = null;
+    // @ts-ignore
+    this.audioManager = null;
+
+    this.isRunning = false;
+    console.log('[Game] Disposed');
   }
 
   public restartAtWave(waveNumber: number): void {
@@ -561,6 +598,55 @@ class Game {
       this.inputManager.requestPointerLock();
     } else {
       console.warn('[Game] InputManager not available to request pointer lock.');
+    }
+  }
+
+  /**
+   * Resets the game to the initial state (start screen)
+   */
+  public reset(): void {
+    // Stop the current game loop
+    this.pause();
+    
+    // Clean up any existing Three.js objects in the scene
+    this.sceneManager.clearScene();
+    
+    // Reset the game state
+    this.stateManager.resetState();
+    
+    // Clear all entities by creating a new World instance
+    this.world = new World();
+    
+    // Set the game state in the world
+    this.world.setGameState(this.stateManager.getState());
+    
+    // Reinitialize systems and entities
+    this.initSystems();
+    this.initEntities();
+    
+    // Set the game state to not_started
+    const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
+    if (hudEntities.length > 0) {
+      const hudEntity = hudEntities[0];
+      const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
+      
+      if (gameStateDisplay) {
+        this.world.removeComponent(hudEntity, 'GameStateDisplay');
+        this.world.addComponent(hudEntity, 'GameStateDisplay', {
+          ...gameStateDisplay,
+          currentState: 'not_started'
+        });
+      }
+    }
+    
+    // Make sure the global game state is properly synchronized
+    this.isRunning = false;
+    this.stateManager.updateState({ isPaused: false, isGameOver: false });
+    this.lastFrameTime = performance.now();
+    
+    // Exit pointer lock if active
+    if (document.pointerLockElement === this.container) {
+      document.exitPointerLock();
     }
   }
 }

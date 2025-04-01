@@ -6,7 +6,6 @@ import { World } from './core/World'
 import { Camera } from 'three'
 import { MobileControls } from './ui/MobileControls'
 import { isMobileDevice } from './utils/deviceDetection'
-import styled from '@emotion/styled'
 import { SceneManager } from './rendering/SceneManager'
 import { AudioManager } from './core/AudioManager'
 
@@ -16,69 +15,23 @@ function App() {
   const [world, setWorld] = useState<World | null>(null);
   const [camera, setCamera] = useState<Camera | null>(null);
   const isMobile = isMobileDevice();
-  const [audioInitialized, setAudioInitialized] = useState(false);
 
   // Create a single AudioManager instance that will be shared
   const audioManager = useMemo(() => new AudioManager(), []);
-
-  // Load sounds and set up audio initialization based on user interaction
-  useEffect(() => {
-    const loadAudio = async () => {
-      try {
-        await audioManager.loadSounds();
-        console.log('[App] Audio files loaded, waiting for user interaction.');
-
-        // DO NOT try to play sound here initially due to autoplay policies.
-
-        // Set up interaction handler ONLY if not already initialized
-        if (!audioInitialized) {
-          const handleUserInteraction = () => {
-            // Attempt to resume context (best handled inside AudioManager)
-            // audioManager.resumeContextIfNeeded(); // Let's add this later in AudioManager
-
-            console.log('[App] User interaction detected, attempting to play soundtrack');
-            try {
-               audioManager.playSoundtrack(); // Play the sound
-               setAudioInitialized(true); // Mark as initialized
-               console.log('[App] Soundtrack started after interaction.');
-               // No need to manually remove listeners here if using { once: true }
-            } catch (error) {
-               console.error('[App] Error playing soundtrack after interaction:', error);
-            }
-          };
-
-          console.log('[App] Adding interaction listeners for audio.');
-          document.addEventListener('click', handleUserInteraction, { once: true });
-          document.addEventListener('keydown', handleUserInteraction, { once: true });
-          document.addEventListener('touchstart', handleUserInteraction, { once: true });
-
-          // Return a cleanup function for when the component unmounts or dependencies change
-          // This cleanup is primarily for unmounting, as { once: true } handles removal after interaction.
-          return () => {
-              console.log('[App] Cleanup: Removing interaction listeners.');
-              // Remove listeners by the *same* function reference
-              document.removeEventListener('click', handleUserInteraction);
-              document.removeEventListener('keydown', handleUserInteraction);
-              document.removeEventListener('touchstart', handleUserInteraction);
-          };
-        } else {
-           console.log('[App] Audio already initialized, skipping interaction listener setup.');
-        }
-      } catch (error) {
-        console.error('[App] Error loading audio:', error);
-      }
-    };
-
-    loadAudio();
-
-    // Dependency array includes audioInitialized now.
-    // The cleanup function returned above handles removal.
-  }, [audioManager, audioInitialized]); // Add audioInitialized as a dependency
 
   useEffect(() => {
     if (!containerRef.current) {
       return;
     }
+
+    // Load sounds before initializing the game
+    audioManager.loadSounds().then(() => {
+      console.log('[App] Audio files loaded.');
+      // Sounds are loaded, Game can now be initialized and potentially use them.
+      // Note: Actual playback requiring user interaction is handled elsewhere (e.g., start button).
+    }).catch(error => {
+      console.error('[App] Error loading audio:', error);
+    });
 
     try {
       // Initialize SceneManager
@@ -87,45 +40,40 @@ function App() {
       // Initialize Game with the shared AudioManager
       const game = new Game(containerRef.current, audioManager);
       gameRef.current = game;
-      
-      // Get access to the world for HUD rendering
+
+      // Restore getting world and camera state
       const gameWorld = game.getWorld();
       if (gameWorld) {
         setWorld(gameWorld);
       }
-      
-      // Get the camera
       const gameCamera = game.getCamera();
       if (gameCamera) {
         setCamera(gameCamera);
       }
 
       return () => {
+        console.log("[App] Cleanup: Disposing game.");
         if (gameRef.current) {
           gameRef.current.dispose();
           gameRef.current = null;
         }
+        // SceneManager cleanup is handled by gameRef.current.dispose()
       };
     } catch (error) {
       console.error('Error initializing game:', error);
     }
-  }, [audioManager]);
+  }, [audioManager]); // Only depends on audioManager instance
 
   const handleStartGame = () => {
     if (gameRef.current) {
-      // --- Ensure audio is initialized on Start Game click ---
-      if (!audioInitialized) {
-        console.log('[App] Starting soundtrack via Start Game button.');
-        try {
-          // Attempt to resume context (best handled inside AudioManager)
-          // audioManager.resumeContextIfNeeded(); // Let's add this later in AudioManager
-          audioManager.playSoundtrack();
-          setAudioInitialized(true); // Mark as initialized
-          // Listeners should be removed by {once: true} or the interaction handler itself.
-          console.log('[App] Soundtrack started via Start Game button.');
-        } catch (error) {
-           console.error('[App] Error starting soundtrack from Start Game button:', error);
-        }
+      // --- Attempt to start audio on Start Game click ---
+      console.log('[App] Attempting to start soundtrack via Start Game button.');
+      try {
+        // Let AudioManager handle the context state and play if possible
+        audioManager.playSoundtrack();
+        console.log('[App] Soundtrack play requested via Start Game button.');
+      } catch (error) {
+         console.error('[App] Error starting soundtrack from Start Game button:', error);
       }
       // ------------------------------------------------------
 
@@ -138,17 +86,15 @@ function App() {
     if (gameRef.current) {
       gameRef.current.restart();
       gameRef.current.requestPointerLock();
-      // Get the new world instance after restart and update the state
+      // Restore setting world state after restart
       const newWorld = gameRef.current.getWorld();
       if (newWorld) {
         setWorld(newWorld);
       }
-      
+
       // Ensure audio is playing when game restarts
-      if (!audioInitialized) {
-        audioManager.playSoundtrack();
-        setAudioInitialized(true);
-      }
+      console.log('[App] Attempting to ensure soundtrack is playing on restart.');
+      audioManager.playSoundtrack(); // Let AudioManager handle state
     }
   };
 
@@ -163,29 +109,48 @@ function App() {
     if (gameRef.current) {
       gameRef.current.resumeGame();
       gameRef.current.requestPointerLock(); // Re-request pointer lock on resume
-      
+
       // Ensure audio is playing when game resumes
-      if (!audioInitialized) {
-        audioManager.playSoundtrack();
-        setAudioInitialized(true);
+      console.log('[App] Attempting to ensure soundtrack is playing on resume.');
+      audioManager.playSoundtrack(); // Let AudioManager handle state
+    }
+  };
+
+  const handleExitGame = () => {
+    if (gameRef.current) {
+      // Reset the game to the initial state (not started)
+      // This will reinitialize the world and set the game state to not_started
+      gameRef.current.reset();
+      
+      // Make sure to update the world and camera references for the HUD
+      const newWorld = gameRef.current.getWorld();
+      if (newWorld) {
+        setWorld(newWorld);
       }
+      
+      const newCamera = gameRef.current.getCamera();
+      if (newCamera) {
+        setCamera(newCamera);
+      }
+      
+      // Ensure audio continues playing for menu
+      audioManager.playSoundtrack();
     }
   };
 
   const handleRestartAtWave = (wave: number) => {
     if (gameRef.current) {
       gameRef.current.restartAtWave(wave);
-      // Get the new world instance after restart and update the state
+      gameRef.current.requestPointerLock(); // Added pointer lock request
+      // Restore setting world state after restart at wave
       const newWorld = gameRef.current.getWorld();
       if (newWorld) {
         setWorld(newWorld);
       }
-      
+
       // Ensure audio is playing when game restarts at a specific wave
-      if (!audioInitialized) {
-        audioManager.playSoundtrack();
-        setAudioInitialized(true);
-      }
+      console.log('[App] Attempting to ensure soundtrack is playing on restart at wave.');
+      audioManager.playSoundtrack(); // Let AudioManager handle state
     }
   };
 
@@ -194,8 +159,8 @@ function App() {
       <div className="app">
         <div id="game-container" className="game-container" ref={containerRef}></div>
         {world && gameRef.current && (
-          <HUD 
-            world={world} 
+          <HUD
+            world={world}
             gameStateManager={gameRef.current.getStateManager()}
             camera={camera as Camera | undefined}
             onStartGame={handleStartGame}
@@ -203,6 +168,7 @@ function App() {
             onResumeGame={handleResumeGame}
             onPauseGame={handlePauseGame}
             onRestartAtWave={handleRestartAtWave}
+            onExitGame={handleExitGame}
           />
         )}
         {isMobile && <MobileControls />}

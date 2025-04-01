@@ -449,7 +449,7 @@ export class CollisionSystem implements System {
               // Create proper copy of position
               const scorePosition = {
                 x: enemyPosition.x,
-                y: enemyPosition.y,
+                y: enemyPosition.y + 1.0, // Add vertical offset to appear closer to center
                 z: enemyPosition.z
               };
               
