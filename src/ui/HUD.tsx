@@ -540,7 +540,6 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
   });
   const [enemiesRemaining, setEnemiesRemaining] = useState({ current: 0, total: 0 });
   const [currentWave, setCurrentWave] = useState(0); // Start at 0, update from WaveInfo
-  const [boostReady, setBoostReady] = useState(true); // Kept for potential direct use? Check if derived purely from boostData now.
   const [boostData, setBoostData] = useState({
     active: false,
     remaining: 1.0,
@@ -615,14 +614,28 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
   const [currentTempAlert, setCurrentTempAlert] = useState<string | null>(null);
   const alertTimeoutRef = useRef<number | null>(null); // CHANGED: NodeJS.Timeout to number
   
+  // --- Boost Bar Smoothing ---
+  // Ref to store the actual current values being interpolated for display
+  const currentBoostDataRef = useRef({ active: false, remaining: 1.0, cooldown: 0, maxTime: 1.0 });
+  // Ref to store the latest target values received from GameState
+  const targetBoostDataRef = useRef({ active: false, remaining: 1.0, cooldown: 0, maxTime: 1.0 });
+  // State variable to trigger re-renders with the smoothed data
+  const [displayedBoostData, setDisplayedBoostData] = useState({ active: false, remaining: 1.0, cooldown: 0, maxTime: 1.0 });
+  // Previous boostReady state to avoid unnecessary updates
+  const boostReadyRef = useRef(true); 
+  // State for boost ready indicator (less critical for smoothing)
+  const [boostReady, setBoostReady] = useState(true); 
+  // --- End Boost Bar Smoothing ---
+  
   // Update UI data from ECS world
   useEffect(() => {
     let lastRender = performance.now();
+    let animationFrameId: number | null = null; // Store animation frame ID
     
     // This is our "render" function that runs on each animation frame
     const updateHUD = (timestamp: number) => {
-      // Calculate time since last update (for smooth animations)
-      const deltaTime = timestamp - lastRender;
+      // Calculate delta time in seconds
+      const deltaTime = Math.min(0.1, (timestamp - lastRender) / 1000); // Cap delta time
       lastRender = timestamp;
       
       const hudEntities = world.getEntitiesWith(['UIDisplay']);
@@ -725,24 +738,84 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
         }
       }
       
-      // Update boost state from game state - priority update for smoothness
-      const worldGameState = world.getGameState(); // Renamed to avoid conflict
+      // Update boost state from game state - Get Target Values
+      const worldGameState = world.getGameState();
       if (worldGameState) {
-        // Update boost data state if changed
-        const newBoostData = {
-           active: worldGameState.boostActive,
-           remaining: worldGameState.boostRemaining,
-           cooldown: worldGameState.boostCooldown,
-           maxTime: 1.0 // Assuming maxTime is constant
+        targetBoostDataRef.current = {
+          active: worldGameState.boostActive,
+          remaining: worldGameState.boostRemaining,
+          cooldown: worldGameState.boostCooldown,
+          maxTime: 1.0 // Assuming constant
         };
-        if (JSON.stringify(newBoostData) !== JSON.stringify(boostData)) {
-             setBoostData(newBoostData);
-        }
-        // Update boostReady derived state (might be redundant if UI uses boostData directly)
-        const ready = worldGameState.boostCooldown <= 0 && worldGameState.boostRemaining > 0;
-        if (ready !== boostReady) {
-            setBoostReady(ready);
-        }
+      }
+      
+      // Interpolate current boost values towards the target
+      const target = targetBoostDataRef.current; // Keep target ref
+
+      let needsUpdate = false;
+      const tolerance = 0.001;
+
+      // --- V4 Fix: Use existing worldGameState, Correct Scope --- 
+      
+      // Get the latest game state (Ensure worldGameState is accessible here, declared earlier)
+      if (worldGameState) { // worldGameState should already be defined from earlier in updateHUD
+        targetBoostDataRef.current = {
+          active: worldGameState.boostActive,
+          remaining: worldGameState.boostRemaining,
+          cooldown: worldGameState.boostCooldown,
+          maxTime: 1.0 // Assuming constant
+        };
+      }
+      
+      // Determine the values to display in *this* frame
+      let displayActive = target.active;
+      let displayRemaining = target.remaining;
+      let displayCooldown = target.cooldown;
+      
+      // Apply interpolation ONLY where needed (currently just for cooldown visual smoothing)
+      // We still need the previous displayed value for this calculation
+      const previousCooldown = displayedBoostData.cooldown; 
+      
+      if (target.cooldown > 0) {
+          // Only interpolate if the target is actively cooling down
+          const lerpFactor = 1.0 - Math.exp(-deltaTime * 15); // Adjust factor as needed
+          const interpolatedCooldown = previousCooldown + (target.cooldown - previousCooldown) * lerpFactor;
+          // Use the interpolated value, but clamp it between 0 and target
+          // (Don't let visual interpolation go below the actual target cooldown)
+          displayCooldown = Math.max(target.cooldown, Math.max(0, interpolatedCooldown)); 
+      } else {
+          // Snap cooldown to 0 if target is 0
+          displayCooldown = 0;
+      }
+
+      // --- NO Interpolation for Remaining or Active for now --- 
+      // displayRemaining and displayActive directly reflect the target state.
+
+      // Check if the calculated display values differ from the current state
+      if (
+        displayActive !== displayedBoostData.active ||
+        Math.abs(displayRemaining - displayedBoostData.remaining) > tolerance ||
+        Math.abs(displayCooldown - displayedBoostData.cooldown) > tolerance
+      ) {
+        needsUpdate = true;
+      }
+      // --- End V4 Logic ---
+
+      // Update the React state used for rendering ONLY if needed
+      if (needsUpdate) {
+         setDisplayedBoostData({ 
+            active: displayActive,
+            remaining: displayRemaining,
+            cooldown: displayCooldown, // Use the (potentially interpolated) cooldown
+            maxTime: target.maxTime 
+         }); 
+      }
+
+      // Update boostReady state (based on target state for accuracy)
+      const ready = target.cooldown <= 0 && target.remaining > 0;
+      if (ready !== boostReadyRef.current) {
+          boostReadyRef.current = ready;
+          setBoostReady(ready);
       }
       
       // Update game over stats if in game over state
@@ -956,24 +1029,25 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
          }
       }
       
-      // Request next frame update - use the timestamp
-      requestAnimationFrame(updateHUD);
+      // Request next frame update
+      animationFrameId = requestAnimationFrame(updateHUD);
     };
     
     // Start the update loop
-    const animationId = requestAnimationFrame(updateHUD);
+    animationFrameId = requestAnimationFrame(updateHUD);
     
     // Cleanup
     return () => {
-      cancelAnimationFrame(animationId);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
       // Clear alert timeout on unmount
       if (alertTimeoutRef.current) {
          clearTimeout(alertTimeoutRef.current);
       }
     };
-    // Dependencies: world, camera, gameState, reticle, boostData, boostReady, gameOverStats, waveCountdown, waveComplete, currentObjective, currentTempAlert, alertMessages, floatingScores, radarData, shieldBars, healthBars
-    // Simplifying dependencies: Let React handle object/array changes. Key triggers are world and camera. Internal state changes trigger re-renders anyway.
-  }, [world, camera]);
+    // Dependencies: world, camera. Other states are updated internally based on these.
+  }, [world, camera]); // Keep dependencies minimal
   
   // Effect to clear alerts and logs on game state reset
   useEffect(() => {
@@ -1622,21 +1696,39 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
               <div style={{ marginBottom: '10px' }}>
                 <div style={{ color: '#00ffff', marginBottom: '5px', fontSize: '0.6rem' }}>BOOST SYSTEM:</div>
                 <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
-                  {/* Boost Bar Fill */}
+                  {/* Boost Bar Fill - Width uses smoothed state, Color uses target ref */}
                   <div style={{
-                    width: boostData.cooldown > 0
-                      ? `${(1 - boostData.cooldown / 3.0) * 100}%`
-                      : `${Math.max(0, (boostData.remaining / boostData.maxTime) * 100)}%`,
+                    // Width uses displayedBoostData for smooth cooldown transition
+                    width: displayedBoostData.cooldown > 0 
+                      ? `${(1 - displayedBoostData.cooldown / 3.0) * 100}%` 
+                      : `${Math.max(0, (displayedBoostData.remaining / displayedBoostData.maxTime) * 100)}%`, 
                     height: '100%',
-                    background: boostData.cooldown > 0 ? 'linear-gradient(90deg, #330066, #660066)' : (boostData.active ? 'linear-gradient(90deg, #ff00ff, #00ffff)' : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
-                    boxShadow: boostData.active ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' : 'none',
-                    transition: 'width 0.1s linear, background 0.2s, box-shadow 0.2s', // Faster width transition
-                    transform: 'translateZ(0)',
-                    willChange: 'width'
+                    // Color logic uses targetBoostDataRef.current for instant feedback
+                    background: targetBoostDataRef.current.cooldown > 0 
+                        ? 'linear-gradient(90deg, #330066, #660066)' // Charging Purple
+                        : (targetBoostDataRef.current.active 
+                            ? 'linear-gradient(90deg, #ff00ff, #00ffff)' // Active Cyan/Magenta
+                            : 'linear-gradient(90deg, #00ffff, #ff00ff)'), // Ready Magenta/Cyan
+                    // Shadow uses targetBoostDataRef.current for instant feedback
+                    boxShadow: targetBoostDataRef.current.active ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' : 'none',
+                    transition: 'none', 
+                    transform: 'translateZ(0)', 
+                    willChange: 'width, background' 
                   }}></div>
-                  {/* Boost Bar Text */}
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: boostData.cooldown > 0 ? '#888888' : '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                    {boostData.cooldown > 0 ? "CHARGING" : boostData.active ? "ACTIVE" : "READY"}
+                  {/* Boost Bar Text - Text and color use targetBoostDataRef.current */}
+                  <div style={{ 
+                      position: 'absolute', 
+                      top: '50%', 
+                      left: '50%', 
+                      transform: 'translate(-50%, -50%)', 
+                      // Use target ref for instant color
+                      color: targetBoostDataRef.current.cooldown > 0 ? '#888888' : '#ffffff', 
+                      textShadow: '1px 1px 2px #000000', 
+                      fontSize: '0.65rem', 
+                      fontWeight: 'bold' 
+                  }}>
+                    {/* Use target ref for instant text */}
+                    {targetBoostDataRef.current.cooldown > 0 ? "CHARGING" : targetBoostDataRef.current.active ? "ACTIVE" : "READY"} 
                   </div>
                 </div>
               </div>
