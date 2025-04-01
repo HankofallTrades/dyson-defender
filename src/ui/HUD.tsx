@@ -1548,7 +1548,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
       {/* Player HUD - Bottom (Adjusted Layout) */}
       <div className="ship-console" style={{
         position: 'absolute',
-        bottom: '0px',
+        bottom: '5px', // Changed from 0px to 5px to raise the console
         left: '0',
         right: '0',
         display: 'flex',
@@ -1624,7 +1624,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
             {/* Left Column: Ship Systems */}
             <div style={{ flex: '1', marginRight: '8px', display: 'flex', flexDirection: 'column' }}>
               {/* Ship Systems Header */}
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px', height: '35px' }}> {/* Added fixed height */}
                 <Hologram modelType="ship" size={35} color="#00aaff" gameIsActive={gameState === 'playing'} />
                 <span style={{ color: '#ff00ff', fontSize: '0.65rem', fontWeight: 'bold' }}>SHIP</span>
               </div>
@@ -1632,7 +1632,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
               <div style={{ width: '90%', borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', marginBottom: '8px' }}></div>
               {/* Boost System */}
               <div style={{ marginBottom: '10px' }}>
-                <div style={{ color: '#00ffff', marginBottom: '5px', fontSize: '0.6rem' }}>BOOST SYSTEM:</div>
+                <div style={{ color: '#00ffff', marginBottom: '5px', fontSize: '0.6rem', height: '14px' }}>BOOST SYSTEM:</div> {/* Added fixed height */}
                 <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
                   {/* Boost Bar Fill - Width uses smoothed state, Color uses target ref */}
                   <div style={{
@@ -1672,7 +1672,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
               </div>
               {/* Hull Status */}
               <div style={{ marginBottom: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '5px', color: hullStatus.color, fontSize: '0.6rem', whiteSpace: 'nowrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '5px', color: hullStatus.color, fontSize: '0.6rem', whiteSpace: 'nowrap', height: '14px' }}> {/* Added fixed height */}
                   <span>HULL INTEGRITY:</span>
                 </div>
                 <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
@@ -1690,15 +1690,15 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
             {/* Right Column: Dyson Systems */}
             <div style={{ flex: '1', marginLeft: '8px', display: 'flex', flexDirection: 'column' }}>
               {/* Dyson Systems Header */}
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
-                <Hologram modelType="dysonSphere" size={40} color="#00aaff" gameIsActive={gameState === 'playing'} />
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px', height: '35px' }}> {/* Added fixed height to match Ship column */}
+                <Hologram modelType="dysonSphere" size={35} color="#00aaff" gameIsActive={gameState === 'playing'} /> {/* Changed size from 40 to 35 to match Ship */}
                 <span style={{ color: '#ff00ff', fontSize: '0.65rem', fontWeight: 'bold' }}>DYSON SPHERE</span>
               </div>
               {/* Dotted line */}
               <div style={{ width: '90%', borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', marginBottom: '8px' }}></div>
               {/* Dyson Shield Status */}
               <div style={{ marginBottom: '10px' }}>
-                <div style={{ color: dysonHealth.shieldPercentage > 70 ? '#21a9f3' : dysonHealth.shieldPercentage > 30 ? '#FFC107' : '#F44336', marginBottom: '5px', fontSize: '0.6rem' }}>DYSON SHIELD:</div>
+                <div style={{ color: dysonHealth.shieldPercentage > 70 ? '#21a9f3' : dysonHealth.shieldPercentage > 30 ? '#FFC107' : '#F44336', marginBottom: '5px', fontSize: '0.6rem', height: '14px' }}>DYSON SHIELD:</div> {/* Added fixed height */}
                 <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
                   {/* Shield Bar Fill */}
                   <div style={{ width: `${dysonHealth.shieldPercentage}%`, height: '100%', background: dysonHealth.shieldPercentage > 70 ? 'linear-gradient(90deg, #2196F3, #64B5F6)' : dysonHealth.shieldPercentage > 30 ? 'linear-gradient(90deg, #FFC107, #FFD54F)' : 'linear-gradient(90deg, #F44336, #E57373)', transition: 'width 0.3s ease' }}></div>
@@ -1710,7 +1710,7 @@ const HUD: React.FC<HUDProps> = ({ world, onStartGame, onRestartGame, onResumeGa
               </div>
               {/* Dyson Core Status */}
               <div style={{ marginBottom: '10px' }}>
-                <div style={{ color: dysonHealth.healthPercentage > 70 ? '#4CAF50' : dysonHealth.healthPercentage > 30 ? '#FFC107' : '#F44336', marginBottom: '5px', fontSize: '0.6rem' }}>DYSON CORE:</div>
+                <div style={{ color: dysonHealth.healthPercentage > 70 ? '#4CAF50' : dysonHealth.healthPercentage > 30 ? '#FFC107' : '#F44336', marginBottom: '5px', fontSize: '0.6rem', height: '14px' }}>DYSON CORE:</div> {/* Added fixed height */}
                 <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
                   {/* Core Bar Fill */}
                   <div style={{ width: `${dysonHealth.healthPercentage}%`, height: '100%', background: dysonHealth.healthPercentage > 70 ? 'linear-gradient(90deg, #4CAF50, #81C784)' : dysonHealth.healthPercentage > 30 ? 'linear-gradient(90deg, #FFC107, #FFD54F)' : 'linear-gradient(90deg, #F44336, #E57373)', transition: 'width 0.3s ease', animation: dysonHealth.healthPercentage < 30 ? 'alertBlinkBackground 0.5s infinite alternate' : 'none' }}></div>
