@@ -33,6 +33,7 @@ import { DevSystem } from './systems/DevSystem';
 import { AudioManager } from './AudioManager';
 import { PortalSystem } from './systems/PortalSystem';
 import { UISystem } from './systems/UISystem';
+import { DysonDamageZoneSystem } from './systems/DysonDamageZoneSystem';
 
 /**
  * Main Game Controller
@@ -143,6 +144,7 @@ class Game {
     this.world.addSystem(this.devSystem);
     this.world.addSystem(new AutoRotateSystem(this.world));
     this.world.addSystem(new UISystem(this.world, this.sceneManager));
+    this.world.addSystem(new DysonDamageZoneSystem(this.world));
     this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
     
     // Make systems globally accessible for debugging
