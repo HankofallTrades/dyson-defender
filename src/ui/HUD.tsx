@@ -1708,12 +1708,20 @@ const HUD: React.FC<HUDProps> = ({
                 {/* Left Column: Ship Systems */}
                 <div style={{ flex: '1', marginRight: '8px', display: 'flex', flexDirection: 'column' }}>
                   {/* Ship Systems Header */}
-                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px', height: '35px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px', height: '35px', minWidth: 0 }}>
                     <Hologram modelType="ship" size={35} color="#00aaff" gameIsActive={gameState === 'playing'} />
-                    <span style={{ color: '#ff00ff', fontSize: '0.65rem', fontWeight: 'bold' }}>SHIP</span>
+                    <span style={{ 
+                      color: '#ff00ff', 
+                      fontSize: '0.65rem', 
+                      fontWeight: 'bold',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      flex: '1'
+                    }}>SHIP:DEFENDER</span>
                   </div>
                   {/* Dotted line */}
-                  <div style={{ width: '90%', borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', marginBottom: '8px' }}></div>
+                  <div style={{ width: '100%', borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', marginBottom: '8px' }}></div>
                   {/* Boost System */}
                   <div style={{ marginBottom: '10px' }}>
                     <div style={{ color: '#00ffff', marginBottom: '5px', fontSize: '0.6rem', height: '14px' }}>
@@ -1758,12 +1766,20 @@ const HUD: React.FC<HUDProps> = ({
                 {/* Right Column: Dyson Systems */}
                 <div style={{ flex: '1', marginLeft: '8px', display: 'flex', flexDirection: 'column' }}>
                   {/* Dyson Systems Header */}
-                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px', height: '35px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px', height: '35px', minWidth: 0 }}>
                     <Hologram modelType="dysonSphere" size={35} color="#00aaff" gameIsActive={gameState === 'playing'} />
-                    <span style={{ color: '#ff00ff', fontSize: '0.65rem', fontWeight: 'bold' }}>DYSON SPHERE</span>
+                    <span style={{ 
+                      color: '#ff00ff', 
+                      fontSize: '0.65rem', 
+                      fontWeight: 'bold',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      flex: '1'
+                    }}>DYSON SPHERE:XR-17</span>
                   </div>
                   {/* Dotted line */}
-                  <div style={{ width: '90%', borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', marginBottom: '8px' }}></div>
+                  <div style={{ width: '100%', borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', marginBottom: '8px' }}></div>
                   {/* Dyson Shield Status */}
                   <div style={{ marginBottom: '10px' }}>
                     <div style={{ color: '#00ffff', marginBottom: '5px', fontSize: '0.6rem', height: '14px' }}>
@@ -1788,11 +1804,7 @@ const HUD: React.FC<HUDProps> = ({
                   </div>
                 </div>
               </div>
-              {/* Ship information */}
-              <div style={{ marginTop: 'auto', borderTop: '1px solid #555555', paddingTop: '8px', color: '#bbbbbb', fontSize: '0.6rem', display: 'flex', justifyContent: 'space-between' }}>
-                <div>CLASS: DEFENDER</div>
-                <div>ID: DSP-117</div>
-              </div>
+              {/* Remove ship information section */}
             </>
           ) : (
             // Mobile-only mini console - extremely simplified
