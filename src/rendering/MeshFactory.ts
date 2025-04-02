@@ -150,8 +150,10 @@ export class MeshFactory {
       wireframe: true,
       transparent: true,
       opacity: 0.8,
+      depthWrite: true, // Ensure it writes to depth buffer
     });
     const outerMesh = new THREE.Mesh(outerGeometry, outerMaterial);
+    outerMesh.renderOrder = 0; // Ensure it renders before the shield
     group.add(outerMesh);
     
     // Inner transparent sphere - made much more transparent
@@ -161,8 +163,10 @@ export class MeshFactory {
       transparent: true,
       opacity: 0.1, // Significantly reduced opacity to allow more light through
       side: THREE.DoubleSide,
+      depthWrite: true, // Ensure it writes to depth buffer
     });
     const innerMesh = new THREE.Mesh(innerGeometry, innerMaterial);
+    innerMesh.renderOrder = 0; // Ensure it renders before the shield
     group.add(innerMesh);
     
     // Apply scale
@@ -465,32 +469,54 @@ export class MeshFactory {
     const shieldMaterial = new THREE.MeshPhongMaterial({
       color: 0x00ffff, // Pure cyan color for shield
       transparent: true,
-      opacity: 0.4, // Moderate opacity
+      opacity: 0.15, // Even more transparent
       side: THREE.DoubleSide,
       emissive: 0x0088ff, // Blue emissive for glow
-      emissiveIntensity: 0.5,
-      shininess: 100,
-      specular: 0xffffff,
+      emissiveIntensity: 1.0, // Increased emissive intensity for brighter glow
+      shininess: 200, // Increased shininess for more reflectivity
+      specular: 0x4444ff, // More blue-tinted specular highlights
       flatShading: false,
+      depthWrite: false, // Don't write to depth buffer
+      depthTest: true, // But do test against it
     });
     const shieldMesh = new THREE.Mesh(icosaGeometry, shieldMaterial);
+    shieldMesh.renderOrder = 1; // Render after Dyson Sphere
     group.add(shieldMesh);
     
-    // Inner energy field
+    // Add outer glow effect with brighter blue
+    const glowGeometry = new THREE.IcosahedronGeometry(1.05, 3); // Slightly larger than before
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0x44bbff, // Brighter blue color
+      transparent: true,
+      opacity: 0.1,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending, // Add additive blending for better glow
+      depthWrite: false, // Don't write to depth buffer
+      depthTest: true, // But do test against it
+    });
+    const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+    glowMesh.renderOrder = 1; // Render after Dyson Sphere
+    group.add(glowMesh);
+    
+    // Inner energy field with adjusted properties
     const innerGeometry = new THREE.SphereGeometry(0.94, 32, 32);
     const innerMaterial = new THREE.MeshBasicMaterial({
-      color: 0x66ffff, 
+      color: 0x66ffff,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.15, // More transparent inner field
+      blending: THREE.AdditiveBlending, // Add additive blending
+      depthWrite: false, // Don't write to depth buffer
+      depthTest: true, // But do test against it
     });
     const innerMesh = new THREE.Mesh(innerGeometry, innerMaterial);
+    innerMesh.renderOrder = 1; // Render after Dyson Sphere
     group.add(innerMesh);
     
     // Add hexagonal grid pattern covering the entire surface with outlines
     const hexGroup = new THREE.Group();
     
-    // Use Fibonacci lattice for even distribution on a sphere
-    const hexCount = 300; // Increased number for better coverage
+    // Increase hex count for better coverage
+    const hexCount = 400; // Increased from 300 for denser coverage
     const goldenRatio = (1 + Math.sqrt(5)) / 2;
     
     // Helper function to create a hexagon outline at a point on the sphere
@@ -513,9 +539,10 @@ export class MeshFactory {
       // Create geometry from points
       const geometry = new THREE.BufferGeometry().setFromPoints(hexPoints);
       const material = new THREE.LineBasicMaterial({
-        color: 0x33ffff,
+        color: 0x88ddff, // Brighter blue for hexagons
         transparent: true,
-        opacity: 0.2, // Very transparent, barely visible
+        opacity: 0.3, // Slightly more visible
+        blending: THREE.AdditiveBlending, // Add additive blending
       });
       
       // Create line loop
@@ -530,21 +557,20 @@ export class MeshFactory {
       return hexagon;
     };
     
+    // Improved distribution of hexagons using spherical coordinates
     for (let i = 0; i < hexCount; i++) {
-      // Fibonacci lattice calculations to evenly distribute points on a sphere
-      const y = 1 - (i / (hexCount - 1)) * 2; // y goes from 1 to -1
-      const radius = Math.sqrt(1 - y * y); // radius at y position
+      const phi = Math.acos(-1 + (2 * i) / hexCount);
+      const theta = Math.PI * 2 * i * goldenRatio;
       
-      const theta = 2 * Math.PI * i / goldenRatio; // Golden angle in radians
-      
-      const x = Math.cos(theta) * radius;
-      const z = Math.sin(theta) * radius;
+      const x = Math.sin(phi) * Math.cos(theta);
+      const y = Math.sin(phi) * Math.sin(theta);
+      const z = Math.cos(phi);
       
       // Position on the sphere
       const position = new THREE.Vector3(x, y, z);
       
-      // Size based on position (slightly smaller near poles)
-      const size = 0.05 - Math.abs(y) * 0.02;
+      // Uniform size for more consistent look
+      const size = 0.04;
       
       // Create and add hexagon outline
       const hexagon = createHexagonOutline(position, size);
