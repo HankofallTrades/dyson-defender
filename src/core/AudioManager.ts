@@ -13,8 +13,8 @@ export class AudioManager {
   private audioSources: Map<string, THREE.Audio> = new Map();
   private audioLoader: THREE.AudioLoader = new THREE.AudioLoader();
   private listener: THREE.AudioListener = new THREE.AudioListener();
-  private soundtrackVolume: number = 0.5;
-  private sfxVolume: number = 0.7;
+  private soundtrackVolume: number = 0.8;
+  private sfxVolume: number = 0.3;
   private muted: boolean = true;
   private audioEnabled: boolean = true;
   private isContextResumed: boolean = false; // Track AudioContext state

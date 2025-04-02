@@ -94,7 +94,7 @@ export class SceneManager {
   
   private initLights(): void {
     // Ambient light for overall illumination
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+    const ambientLight = new THREE.AmbientLight(0xC0C0C0, 0.8);
     this.scene.add(ambientLight);
 
     // Add a light for the starfield background
