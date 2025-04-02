@@ -13,7 +13,7 @@ export class AudioManager {
   private listener: THREE.AudioListener = new THREE.AudioListener();
   private soundtrackVolume: number = 0.5;
   private sfxVolume: number = 0.7;
-  private muted: boolean = false;
+  private muted: boolean = true;
   private audioEnabled: boolean = true;
   private isContextResumed: boolean = false; // Track AudioContext state
 
@@ -201,7 +201,12 @@ export class AudioManager {
    * Manages a persistent THREE.Audio instance for the soundtrack.
    */
   public async playSoundtrack(): Promise<void> {
-    if (!this.audioEnabled || this.muted) return;
+    if (this.muted) {
+        console.log('[AudioManager] Muted, skipping soundtrack playback.');
+        return;
+    }
+
+    if (!this.audioEnabled) return;
 
     await this.resumeContextIfNeeded();
     if (!this.isContextResumed) {
@@ -297,28 +302,43 @@ export class AudioManager {
   }
 
   /**
-   * Mute or unmute all sounds
-   * @param muted Whether to mute or unmute
+   * Sets the master muted state for all audio.
+   * @param muted Whether to mute all sounds
    */
-  public setMuted(muted: boolean): void {
+  public async setMuted(muted: boolean): Promise<void> {
     if (!this.audioEnabled) return;
-    
+
     this.muted = muted;
-    
+    console.log(`[AudioManager] Setting muted state to: ${muted}`);
+
     if (muted) {
-      // Pause all sounds
-      this.audioSources.forEach(sound => {
-        if (sound.isPlaying) {
-          sound.pause();
+      this.pauseSoundtrack();
+      // Stop any currently playing non-looping SFX
+      this.audioSources.forEach((sound, key) => {
+        if (key !== 'soundtrack' && sound.isPlaying && !sound.getLoop()) {
+          console.log(`[AudioManager] Stopping non-looping SFX: ${key}`);
+          sound.stop();
+          this.audioSources.delete(key); // Remove source if stopped
         }
       });
     } else {
-      // Resume soundtrack only
-      const soundtrack = this.audioSources.get('soundtrack');
-      if (soundtrack && !soundtrack.isPlaying) {
-        soundtrack.play();
+      // Attempt to resume context *before* trying to play anything
+      await this.resumeContextIfNeeded();
+      // Only play soundtrack if context is active *after* attempting resume
+      if (this.isContextResumed) {
+         await this.playSoundtrack();
+      } else {
+         console.warn('[AudioManager] Cannot play soundtrack on unmute, AudioContext still not active.');
       }
     }
+  }
+
+  /**
+   * Gets the current muted state.
+   * @returns True if audio is muted, false otherwise.
+   */
+  public isMuted(): boolean {
+    return this.muted;
   }
 
   /**

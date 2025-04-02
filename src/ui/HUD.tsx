@@ -11,6 +11,7 @@ import RadarDisplay from './hud/RadarDisplay';
 import CommsDisplay from './hud/CommsDisplay'; // ADDED IMPORT
 import AlertsDisplay from './hud/AlertsDisplay'; // Add import for new AlertsDisplay
 import { GameStateManager } from '../core/State'; // Added import
+import { AudioManager } from '../core/AudioManager'; // Import AudioManager type
 
 // Hologram component for rendering small 3D wireframe models
 const Hologram: React.FC<{
@@ -508,6 +509,7 @@ function useScreenSize() {
 interface HUDProps {
   world: World;
   gameStateManager: GameStateManager; // Added gameStateManager
+  audioManager: AudioManager; // <-- Keep AudioManager prop here
   onStartGame: () => void;
   onRestartGame: () => void;
   onResumeGame: () => void;
@@ -517,7 +519,8 @@ interface HUDProps {
   camera?: Camera; // Add camera as an optional prop
 }
 
-const HUD: React.FC<HUDProps> = ({ world, gameStateManager, onStartGame, onRestartGame, onResumeGame, onPauseGame, onRestartAtWave, onExitGame, camera }) => {
+// Keep audioManager in destructuring
+const HUD: React.FC<HUDProps> = ({ world, gameStateManager, audioManager, onStartGame, onRestartGame, onResumeGame, onPauseGame, onRestartAtWave, onExitGame, camera }) => {
   // Screen size for responsive layout
   const screen = useScreenSize();
   
@@ -1268,7 +1271,8 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, onStartGame, onResta
   
   // --- Render Logic ---
   if (gameState === 'not_started') {
-    return <StartScreen onStartGame={onStartGame} />;
+    // Pass audioManager down to StartScreen
+    return <StartScreen onStartGame={onStartGame} audioManager={audioManager} />;
   }
   if (gameState === 'game_over') {
     // Pass the final wave number captured by HUDSystem directly
@@ -1287,6 +1291,167 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, onStartGame, onResta
   // Main game HUD
   return (
     <>
+      {/* Reticle */} 
+      {/* Existing ReticleDisplay logic - Ensure this is not duplicated or removed accidentally */}
+      {reticle.visible && gameState === 'playing' && (
+          <div
+            className={`retro-reticle ${reticle.pulsating ? 'pulsating' : ''}`}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: `translate(-50%, -50%) ${damageEffect.active ? getShakeTransform() : ''}`,
+              width: `${30 * reticle.size}px`,
+              height: `${30 * reticle.size}px`,
+              zIndex: 5,
+              pointerEvents: 'none',
+              opacity: reticle.pulsating ? 0.8 : 1
+            }}
+          >
+              {/* Inner Circle */}
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: `${4 * reticle.size}px`,
+                height: `${4 * reticle.size}px`,
+                borderRadius: '50%',
+                border: `1px solid ${reticle.color}`,
+                boxShadow: `0 0 5px ${reticle.color}`,
+                opacity: 0.6
+              }}></div>
+              
+              {/* Outer Circle */}
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: `${20 * reticle.size}px`,
+                height: `${20 * reticle.size}px`,
+                borderRadius: '50%',
+                border: `1px solid ${reticle.color}`,
+                boxShadow: `0 0 8px ${reticle.color}`,
+                opacity: 0.6
+              }}></div>
+              
+              {/* Crosshair lines */}
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '0',
+                transform: 'translateY(-50%)',
+                width: '100%',
+                height: `${1 * reticle.size}px`,
+                background: reticle.color,
+                boxShadow: `0 0 5px ${reticle.color}`,
+                opacity: 0.6
+              }}></div>
+              
+              <div style={{
+                position: 'absolute',
+                top: '0',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                height: '100%',
+                width: `${1 * reticle.size}px`,
+                background: reticle.color,
+                boxShadow: `0 0 5px ${reticle.color}`,
+                opacity: 0.6
+              }}></div>
+              
+              {/* Corner brackets with lag effect - create a container for all brackets */}
+              <div style={{
+                position: 'absolute',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: '100%',
+                transform: `translate(${bracketsOffset.x}px, ${bracketsOffset.y}px)`,
+                transition: 'none', // Removed transition for more direct control
+                opacity: 0.4 // Added transparency to brackets
+              }}>
+                {/* Top-left brackets */}
+                <div style={{
+                  position: 'absolute',
+                  top: '0',
+                  left: '0',
+                  width: `${8 * reticle.size}px`,
+                  height: `${1 * reticle.size}px`,
+                  background: reticle.color,
+                  boxShadow: `0 0 5px ${reticle.color}`,
+                }}></div>
+                <div style={{
+                  position: 'absolute',
+                  top: '0',
+                  left: '0',
+                  width: `${1 * reticle.size}px`,
+                  height: `${8 * reticle.size}px`,
+                  background: reticle.color,
+                  boxShadow: `0 0 5px ${reticle.color}`,
+                }}></div>
+                {/* Top-right brackets */}
+                <div style={{
+                  position: 'absolute',
+                  top: '0',
+                  right: '0',
+                  width: `${8 * reticle.size}px`,
+                  height: `${1 * reticle.size}px`,
+                  background: reticle.color,
+                  boxShadow: `0 0 5px ${reticle.color}`,
+                }}></div>
+                <div style={{
+                  position: 'absolute',
+                  top: '0',
+                  right: '0',
+                  width: `${1 * reticle.size}px`,
+                  height: `${8 * reticle.size}px`,
+                  background: reticle.color,
+                  boxShadow: `0 0 5px ${reticle.color}`,
+                }}></div>
+                {/* Bottom-left brackets */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '0',
+                  left: '0',
+                  width: `${8 * reticle.size}px`,
+                  height: `${1 * reticle.size}px`,
+                  background: reticle.color,
+                  boxShadow: `0 0 5px ${reticle.color}`,
+                }}></div>
+                <div style={{
+                  position: 'absolute',
+                  bottom: '0',
+                  left: '0',
+                  width: `${1 * reticle.size}px`,
+                  height: `${8 * reticle.size}px`,
+                  background: reticle.color,
+                  boxShadow: `0 0 5px ${reticle.color}`,
+                }}></div>
+                {/* Bottom-right brackets */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '0',
+                  right: '0',
+                  width: `${8 * reticle.size}px`,
+                  height: `${1 * reticle.size}px`,
+                  background: reticle.color,
+                  boxShadow: `0 0 5px ${reticle.color}`,
+                }}></div>
+                <div style={{
+                  position: 'absolute',
+                  bottom: '0',
+                  right: '0',
+                  width: `${1 * reticle.size}px`,
+                  height: `${8 * reticle.size}px`,
+                  background: reticle.color,
+                  boxShadow: `0 0 5px ${reticle.color}`,
+                }}></div>
+              </div> 
+            </div>
+      )}
+
       {/* Damage effect overlay */}
       {damageEffect.active && (
         <div className="damage-effect" style={{
@@ -1382,169 +1547,6 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, onStartGame, onResta
           }} />
         </div>
       ))}
-      
-      {/* Retro Futuristic Reticle */}
-      {reticle.visible && gameState === 'playing' && (
-        <div
-          className={`retro-reticle ${reticle.pulsating ? 'pulsating' : ''}`}
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: `translate(-50%, -50%) ${damageEffect.active ? getShakeTransform() : ''}`,
-            width: `${30 * reticle.size}px`,
-            height: `${30 * reticle.size}px`,
-            zIndex: 5,
-            pointerEvents: 'none',
-            opacity: reticle.pulsating ? 0.8 : 1
-          }}
-        >
-          {/* Inner Circle */}
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: `${4 * reticle.size}px`,
-            height: `${4 * reticle.size}px`,
-            borderRadius: '50%',
-            border: `1px solid ${reticle.color}`,
-            boxShadow: `0 0 5px ${reticle.color}`,
-            opacity: 0.6
-          }}></div>
-          
-          {/* Outer Circle */}
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: `${20 * reticle.size}px`,
-            height: `${20 * reticle.size}px`,
-            borderRadius: '50%',
-            border: `1px solid ${reticle.color}`,
-            boxShadow: `0 0 8px ${reticle.color}`,
-            opacity: 0.6
-          }}></div>
-          
-          {/* Crosshair lines */}
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '0',
-            transform: 'translateY(-50%)',
-            width: '100%',
-            height: `${1 * reticle.size}px`,
-            background: reticle.color,
-            boxShadow: `0 0 5px ${reticle.color}`,
-            opacity: 0.6
-          }}></div>
-          
-          <div style={{
-            position: 'absolute',
-            top: '0',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            height: '100%',
-            width: `${1 * reticle.size}px`,
-            background: reticle.color,
-            boxShadow: `0 0 5px ${reticle.color}`,
-            opacity: 0.6
-          }}></div>
-          
-          {/* Corner brackets with lag effect - create a container for all brackets */}
-          <div style={{
-            position: 'absolute',
-            top: '0',
-            left: '0',
-            width: '100%',
-            height: '100%',
-            transform: `translate(${bracketsOffset.x}px, ${bracketsOffset.y}px)`,
-            transition: 'none', // Removed transition for more direct control
-            opacity: 0.4 // Added transparency to brackets
-          }}>
-            {/* Top-left brackets */}
-            <div style={{
-              position: 'absolute',
-              top: '0',
-              left: '0',
-              width: `${8 * reticle.size}px`,
-              height: `${1 * reticle.size}px`,
-              background: reticle.color,
-              boxShadow: `0 0 5px ${reticle.color}`,
-            }}></div>
-            <div style={{
-              position: 'absolute',
-              top: '0',
-              left: '0',
-              width: `${1 * reticle.size}px`,
-              height: `${8 * reticle.size}px`,
-              background: reticle.color,
-              boxShadow: `0 0 5px ${reticle.color}`,
-            }}></div>
-            
-            {/* Top-right brackets */}
-            <div style={{
-              position: 'absolute',
-              top: '0',
-              right: '0',
-              width: `${8 * reticle.size}px`,
-              height: `${1 * reticle.size}px`,
-              background: reticle.color,
-              boxShadow: `0 0 5px ${reticle.color}`,
-            }}></div>
-            <div style={{
-              position: 'absolute',
-              top: '0',
-              right: '0',
-              width: `${1 * reticle.size}px`,
-              height: `${8 * reticle.size}px`,
-              background: reticle.color,
-              boxShadow: `0 0 5px ${reticle.color}`,
-            }}></div>
-            
-            {/* Bottom-left brackets */}
-            <div style={{
-              position: 'absolute',
-              bottom: '0',
-              left: '0',
-              width: `${8 * reticle.size}px`,
-              height: `${1 * reticle.size}px`,
-              background: reticle.color,
-              boxShadow: `0 0 5px ${reticle.color}`,
-            }}></div>
-            <div style={{
-              position: 'absolute',
-              bottom: '0',
-              left: '0',
-              width: `${1 * reticle.size}px`,
-              height: `${8 * reticle.size}px`,
-              background: reticle.color,
-              boxShadow: `0 0 5px ${reticle.color}`,
-            }}></div>
-            
-            {/* Bottom-right brackets */}
-            <div style={{
-              position: 'absolute',
-              bottom: '0',
-              right: '0',
-              width: `${8 * reticle.size}px`,
-              height: `${1 * reticle.size}px`,
-              background: reticle.color,
-              boxShadow: `0 0 5px ${reticle.color}`,
-            }}></div>
-            <div style={{
-              position: 'absolute',
-              bottom: '0',
-              right: '0',
-              width: `${1 * reticle.size}px`,
-              height: `${8 * reticle.size}px`,
-              background: reticle.color,
-              boxShadow: `0 0 5px ${reticle.color}`,
-            }}></div>
-          </div>
-        </div>
-      )}
       
       {/* --- NEW: Comms Log Display --- */}
       {/* Render CommsDisplay, passing the collected alertMessages */}

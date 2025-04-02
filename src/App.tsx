@@ -66,17 +66,6 @@ function App() {
 
   const handleStartGame = () => {
     if (gameRef.current) {
-      // --- Attempt to start audio on Start Game click ---
-      console.log('[App] Attempting to start soundtrack via Start Game button.');
-      try {
-        // Let AudioManager handle the context state and play if possible
-        audioManager.playSoundtrack();
-        console.log('[App] Soundtrack play requested via Start Game button.');
-      } catch (error) {
-         console.error('[App] Error starting soundtrack from Start Game button:', error);
-      }
-      // ------------------------------------------------------
-
       gameRef.current.startGame();
       gameRef.current.requestPointerLock(); // Request pointer lock *after* starting game
     }
@@ -90,10 +79,6 @@ function App() {
       if (newWorld) {
         setWorld(newWorld);
       }
-
-      // Ensure audio is playing when game restarts
-      console.log('[App] Attempting to ensure soundtrack is playing on restart.');
-      audioManager.playSoundtrack(); // Let AudioManager handle state
     }
   };
 
@@ -107,10 +92,6 @@ function App() {
   const handleResumeGame = () => {
     if (gameRef.current) {
       gameRef.current.resumeGame();
-
-      // Ensure audio is playing when game resumes
-      console.log('[App] Attempting to ensure soundtrack is playing on resume.');
-      audioManager.playSoundtrack(); // Let AudioManager handle state
     }
   };
 
@@ -145,10 +126,6 @@ function App() {
       if (newWorld) {
         setWorld(newWorld);
       }
-
-      // Ensure audio is playing when game restarts at a specific wave
-      console.log('[App] Attempting to ensure soundtrack is playing on restart at wave.');
-      audioManager.playSoundtrack(); // Let AudioManager handle state
     }
   };
 
@@ -167,6 +144,7 @@ function App() {
             onPauseGame={handlePauseGame}
             onRestartAtWave={handleRestartAtWave}
             onExitGame={handleExitGame}
+            audioManager={audioManager}
           />
         )}
         {isMobile && <MobileControls />}

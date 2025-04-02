@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { COLORS } from '../constants/colors';
 import './styles/retro.css';
 import KeyboardKey from './components/KeyboardKey';
+import { AudioManager } from '../core/AudioManager';
+import { AudioToggle } from './components/AudioToggle';
+import { isSafariBrowser } from '../utils/browserDetection';
 
 interface StartScreenProps {
   onStartGame: () => void;
+  audioManager: AudioManager;
 }
 
 const styles = {
@@ -36,10 +40,16 @@ const styles = {
     borderTopLeftRadius: '12px',
     border: '1px solid #fff',
     fontFamily: 'system-ui, sans-serif',
-  }
+  },
 };
 
-const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
+const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, audioManager }) => {
+  const [isSafari, setIsSafari] = useState<boolean>(false);
+  
+  useEffect(() => {
+    setIsSafari(isSafariBrowser());
+  }, []);
+
   return (
     <>
       <div className="start-screen-overlay" style={{
@@ -84,13 +94,19 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
           className="retro-button start-screen-button"
           onClick={onStartGame}
           style={{ 
-            marginBottom: '30px',
+            marginBottom: '20px',
             marginTop: '20px',
             color: 'white'
           }}
         >
           Start Game
         </button>
+        
+        {!isSafari && (
+          <div style={{ marginTop: '15px' }}>
+            <AudioToggle audioManager={audioManager} />
+          </div>
+        )}
         
         {/* Controls Section - Hidden on mobile via CSS */}
         <div className="start-screen-controls" style={{ textAlign: 'center', margin: '0 0 20px 0' }}>

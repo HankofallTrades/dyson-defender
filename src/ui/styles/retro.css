@@ -1637,4 +1637,62 @@
         text-align: center !important; /* Ensure centering */
         width: 95%; /* Ensure centering */
     }
+}
+
+/* Audio Toggle Styles - Simplified */
+.audio-toggle {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 5px;
+  font-family: 'Press Start 2P', monospace;
+  color: #00ffff; /* Match the teal of other text elements */
+  user-select: none;
+  transition: opacity 0.3s ease;
+}
+
+.audio-toggle:focus {
+  outline: none; /* Remove focus outline */
+  /* Add subtle glow instead for accessibility */
+  text-shadow: 0 0 8px #00ffff;
+}
+
+.audio-toggle-switch {
+  width: 40px;
+  height: 20px;
+  background-color: rgba(211, 47, 47, 0.8); /* Semi-transparent red */
+  border-radius: 10px;
+  position: relative;
+  margin-right: 8px;
+  box-shadow: 0 0 5px rgba(255, 0, 0, 0.5); /* Add subtle glow */
+  transition: background-color 0.3s ease;
+}
+
+.audio-toggle.on .audio-toggle-switch {
+  background-color: rgba(76, 175, 80, 0.8); /* Semi-transparent green */
+  box-shadow: 0 0 5px rgba(0, 255, 0, 0.5); /* Add subtle glow */
+}
+
+.audio-toggle-knob {
+  width: 16px;
+  height: 16px;
+  background-color: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.3); /* Subtle shadow */
+  transition: transform 0.3s ease;
+}
+
+.audio-toggle.on .audio-toggle-knob {
+  transform: translateX(20px);
+}
+
+.audio-toggle-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  text-shadow: 0 0 5px #00ffff; /* Add glow to match other text */
 } 
