@@ -164,8 +164,16 @@ export class InputManager {
    * Exits pointer lock if it's currently active
    */
   public exitPointerLock(): void {
-    if (document.pointerLockElement === this.container) {
-      document.exitPointerLock();
+    const isLocked = document.pointerLockElement === this.container;
+    console.log(`[InputManager] Exit pointer lock requested. Current lock state: ${isLocked ? 'locked' : 'unlocked'}`);
+    
+    if (isLocked) {
+      try {
+        document.exitPointerLock();
+        console.log('[InputManager] Pointer lock exit requested successfully');
+      } catch (e) {
+        console.error('[InputManager] Error exiting pointer lock:', e);
+      }
     }
   }
 

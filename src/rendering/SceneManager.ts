@@ -36,36 +36,11 @@ export class SceneManager {
   private constructor(container: HTMLElement) {
     this.container = container;
     
-    console.log('[SceneManager] Starting initialization...', {
-      containerSize: {
-        width: container.clientWidth,
-        height: container.clientHeight
-      },
-      window: {
-        width: window.innerWidth,
-        height: window.innerHeight
-      }
-    });
-
-    try {
-      console.log('[SceneManager] Initializing scene...');
-      this.initScene();
-      
-      console.log('[SceneManager] Initializing renderer...');
-      this.initRenderer();
-      
-      console.log('[SceneManager] Initializing lights...');
-      this.initLights();
-      
-      console.log('[SceneManager] Handling initial resize...');
-      this.handleResize();
-      
-      window.addEventListener('resize', this.handleResize);
-      console.log('[SceneManager] Initialization complete');
-    } catch (error) {
-      console.error('[SceneManager] Error during initialization:', error);
-      throw error;
-    }
+    this.initScene();
+    this.initRenderer();
+    this.initLights();
+    this.handleResize(); // Initial setup
+    window.addEventListener('resize', this.handleResize);
   }
   
   /**
@@ -86,25 +61,22 @@ export class SceneManager {
    * Initialize the Three.js scene
    */
   private initScene(): void {
-    console.log('[SceneManager] Creating scene...');
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x000005); // Very dark blue, almost black
     
-    console.log('[SceneManager] Creating camera...');
     this.activeCamera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
       0.1,
-      1000
+      2000
     );
-    this.activeCamera.position.z = 5;
+    this.activeCamera.position.set(0, 10, 30);
   }
   
   /**
    * Initialize the renderer
    */
   private initRenderer(): void {
-    console.log('[SceneManager] Creating WebGL renderer...');
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true
@@ -114,29 +86,21 @@ export class SceneManager {
       throw new Error('Failed to create WebGL renderer');
     }
     
-    console.log('[SceneManager] Configuring renderer...');
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
     
-    console.log('[SceneManager] Appending renderer to container...');
     this.container.appendChild(this.renderer.domElement);
   }
   
   private initLights(): void {
-    console.log('[SceneManager] Setting up lights...');
-    
-    // Create a brighter ambient light for better overall scene illumination
-    const ambientLight = new THREE.AmbientLight(0x505080, 1.0);
+    // Ambient light for overall illumination
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
     this.scene.add(ambientLight);
-    
-    // Add a soft directional light to simulate starfield lighting
-    const starfieldLight = new THREE.DirectionalLight(0xd0d0ff, 0.5);
-    starfieldLight.position.set(0, 1, 0); // Coming from above
+
+    // Add a light for the starfield background
+    const starfieldLight = new THREE.PointLight(0xffffff, 0.1, 10000); // Weak distant light
+    starfieldLight.position.set(0, 0, -500); // Far away
     this.scene.add(starfieldLight);
-    
-    // The central star will still be our main light source
-    
-    console.log('[SceneManager] Ambient and starfield lights configured, main light comes from the star');
   }
   
   /**
@@ -147,17 +111,6 @@ export class SceneManager {
 
     const container = this.renderer.domElement.parentElement;
     if (!container) return;
-
-    console.log('Handling resize...', {
-      container: {
-        width: container.clientWidth,
-        height: container.clientHeight
-      },
-      window: {
-        width: window.innerWidth,
-        height: window.innerHeight
-      }
-    });
 
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;

@@ -7,6 +7,8 @@ import * as THREE from 'three';
  * Handles the soundtrack and sound effects using Three.js Audio capabilities.
  */
 export class AudioManager {
+  private audioContext: AudioContext;
+  private soundBuffers: Map<string, AudioBuffer>;
   private sounds: Map<string, THREE.Audio['buffer']> = new Map();
   private audioSources: Map<string, THREE.Audio> = new Map();
   private audioLoader: THREE.AudioLoader = new THREE.AudioLoader();
@@ -18,7 +20,9 @@ export class AudioManager {
   private isContextResumed: boolean = false; // Track AudioContext state
 
   constructor() {
-    console.log('[AudioManager] Initializing...');
+    // console.log('[AudioManager] Initializing...'); // REMOVED
+    this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    this.soundBuffers = new Map<string, AudioBuffer>();
     
     // Check if audio is supported in this browser
     try {
@@ -71,13 +75,14 @@ export class AudioManager {
    * @returns Promise that resolves when all sounds are loaded
    */
   public async loadSounds(): Promise<void> {
+    // console.log('[AudioManager] Loading sounds...'); // REMOVED
     if (!this.audioEnabled) {
       console.warn('[AudioManager] Audio disabled. Skipping sound loading.');
       return;
     }
     
     try {
-      console.log('[AudioManager] Loading sounds...');
+      // console.log('[AudioManager] Loading sounds...'); // REMOVED - Duplicate also removed
       
       // Load soundtrack
       try {

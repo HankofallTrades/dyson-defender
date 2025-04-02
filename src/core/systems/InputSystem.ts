@@ -63,7 +63,9 @@ export class InputSystem implements System {
       const rotation = this.world.getComponent<Rotation>(entity, 'Rotation');
       const mouseLook = this.world.getComponent<MouseLook>(entity, 'MouseLook');
 
-      if (!rotation || !mouseLook) continue;
+      if (!rotation || !mouseLook) {
+        continue;
+      }
 
       const aimingThreshold = 0.1;
       if (aimingJoystick.active && aimingJoystick.magnitude > aimingThreshold) {
@@ -94,7 +96,6 @@ export class InputSystem implements System {
 
       } else if (mouseState.isPointerLocked) {
         mouseLook.yaw -= mouseState.movementX * mouseLook.sensitivity;
-        
         mouseLook.pitch -= mouseState.movementY * mouseLook.sensitivity;
         
         mouseLook.pitch = Math.max(mouseLook.pitchMin, Math.min(mouseLook.pitchMax, mouseLook.pitch));
@@ -102,6 +103,8 @@ export class InputSystem implements System {
         rotation.x = mouseLook.pitch;
         rotation.y = mouseLook.yaw;
         rotation.z = 0;
+      } else {
+        // This block is intentionally empty now, as no rotation update occurs if neither joystick nor locked mouse is active.
       }
     }
 

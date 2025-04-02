@@ -69,6 +69,7 @@ class Game {
   private inputManager!: InputManager;
   private isFirstFrameLogged: boolean = false;
   private audioManager: AudioManager;
+  private isTransitioningState: boolean = false; // Flag for state transitions
 
   constructor(container: HTMLElement, audioManager?: AudioManager) {
     console.log('[Game] Initializing...');
@@ -103,6 +104,9 @@ class Game {
     this.animationFrameId = requestAnimationFrame(this.animate);
 
     this.inputManager = InputManager.getInstance(this.container);
+
+    // Add pointer lock change event listener to keep game state in sync
+    document.addEventListener('pointerlockchange', this.handlePointerLockChange);
 
     console.log('[Game] Game initialized');
   }
@@ -232,6 +236,9 @@ class Game {
   }
 
   public startGame(): void {
+    console.log('[Game] startGame() called'); // Added log
+    this.isTransitioningState = true; // Set flag before state changes
+
     // Update the game state to playing through the HUD system
     this.hudSystem.startGame();
     
@@ -240,13 +247,20 @@ class Game {
     this.waveSystem.resetWaves();
     
     if (!this.isRunning) {
+      console.log('[Game] Setting isRunning to true in startGame'); // Added log
       this.isRunning = true;
       this.lastFrameTime = performance.now();
     }
     
     // Request pointer lock when starting the game
-    const inputManager = InputManager.getInstance(this.container);
-    inputManager.requestPointerLock();
+    console.log('[Game] Requesting pointer lock in startGame'); // Added log
+    this.inputManager.requestPointerLock();
+
+    // Reset flag after a short delay
+    setTimeout(() => {
+      console.log('[Game] Transition period ended after startGame'); // Added log
+      this.isTransitioningState = false;
+    }, 200); // 200ms delay
   }
 
   public restart(): void {
@@ -311,18 +325,23 @@ class Game {
   }
 
   public pause(): void {
-    if (this.isRunning && this.animationFrameId !== null) {
-      this.isRunning = false;
-      this.stateManager.updateState({ isPaused: true });
+    this.isTransitioningState = false; // Ensure flag is false when pausing
+    
+    // Always set running to false immediately, even if we were already paused
+    this.isRunning = false;
+    
+    // Update global state
+    this.stateManager.updateState({ isPaused: true });
+    
+    // Update the GameStateDisplay component to ensure UI reflects the change
+    const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
+    if (hudEntities.length > 0) {
+      const hudEntity = hudEntities[0];
+      const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
       
-      // Directly update the GameStateDisplay component (similar to resumeGame)
-      const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
-      if (hudEntities.length > 0) {
-        const hudEntity = hudEntities[0];
-        const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
-        
-        if (gameStateDisplay) {
-          // Remove and add component to update game state
+      if (gameStateDisplay) {
+        // Only update if state is actually changing
+        if (gameStateDisplay.currentState !== 'paused') {
           this.world.removeComponent(hudEntity, 'GameStateDisplay');
           this.world.addComponent(hudEntity, 'GameStateDisplay', {
             ...gameStateDisplay,
@@ -330,44 +349,49 @@ class Game {
           });
         }
       }
-      
-      // Pause the soundtrack when game is paused
-      this.audioManager.pauseSoundtrack();
+    } else {
+      console.warn('[Game] No HUD entities found to update GameStateDisplay');
     }
+    
+    // Pause the soundtrack when game is paused
+    this.audioManager.pauseSoundtrack();
   }
 
   public resumeGame(): void {
-    // Update the game state to playing through the HUD system
+    this.isTransitioningState = true; // Set flag before state changes
+
+    // Update the game state component first
     const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
     if (hudEntities.length > 0) {
       const hudEntity = hudEntities[0];
       const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
       
-      if (gameStateDisplay) {
-        // Remove and add component to update game state
+      if (gameStateDisplay && gameStateDisplay.currentState !== 'playing') {
         this.world.removeComponent(hudEntity, 'GameStateDisplay');
         this.world.addComponent(hudEntity, 'GameStateDisplay', {
           ...gameStateDisplay,
           currentState: 'playing'
         });
       }
+    } else {
+      console.warn('[Game] No HUD entities found to update GameStateDisplay in resumeGame');
     }
     
-    // Set game to running state
+    // Set game to running state only if it wasn't already
     if (!this.isRunning) {
       this.isRunning = true;
       this.lastFrameTime = performance.now();
-      
-      // Resume the soundtrack when game is resumed
       this.audioManager.resumeSoundtrack();
     }
     
-    // Request pointer lock when resuming the game
-    const inputManager = InputManager.getInstance(this.container);
-    inputManager.requestPointerLock();
-    
-    // Update game state manager
+    // Update game state manager immediately
     this.stateManager.updateState({ isPaused: false });
+
+    // Reset transition flag (can happen sooner now)
+    // Use a short delay still to cover the state updates fully
+    setTimeout(() => {
+      this.isTransitioningState = false;
+    }, 50); // Shorter delay is fine now
   }
 
   private animate = (): void => {
@@ -472,6 +496,7 @@ class Game {
     }
 
     // Remove event listeners
+    document.removeEventListener('pointerlockchange', this.handlePointerLockChange);
     this.inputManager.dispose();
     
     // Dispose Three.js related resources via SceneManager
@@ -517,6 +542,7 @@ class Game {
     this.audioManager = null;
 
     this.isRunning = false;
+    this.isTransitioningState = false; // Reset flag on dispose
     console.log('[Game] Disposed');
   }
 
@@ -594,7 +620,9 @@ class Game {
   }
 
   public requestPointerLock(): void {
+    console.log('[Game] requestPointerLock called'); // Added log
     if (this.inputManager) {
+      console.log('[Game] Forwarding request to InputManager'); // Added log
       this.inputManager.requestPointerLock();
     } else {
       console.warn('[Game] InputManager not available to request pointer lock.');
@@ -648,7 +676,31 @@ class Game {
     if (document.pointerLockElement === this.container) {
       document.exitPointerLock();
     }
+
+    this.isTransitioningState = false; // Reset flag on reset
   }
+
+  // Handle pointer lock changes to ensure game state stays in sync
+  private handlePointerLockChange = (): void => {
+    const isLocked = document.pointerLockElement === this.container;
+
+    // Get the current game state from the component
+    let currentGameState: GameStateDisplay['currentState'] = 'not_started';
+    const hudEntities = this.world?.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
+    if (hudEntities && hudEntities.length > 0) {
+      const hudEntity = hudEntities[0];
+      const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
+      if (gameStateDisplay) {
+        currentGameState = gameStateDisplay.currentState;
+      }
+    }
+    
+    // If pointer lock is exited *while* the game is actively playing AND not transitioning, auto-pause
+    if (!isLocked && this.isRunning && currentGameState === 'playing' && !this.isTransitioningState) {
+      this.pause();
+    } else if (!isLocked) {
+    }
+  };
 }
 
 export default Game;

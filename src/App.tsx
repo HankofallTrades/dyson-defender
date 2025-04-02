@@ -142,9 +142,10 @@ function App() {
             onRestartGame={handleRestartGame}
             onResumeGame={handleResumeGame}
             onPauseGame={handlePauseGame}
-            onRestartAtWave={handleRestartAtWave}
             onExitGame={handleExitGame}
             audioManager={audioManager}
+            game={gameRef.current}
+            containerRef={containerRef}
           />
         )}
         {isMobile && <MobileControls />}

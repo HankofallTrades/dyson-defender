@@ -6,6 +6,7 @@ interface PauseScreenProps {
   onResume: () => void;
   onRestart: () => void;
   onExit: () => void;
+  containerRef: React.RefObject<HTMLDivElement>;
 }
 
 const styles = {
@@ -25,13 +26,21 @@ const styles = {
   },
 };
 
-const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onExit }) => {
-  // Ensure pointer lock is released when this component mounts
-  useEffect(() => {
-    if (document.pointerLockElement) {
-      document.exitPointerLock();
+const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onExit, containerRef }) => {
+  const handleResumeClick = () => {
+    onResume();
+    
+    // Directly request pointer lock on the container from the click handler
+    if (containerRef.current) {
+      try {
+        containerRef.current.requestPointerLock();
+      } catch (e) {
+        console.error('[PauseScreen] Error requesting pointer lock:', e);
+      }
+    } else {
+      console.warn('[PauseScreen] Container ref not available to request pointer lock.');
     }
-  }, []);
+  };
 
   return (
     <div style={{
@@ -60,7 +69,7 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onExit }
       }}>
         <button 
           className="retro-button"
-          onClick={onResume}
+          onClick={handleResumeClick}
           onTouchStart={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -68,7 +77,7 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onExit }
           onTouchEnd={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            onResume();
+            handleResumeClick();
           }}
           style={{
             fontSize: '1.5rem',

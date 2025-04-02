@@ -12,6 +12,7 @@ import CommsDisplay from './hud/CommsDisplay'; // ADDED IMPORT
 import AlertsDisplay from './hud/AlertsDisplay'; // Add import for new AlertsDisplay
 import { GameStateManager } from '../core/State'; // Added import
 import { AudioManager } from '../core/AudioManager'; // Import AudioManager type
+import Game from '../core/Game'; // Import the Game class
 
 // Hologram component for rendering small 3D wireframe models
 const Hologram: React.FC<{
@@ -307,16 +308,61 @@ const Hologram: React.FC<{
     
     // Cleanup
     return () => {
+      console.log(`[Hologram ${modelType}] Cleaning up...`);
+      
+      // Stop the animation loop
       if (animationFrameIdRef.current) {
         cancelAnimationFrame(animationFrameIdRef.current);
+        animationFrameIdRef.current = null;
       }
       
-      if (rendererRef.current && containerRef.current) {
-        containerRef.current.removeChild(rendererRef.current.domElement);
-        rendererRef.current.dispose();
+      // Dispose of Three.js objects
+      if (modelRef.current) {
+        sceneRef.current?.remove(modelRef.current); // Remove model from scene
+        // Traverse the model group to dispose geometries and materials
+        modelRef.current.traverse((object) => {
+          if (object instanceof Line || object instanceof LineSegments) {
+            if (object.geometry) {
+              object.geometry.dispose();
+              // console.log(`[Hologram ${modelType}] Disposed geometry`);
+            }
+            if (object.material) {
+              // Check if material is an array (though unlikely for LineBasicMaterial)
+              if (Array.isArray(object.material)) {
+                object.material.forEach(material => {
+                  material.dispose();
+                  // console.log(`[Hologram ${modelType}] Disposed material`);
+                });
+              } else {
+                object.material.dispose();
+                // console.log(`[Hologram ${modelType}] Disposed material`);
+              }
+            }
+          }
+        });
+        modelRef.current = null;
       }
+
+      if (rendererRef.current) {
+        rendererRef.current.dispose(); // Dispose the renderer context
+        // Remove the canvas element from the DOM
+        if (containerRef.current && rendererRef.current.domElement) {
+           try {
+              containerRef.current.removeChild(rendererRef.current.domElement);
+           } catch (e) {
+              // Ignore error if element is already removed
+           }
+        }
+        console.log(`[Hologram ${modelType}] Renderer disposed and DOM element removed`);
+        rendererRef.current = null;
+      }
+      
+      // Clear scene reference
+      sceneRef.current = null;
+      cameraRef.current = null;
     };
-  }, [modelType, size, color]);
+  // Dependencies: size should trigger re-creation if it changes
+  }, [size, modelType, color, gameIsActive]); // Add dependencies that affect setup
   
   // Handle animation in a separate effect that responds to game state
   useEffect(() => {
@@ -508,19 +554,32 @@ function useScreenSize() {
 
 interface HUDProps {
   world: World;
-  gameStateManager: GameStateManager; // Added gameStateManager
-  audioManager: AudioManager; // <-- Keep AudioManager prop here
+  gameStateManager: GameStateManager;
+  audioManager: AudioManager;
   onStartGame: () => void;
-  onRestartGame: () => void;
   onResumeGame: () => void;
-  onPauseGame: () => void; // ADD this prop
-  onRestartAtWave: (waveNumber: number) => void;
-  onExitGame: () => void; // Added exit game prop
-  camera?: Camera; // Add camera as an optional prop
+  onPauseGame: () => void;
+  onRestartGame: () => void;
+  onExitGame: () => void;
+  game: Game;
+  camera?: Camera;
+  containerRef: React.RefObject<HTMLDivElement>; // Add containerRef prop
 }
 
 // Keep audioManager in destructuring
-const HUD: React.FC<HUDProps> = ({ world, gameStateManager, audioManager, onStartGame, onRestartGame, onResumeGame, onPauseGame, onRestartAtWave, onExitGame, camera }) => {
+const HUD: React.FC<HUDProps> = ({
+  world,
+  gameStateManager,
+  audioManager,
+  onStartGame,
+  onResumeGame,
+  onPauseGame,
+  onRestartGame,
+  onExitGame,
+  game, // Destructure game prop
+  camera, // Re-add camera to destructuring
+  containerRef, // Destructure containerRef
+}) => {
   // Screen size for responsive layout
   const screen = useScreenSize();
   
@@ -735,7 +794,7 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, audioManager, onStar
               // just for the GameOverStats component (less ideal).
               // For now, setting to 0 as it wasn't part of the initial problem.
             });
-            console.log("[HUD] Game Over state detected. Final stats fetched:", finalState);
+            
           }
           // --- End NEW --- 
         }
@@ -1080,24 +1139,13 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, audioManager, onStar
     return 'translate(0, 0)';
   };
   
-  // Add handlers for pause functionality
+  // Simplified pause handler - only triggers the game state change
   const handlePauseGame = () => {
     console.log('[HUD] Pause game triggered via UI/Escape.');
     
-    // 1. Call the prop function passed from the parent FIRST to update core game state.
-    //    Game.ts will update the authoritative GameStateDisplay component.
+    // Simply call the parent function to handle pause state change
+    // Game.ts will handle all state updates and pointer lock management
     onPauseGame();
-    
-    // 2. Force exit pointer lock immediately since pause was explicitly requested
-    //    This ensures the pause menu will be interactive.
-    if (document.pointerLockElement) {
-      console.log('[HUD handlePauseGame] Exiting pointer lock.');
-      document.exitPointerLock();
-    }
-    
-    // 3. REMOVED immediate local state update.
-    //    Rely on updateHUD effect reading the new world state to show the PauseScreen.
-    // setGameState('paused'); 
   };
   
   // Add keyboard event listener for Escape key
@@ -1237,12 +1285,13 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, audioManager, onStar
     // Check on mount and whenever world changes
     syncGameState();
     
-    // REMOVED: Periodic interval check - relies on updateHUD loop now.
-    // const intervalId = setInterval(syncGameState, 100); 
+    // Add interval check to ensure UI stays in sync with game state
+    // This is important when pointer lock changes or other events occur
+    const intervalId = setInterval(syncGameState, 100);
     
-    // return () => {
-    //   clearInterval(intervalId);
-    // };
+    return () => {
+      clearInterval(intervalId);
+    };
   }, [world, gameState]); // Keep dependencies
 
   // Add a dedicated handler for exit game
@@ -1279,15 +1328,17 @@ const HUD: React.FC<HUDProps> = ({ world, gameStateManager, audioManager, onStar
     return <GameOverScreen stats={gameOverStats} onRestart={onRestartGame} onExit={handleExitGame} />;
   }
   if (gameState === 'paused') {
-    return (
-      <PauseScreen
-        onResume={onResumeGame} // Use original prop
-        onRestart={onRestartGame} // Use original prop
-        onExit={handleExitGame}
-      />
-    );
+    return <PauseScreen 
+      onResume={onResumeGame} 
+      onRestart={onRestartGame} 
+      onExit={handleExitGame} 
+      containerRef={containerRef} // Pass containerRef down
+    />;
   }
   
+  // Otherwise, render the main playing HUD
+  // ... (rest of the main HUD rendering) ...
+
   // Main game HUD
   return (
     <>
