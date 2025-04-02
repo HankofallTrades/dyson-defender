@@ -193,10 +193,12 @@ const CommsDisplay: React.FC<CommsDisplayProps> = ({
 
   return (
     <div className="comms-display" style={{
-      border: '2px solid #ff00ff',
+      borderTop: '2px solid rgba(255, 0, 255, 0.8)',
+      borderLeft: '2px solid rgba(255, 0, 255, 0.8)',
+      borderRight: '2px solid rgba(255, 0, 255, 0.8)',
       borderTopLeftRadius: '4px',
       borderTopRightRadius: '4px',
-      boxShadow: '0 0 10px rgba(255, 0, 255, 0.3)',
+      boxShadow: '0 0 10px rgba(255, 0, 255, 0.2)',
       background: 'rgba(0, 0, 0, 0.7)',
       marginBottom: '0',
       padding: '12px',
