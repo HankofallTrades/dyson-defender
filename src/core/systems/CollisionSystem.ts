@@ -325,8 +325,15 @@ export class CollisionSystem implements System {
     const hudSystem = this.getHUDSystem();
     const shieldSystem = this.getShieldSystem();
     
-    // Check if this is the Dyson Sphere (which has both shield and health)
+    // Check if this is the Dyson Sphere
     if (this.isDysonSphere(targetEntity)) {
+      // Check if this is a player projectile - if so, ignore the collision
+      const ownerEntity = projectile.ownerEntity;
+      const isPlayerProjectile = this.world.hasComponent(ownerEntity, 'InputReceiver');
+      if (isPlayerProjectile) {
+        return; // Skip collision for player projectiles with Dyson sphere
+      }
+
       const shield = this.world.getComponent<Shield>(targetEntity, 'Shield');
       const health = this.world.getComponent<Health>(targetEntity, 'Health');
       
@@ -354,7 +361,7 @@ export class CollisionSystem implements System {
         // Clamp health to minimum of 0
         health.current = Math.max(0, health.current);
       }
-    } 
+    }
     // Handle other entities with just health
     else if (this.world.hasComponent(targetEntity, 'Health')) {
       const health = this.world.getComponent<Health>(targetEntity, 'Health');
