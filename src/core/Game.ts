@@ -352,9 +352,6 @@ class Game {
     } else {
       console.warn('[Game] No HUD entities found to update GameStateDisplay');
     }
-    
-    // Pause the soundtrack when game is paused
-    this.audioManager.pauseSoundtrack();
   }
 
   public resumeGame(): void {
@@ -381,7 +378,6 @@ class Game {
     if (!this.isRunning) {
       this.isRunning = true;
       this.lastFrameTime = performance.now();
-      this.audioManager.resumeSoundtrack();
     }
     
     // Update game state manager immediately
