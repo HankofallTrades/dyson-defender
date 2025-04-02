@@ -131,7 +131,6 @@ export class InputManager {
     // REINSTATED: Pointer lock change listener to keep internal state accurate
     const pointerLockChangeHandler = () => {
       this.mouseState.isPointerLocked = document.pointerLockElement === this.container;
-      console.log(`[InputManager] Pointer lock changed. Locked: ${this.mouseState.isPointerLocked}`); // Added logging
     };
     document.removeEventListener('pointerlockchange', pointerLockChangeHandler);
     document.addEventListener('pointerlockchange', pointerLockChangeHandler);

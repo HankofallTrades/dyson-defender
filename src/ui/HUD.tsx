@@ -308,7 +308,6 @@ const Hologram: React.FC<{
     
     // Cleanup
     return () => {
-      console.log(`[Hologram ${modelType}] Cleaning up...`);
       
       // Stop the animation loop
       if (animationFrameIdRef.current) {
@@ -353,7 +352,6 @@ const Hologram: React.FC<{
               // Ignore error if element is already removed
            }
         }
-        console.log(`[Hologram ${modelType}] Renderer disposed and DOM element removed`);
         rendererRef.current = null;
       }
       
@@ -1115,12 +1113,10 @@ const HUD: React.FC<HUDProps> = ({
   
   // Determine hull status text and color based on health percentage
   const getHullStatus = () => {
-    if (playerHealthPercentage > 75) {
-      return { text: 'OPTIMAL', color: '#4CAF50' };
-    } else if (playerHealthPercentage > 50) {
-      return { text: 'FUNCTIONAL', color: '#FFC107' };
-    } else if (playerHealthPercentage > 25) {
-      return { text: 'WARNING', color: '#FF9800' };
+    if (playerHealthPercentage > 70) {
+      return { text: 'NOMINAL', color: '#4CAF50' };
+    } else if (playerHealthPercentage > 30) {
+      return { text: 'WARNING', color: '#FFC107' };
     } else {
       return { text: 'CRITICAL', color: '#F44336' };
     }
@@ -1683,7 +1679,30 @@ const HUD: React.FC<HUDProps> = ({
               {/* Full desktop console content */}
               <div style={{ borderBottom: '1px solid #ff00ff', paddingBottom: '8px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: '#ff00ff', fontSize: '0.7rem' }}>SYSTEMS</span>
-                <span style={{ color: hullStatus.color, fontSize: '0.6rem', animation: hullStatus.text === 'CRITICAL' ? 'alertBlink 0.5s infinite alternate' : 'none' }}>{hullStatus.text}</span>
+                <span style={{ 
+                  color: '#4CAF50',
+                  fontSize: '0.6rem', 
+                  animation: (playerHealthPercentage <= 30 || dysonHealth.healthPercentage <= 30) ? 'alertBlink 0.5s infinite alternate' : 'none'
+                }}>
+                  {(() => {
+                    // Convert percentages to status levels for comparison
+                    const hullStatus = playerHealthPercentage > 70 ? 3 : playerHealthPercentage > 30 ? 2 : 0;
+                    const coreStatus = dysonHealth.healthPercentage > 70 ? 3 : dysonHealth.healthPercentage > 30 ? 2 : 0;
+                    
+                    // Use the lower status level
+                    const lowestStatus = Math.min(hullStatus, coreStatus);
+                    
+                    // Convert status level back to display text and color
+                    switch(lowestStatus) {
+                      case 3:
+                        return <span style={{ color: '#4CAF50' }}>NOMINAL</span>;
+                      case 2:
+                        return <span style={{ color: '#FFC107' }}>WARNING</span>;
+                      default:
+                        return <span style={{ color: '#FF5555' }}>CRITICAL</span>;
+                    }
+                  })()}
+                </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', flex: '1' }}>
                 {/* Left Column: Ship Systems */}
@@ -1697,8 +1716,12 @@ const HUD: React.FC<HUDProps> = ({
                   <div style={{ width: '90%', borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', marginBottom: '8px' }}></div>
                   {/* Boost System */}
                   <div style={{ marginBottom: '10px' }}>
-                    <div style={{ color: '#00ffff', marginBottom: '5px', fontSize: '0.6rem', height: '14px' }}>BOOST SYSTEM:</div>
-                    <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
+                    <div style={{ color: '#00ffff', marginBottom: '5px', fontSize: '0.6rem', height: '14px' }}>
+                      BOOST: <span style={{ color: targetBoostDataRef.current.cooldown > 0 ? '#888888' : '#00ffff' }}>
+                        {targetBoostDataRef.current.cooldown > 0 ? "CHARGING" : targetBoostDataRef.current.active ? "ACTIVE" : "READY"}
+                      </span>
+                    </div>
+                    <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
                       <div style={{
                         width: displayedBoostData.cooldown > 0 
                           ? `${(1 - displayedBoostData.cooldown / 3.0) * 100}%` 
@@ -1714,30 +1737,19 @@ const HUD: React.FC<HUDProps> = ({
                         transform: 'translateZ(0)', 
                         willChange: 'width, background' 
                       }}></div>
-                      <div style={{ 
-                          position: 'absolute', 
-                          top: '50%', 
-                          left: '50%', 
-                          transform: 'translate(-50%, -50%)', 
-                          color: targetBoostDataRef.current.cooldown > 0 ? '#888888' : '#ffffff', 
-                          textShadow: '1px 1px 2px #000000', 
-                          fontSize: '0.65rem', 
-                          fontWeight: 'bold' 
-                      }}>
-                        {targetBoostDataRef.current.cooldown > 0 ? "CHARGING" : targetBoostDataRef.current.active ? "ACTIVE" : "READY"} 
-                      </div>
                     </div>
                   </div>
                   {/* Hull Status */}
                   <div style={{ marginBottom: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '5px', color: hullStatus.color, fontSize: '0.6rem', whiteSpace: 'nowrap', height: '14px' }}>
-                      <span>HULL INTEGRITY:</span>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '5px', color: playerHealthPercentage > 70 ? '#4CAF50' : playerHealthPercentage > 30 ? '#FFC107' : '#FF5555', fontSize: '0.6rem', whiteSpace: 'nowrap', height: '14px' }}>
+                      HULL: <span style={{ 
+                        animation: playerHealthPercentage <= 30 ? 'alertBlink 0.5s infinite alternate' : 'none'
+                      }}>
+                        {playerHealthPercentage > 70 ? 'NOMINAL' : playerHealthPercentage > 30 ? 'WARNING' : 'CRITICAL'}
+                      </span>
                     </div>
-                    <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
-                      <div style={{ width: `${playerHealthPercentage}%`, height: '100%', background: hullStatus.color, transition: 'width 0.3s ease' }}></div>
-                      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center', width: '100%' }}>
-                        {hullStatus.text}
-                      </div>
+                    <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
+                      <div style={{ width: `${playerHealthPercentage}%`, height: '100%', background: playerHealthPercentage > 70 ? '#4CAF50' : playerHealthPercentage > 30 ? '#FFC107' : '#FF5555', transition: 'width 0.3s ease' }}></div>
                     </div>
                   </div>
                 </div>
@@ -1754,22 +1766,24 @@ const HUD: React.FC<HUDProps> = ({
                   <div style={{ width: '90%', borderBottom: '1px dotted rgba(255, 0, 255, 0.5)', marginBottom: '8px' }}></div>
                   {/* Dyson Shield Status */}
                   <div style={{ marginBottom: '10px' }}>
-                    <div style={{ color: dysonHealth.shieldPercentage > 70 ? '#21a9f3' : dysonHealth.shieldPercentage > 30 ? '#FFC107' : '#F44336', marginBottom: '5px', fontSize: '0.6rem', height: '14px' }}>DYSON SHIELD:</div>
-                    <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
-                      <div style={{ width: `${dysonHealth.shieldPercentage}%`, height: '100%', background: dysonHealth.shieldPercentage > 70 ? 'linear-gradient(90deg, #2196F3, #64B5F6)' : dysonHealth.shieldPercentage > 30 ? 'linear-gradient(90deg, #FFC107, #FFD54F)' : 'linear-gradient(90deg, #F44336, #E57373)', transition: 'width 0.3s ease' }}></div>
-                      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                        {Math.round(dysonHealth.shieldPercentage)}%
-                      </div>
+                    <div style={{ color: '#00ffff', marginBottom: '5px', fontSize: '0.6rem', height: '14px' }}>
+                      SHIELD: {Math.round(dysonHealth.shieldPercentage)}%
+                    </div>
+                    <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
+                      <div style={{ width: `${dysonHealth.shieldPercentage}%`, height: '100%', background: '#00ffff', transition: 'width 0.3s ease' }}></div>
                     </div>
                   </div>
                   {/* Dyson Core Status */}
                   <div style={{ marginBottom: '10px' }}>
-                    <div style={{ color: dysonHealth.healthPercentage > 70 ? '#4CAF50' : dysonHealth.healthPercentage > 30 ? '#FFC107' : '#F44336', marginBottom: '5px', fontSize: '0.6rem', height: '14px' }}>DYSON CORE:</div>
-                    <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 4px rgba(0, 0, 0, 0.5)', position: 'relative' }}>
-                      <div style={{ width: `${dysonHealth.healthPercentage}%`, height: '100%', background: dysonHealth.healthPercentage > 70 ? 'linear-gradient(90deg, #4CAF50, #81C784)' : dysonHealth.healthPercentage > 30 ? 'linear-gradient(90deg, #FFC107, #FFD54F)' : 'linear-gradient(90deg, #F44336, #E57373)', transition: 'width 0.3s ease', animation: dysonHealth.healthPercentage < 30 ? 'alertBlinkBackground 0.5s infinite alternate' : 'none' }}></div>
-                      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#ffffff', textShadow: '1px 1px 2px #000000', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center', width: '100%' }}>
+                    <div style={{ color: dysonHealth.healthPercentage > 70 ? '#4CAF50' : dysonHealth.healthPercentage > 30 ? '#FFC107' : '#F44336', marginBottom: '5px', fontSize: '0.6rem', height: '14px' }}>
+                      CORE: <span style={{ 
+                        animation: dysonHealth.healthPercentage <= 30 ? 'alertBlink 0.5s infinite alternate' : 'none'
+                      }}>
                         {dysonHealth.healthPercentage > 70 ? 'STABLE' : dysonHealth.healthPercentage > 30 ? 'WARNING' : 'CRITICAL'}
-                      </div>
+                      </span>
+                    </div>
+                    <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
+                      <div style={{ width: `${dysonHealth.healthPercentage}%`, height: '100%', background: dysonHealth.healthPercentage > 70 ? '#4CAF50' : dysonHealth.healthPercentage > 30 ? '#FFC107' : '#F44336', transition: 'width 0.3s ease', animation: dysonHealth.healthPercentage < 30 ? 'alertBlinkBackground 0.5s infinite alternate' : 'none' }}></div>
                     </div>
                   </div>
                 </div>
@@ -1811,7 +1825,7 @@ const HUD: React.FC<HUDProps> = ({
                   background: 'rgba(255, 0, 255, 0.5)'
                 }}></div>
                 <div style={{ 
-                  color: dysonHealth.shieldPercentage > 30 ? '#21a9f3' : '#F44336',
+                  color: '#21a9f3',
                   fontSize: '0.8rem',
                   flex: 1
                 }}>
