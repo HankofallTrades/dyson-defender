@@ -18,12 +18,13 @@ export function createDysonSphere(world: World): number {
   
   // Add both shield and health components
   world.addComponent(entity, 'Shield', {
-    current: 100,
-    max: 100,
+    current: 200,
+    max: 200,
     lastHitTime: 0,
     regenDelay: 3,      // 3 seconds before regeneration starts
     regenRate: 10,      // 10 shield points per second
-    isRegenerating: false
+    isRegenerating: false,
+    lightningVulnerability: 1.5 // Takes 50% more damage from lightning
   });
   world.addComponent(entity, 'Health', { current: 500, max: 500 });
   

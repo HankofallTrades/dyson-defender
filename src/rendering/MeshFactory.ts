@@ -15,34 +15,54 @@ export class MeshFactory {
    * Creates a mesh based on the provided renderable component
    */
   public static createMesh(renderable: Renderable): THREE.Object3D {
-    // Create the appropriate mesh based on the model type
-    if (renderable.modelId === 'player') {
-      return this.createPlayerShipMesh(renderable);
-    } else if (renderable.modelId === 'dysonSphere') {
-      return this.createDysonSphereMesh(renderable);
-    } else if (renderable.modelId === 'laser') {
-      return this.createLaserMesh(renderable);
-    } else if (renderable.modelId === 'grunt') {
-      return this.createGruntMesh(renderable);
-    } else if (renderable.modelId === 'shieldGuardian') {
-      return this.createShieldGuardianMesh(renderable);
-    } else if (renderable.modelId === 'shieldBubble') {
-      return this.createShieldBubbleMesh(renderable);
-    } else if (renderable.modelId === 'warpRaider') {
-      return this.createWarpRaiderMesh(renderable);
-    } else if (renderable.modelId === 'asteroid') {
-      return this.createAsteroidMesh(renderable);
-    } else if (renderable.modelId === 'powerUpOrb') {
-      return this.createPowerUpOrbMesh(renderable);
-    } else if (renderable.modelId === 'starfield') {
-      return this.createStarfieldMesh(renderable);
-    } else if (renderable.modelId === 'centralStar') {
-      return this.createCentralStarMesh(renderable);
-    } else if (renderable.modelId === 'portal') {
-      return this.createPortalMesh(renderable);
-    } else {
-      return this.createDefaultMesh(renderable);
+    let mesh: THREE.Object3D;
+
+    switch (renderable.modelId) {
+      case 'playerShip':
+        mesh = this.createPlayerShipMesh(renderable);
+        break;
+      case 'grunt':
+        mesh = this.createGruntMesh(renderable);
+        break;
+      case 'dysonSphere':
+        mesh = this.createDysonSphereMesh(renderable);
+        break;
+      case 'laser':
+        mesh = this.createLaserMesh(renderable);
+        break;
+      case 'shieldGuardian':
+        mesh = this.createShieldGuardianMesh(renderable);
+        break;
+      case 'shieldBubble':
+        mesh = this.createShieldBubbleMesh(renderable);
+        break;
+      case 'warpRaider':
+        mesh = this.createWarpRaiderMesh(renderable);
+        break;
+      case 'asteroid':
+        mesh = this.createAsteroidMesh(renderable);
+        break;
+      case 'powerUpOrb':
+        mesh = this.createPowerUpOrbMesh(renderable);
+        break;
+      case 'starfield':
+        mesh = this.createStarfieldMesh(renderable);
+        break;
+      case 'centralStar':
+        mesh = this.createCentralStarMesh(renderable);
+        break;
+      case 'portal':
+        mesh = this.createPortalMesh(renderable);
+        break;
+      default:
+        console.warn(`Unknown model ID: ${renderable.modelId}`);
+        mesh = new THREE.Object3D();
     }
+
+    // Store the mesh UUID in the renderable component
+    renderable.meshId = mesh.uuid;
+    
+    return mesh;
   }
 
   private static createDefaultMesh(renderable: Renderable): THREE.Object3D {
@@ -234,6 +254,10 @@ export class MeshFactory {
     rightEye.position.set(-0.2, 0.1, 0.4);
     group.add(rightEye);
     meshes.push(rightEye);
+
+    // Store references to eye meshes for siege mode color changes
+    group.userData.leftEye = leftEye;
+    group.userData.rightEye = rightEye;
     
     // Add tentacles
     const numTentacles = 8;

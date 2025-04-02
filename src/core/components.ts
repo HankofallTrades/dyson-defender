@@ -15,6 +15,7 @@ export interface Renderable {
   scale: number;    // Scale of the model
   color: number;    // Color in hex format
   isVisible?: boolean; // Whether the model is visible (optional, defaults to true)
+  meshId?: string; // UUID of the Three.js mesh instance
 }
 
 export interface AutoRotate {
@@ -30,17 +31,18 @@ export interface Rotation {
 }
 
 export interface Health {
-  current: number;
-  max: number;
+  current: number;        // Current health points (500 max for Dyson Sphere)
+  max: number;           // Maximum health points
 }
 
 export interface Shield {
-  current: number;
-  max: number;
+  current: number;        // Current shield points (200 max for Dyson Sphere)
+  max: number;           // Maximum shield points
   lastHitTime: number;     // Time when shield was last hit
   regenDelay: number;      // Delay before shield starts regenerating (in seconds)
   regenRate: number;       // Shield points regenerated per second
   isRegenerating: boolean; // Whether the shield is currently regenerating
+  lightningVulnerability?: number; // Multiplier for lightning damage (1.5 means 50% more damage)
 }
 
 export interface InputReceiver {
@@ -109,6 +111,7 @@ export interface Enemy {
   currentLaserCooldown: number; // Current laser cooldown timer
   canMove: boolean;     // Whether the enemy can move
   canShoot: boolean;    // Whether the enemy can shoot
+  siegeEffectId?: number; // Reference to the siege effect entity
 }
 
 export interface WaveInfo {
@@ -323,4 +326,16 @@ export interface StarfieldBackground {
   galaxySize: number;      // Size multiplier for galaxies
   starfieldRadius: number; // Radius of the spherical starfield
   rotationSpeed: number;   // How fast the starfield rotates
+}
+
+export interface SiegeEffect {
+  strands: {
+    points: number[]; // Flattened array of Vector3 coordinates
+    line: string;     // UUID of the Three.js line
+    auras: string[];  // UUIDs of the Three.js aura meshes
+  }[];
+  updateTimer: number;
+  auraTime: number;
+  origin: Position;
+  target: Position;
 }

@@ -3,6 +3,7 @@ import { Enemy, Position, Velocity, Rotation, Collider, InputReceiver, Health, R
 import { createLaser } from '../entities/LaserEntity';
 import * as THREE from 'three';
 import { COLORS } from '../../constants/colors';
+import { WeaponSystem } from '../systems/WeaponSystem';
 
 export class EnemySystem implements System {
   // The minimum distance grunts should maintain from the Dyson Sphere surface
@@ -10,7 +11,13 @@ export class EnemySystem implements System {
   // Rotation speed in radians per second for smooth turning
   private readonly ROTATION_SPEED = 2.0;
   private scene: THREE.Scene;
-  
+  private weaponSystem: WeaponSystem | null = null;
+
+  // Add a map to track rotation completion
+  private rotationComplete: Map<number, boolean> = new Map();
+  // Add a map to track which enemies have had their lightning weapon created
+  private lightningWeaponCreated: Map<number, boolean> = new Map();
+
   constructor(private world: World, scene: THREE.Scene) {
     this.scene = scene;
   }
@@ -149,16 +156,15 @@ export class EnemySystem implements System {
       
       // Check if the enemy has reached its attack position - enter siege mode
       if (distanceToSurface <= this.ATTACK_DISTANCE) {
-        // The enemy has reached attack position, stop moving and enter siege mode
+        // The enemy has reached attack position, stop moving
         velocity.x = 0;
         velocity.y = 0;
         velocity.z = 0;
         
         // Special handling for asteroids that reach the Dyson Sphere
         if (enemy.type === 'asteroid') {
-          // Asteroid impact causes immediate game over
           this.triggerAsteroidImpact(entity, targetEntity);
-          return; // Stop processing this entity
+          return;
         }
         
         // Enter siege mode if not already
@@ -167,47 +173,39 @@ export class EnemySystem implements System {
           
           // Update grunt eye color to indicate siege mode
           if (enemy.type === 'grunt') {
-            renderable.color = COLORS.GRUNT_EYES_SIEGE;
-          }
-        }
-        
-        // Start attack cooldown if not already attacking and can shoot
-        if (enemy.canShoot && enemy.currentCooldown <= 0) {
-          enemy.currentCooldown = enemy.attackCooldown;
-          
-          // First check if target has a shield
-          const targetShield = this.world.getComponent<Shield>(targetEntity, 'Shield');
-          const targetHealth = this.world.getComponent<Health>(targetEntity, 'Health');
-          
-          // Damage logic - first damage shield, then health
-          if (targetShield && targetShield.current > 0) {
-            // Damage shield first
-            targetShield.current -= enemy.damage;
-            if (targetShield.current < 0) {
-              // If shield is depleted, apply remaining damage to health
-              if (targetHealth) {
-                targetHealth.current += targetShield.current; // Add negative value
-                targetShield.current = 0; // Set shield to zero
+            const mesh = this.scene.getObjectByProperty('uuid', renderable.meshId);
+            if (mesh) {
+              const leftEye = mesh.userData.leftEye;
+              const rightEye = mesh.userData.rightEye;
+              if (leftEye && rightEye) {
+                (leftEye.material as THREE.MeshPhongMaterial).color.setHex(COLORS.GRUNT_EYES_SIEGE);
+                (leftEye.material as THREE.MeshPhongMaterial).emissive.setHex(COLORS.GRUNT_EYES_SIEGE_EMISSIVE);
+                (leftEye.material as THREE.MeshPhongMaterial).emissiveIntensity = 1.0;
+                (rightEye.material as THREE.MeshPhongMaterial).color.setHex(COLORS.GRUNT_EYES_SIEGE);
+                (rightEye.material as THREE.MeshPhongMaterial).emissive.setHex(COLORS.GRUNT_EYES_SIEGE_EMISSIVE);
+                (rightEye.material as THREE.MeshPhongMaterial).emissiveIntensity = 1.0;
               }
-            }
-          } else if (targetHealth) {
-            // Shield already depleted, damage health directly
-            targetHealth.current -= enemy.damage;
-            if (targetHealth.current < 0) targetHealth.current = 0;
-            
-            // Check if this is the player and if they've been destroyed
-            if (this.world.hasComponent(targetEntity, 'InputReceiver') && targetHealth.current <= 0) {
-              // Trigger game over
-              this.triggerPlayerGameOver(targetEntity);
             }
           }
         }
         
         // When at attack position, smoothly turn to face the Dyson Sphere directly
-        this.smoothFaceTarget(rotation, position, targetPosition, deltaTime);
+        const isRotationComplete = this.smoothFaceTarget(rotation, position, targetPosition, deltaTime);
         
-        // Try to shoot laser at Dyson sphere when in siege mode
-        if (enemy.canShoot && enemy.currentLaserCooldown <= 0) {
+        // Store rotation completion state
+        this.rotationComplete.set(entity, isRotationComplete);
+        
+        // Create lightning weapon only after rotation is complete
+        if (enemy.type === 'grunt' && isRotationComplete && !this.lightningWeaponCreated?.get(entity)) {
+          const weaponSystem = this.getWeaponSystem();
+          if (weaponSystem) {
+            weaponSystem.createLightningWeapon(entity);
+            this.lightningWeaponCreated?.set(entity, true);
+          }
+        }
+        
+        // Try to shoot laser at Dyson sphere when in siege mode and rotation is not complete
+        if (enemy.canShoot && enemy.currentLaserCooldown <= 0 && !isRotationComplete) {
           // Get direction to Dyson sphere center for laser targeting
           const directionToDysonSphere = new THREE.Vector3(
             targetPosition.x - position.x,
@@ -229,10 +227,30 @@ export class EnemySystem implements System {
         // Still moving toward the target - normal mode
         if (enemy.inSiegeMode) {
           enemy.inSiegeMode = false;
+          this.rotationComplete.delete(entity);
+          this.lightningWeaponCreated?.delete(entity);
           
           // Revert grunt eye color in normal mode
           if (enemy.type === 'grunt') {
-            renderable.color = COLORS.GRUNT_BASE;
+            const mesh = this.scene.getObjectByProperty('uuid', renderable.meshId);
+            if (mesh) {
+              const leftEye = mesh.userData.leftEye;
+              const rightEye = mesh.userData.rightEye;
+              if (leftEye && rightEye) {
+                (leftEye.material as THREE.MeshPhongMaterial).color.setHex(COLORS.GRUNT_EYES);
+                (leftEye.material as THREE.MeshPhongMaterial).emissive.setHex(COLORS.GRUNT_EYES_EMISSIVE);
+                (leftEye.material as THREE.MeshPhongMaterial).emissiveIntensity = 0.5;
+                (rightEye.material as THREE.MeshPhongMaterial).color.setHex(COLORS.GRUNT_EYES);
+                (rightEye.material as THREE.MeshPhongMaterial).emissive.setHex(COLORS.GRUNT_EYES_EMISSIVE);
+                (rightEye.material as THREE.MeshPhongMaterial).emissiveIntensity = 0.5;
+
+                // Remove lightning weapon
+                const weaponSystem = this.getWeaponSystem();
+                if (weaponSystem) {
+                  weaponSystem.removeLightningWeapon(entity);
+                }
+              }
+            }
           }
         }
         
@@ -346,8 +364,8 @@ export class EnemySystem implements System {
     rotation.z = euler.z; // Roll
   }
   
-  // Helper method to make an entity smoothly face a target position
-  private smoothFaceTarget(rotation: Rotation, position: Position, targetPosition: Position, deltaTime: number): void {
+  // Helper method to make an entity smoothly face a target position and return if rotation is complete
+  private smoothFaceTarget(rotation: Rotation, position: Position, targetPosition: Position, deltaTime: number): boolean {
     // Create vectors for current position and target position
     const currentPos = new THREE.Vector3(position.x, position.y, position.z);
     const targetPos = new THREE.Vector3(targetPosition.x, targetPosition.y, targetPosition.z);
@@ -363,12 +381,15 @@ export class EnemySystem implements System {
     const targetPitch = euler.x;
     
     // Smoothly interpolate current rotation to target rotation
-    this.smoothRotateToAngle(rotation, 'y', targetYaw, deltaTime);
-    this.smoothRotateToAngle(rotation, 'x', targetPitch, deltaTime);
+    const yawComplete = this.smoothRotateToAngle(rotation, 'y', targetYaw, deltaTime);
+    const pitchComplete = this.smoothRotateToAngle(rotation, 'x', targetPitch, deltaTime);
+    
+    // Return true if both rotations are complete
+    return yawComplete && pitchComplete;
   }
   
   // Helper method to smoothly rotate a value toward a target angle
-  private smoothRotateToAngle(rotation: Rotation, axis: 'x' | 'y' | 'z', targetAngle: number, deltaTime: number): void {
+  private smoothRotateToAngle(rotation: Rotation, axis: 'x' | 'y' | 'z', targetAngle: number, deltaTime: number): boolean {
     // Normalize both angles to the range [-π, π]
     let currentAngle = rotation[axis];
     
@@ -387,6 +408,9 @@ export class EnemySystem implements System {
     // Normalize the result to [-π, π]
     if (rotation[axis] > Math.PI) rotation[axis] -= Math.PI * 2;
     if (rotation[axis] < -Math.PI) rotation[axis] += Math.PI * 2;
+    
+    // Return true if we're very close to the target angle
+    return Math.abs(diff) < 0.01;
   }
   
   /**
@@ -543,5 +567,18 @@ export class EnemySystem implements System {
     }
     
     // Optional: Add explosion or impact visual effect here
+  }
+
+  // Add helper method to get WeaponSystem
+  private getWeaponSystem(): any {
+    const systems = (this.world as any).systems;
+    if (!systems) return null;
+    
+    for (const system of systems) {
+      if (system.constructor.name === 'WeaponSystem') {
+        return system;
+      }
+    }
+    return null;
   }
 } 
