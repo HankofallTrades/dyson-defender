@@ -222,18 +222,23 @@ export class MeshFactory {
     meshes.push(head);
     group.add(head);
     
-    // Add a subtle outer glow using a slightly larger, transparent head
-    const glowGeometry = headGeometry.clone();
-    const glowMaterial = new THREE.MeshPhongMaterial({
+    // Create a shared glow material configuration to ensure consistency
+    const createGlowMaterial = () => new THREE.MeshPhongMaterial({
       color: COLORS.GRUNT_GLOW,
       transparent: true,
-      opacity: 0.3,
-      shininess: 20,
+      opacity: 0.5,
+      shininess: 0,
       emissive: COLORS.GRUNT_GLOW,
-      emissiveIntensity: 0.2
+      emissiveIntensity: 0.8,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
     });
+    
+    // Add a single, stronger outer glow using a slightly larger, transparent head
+    const glowGeometry = headGeometry.clone();
+    const glowMaterial = createGlowMaterial();
     const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-    glow.scale.set(1.1, 1.1, 1.1); // Slightly larger than the head
+    glow.scale.set(1.3, 1.3, 1.3); // Make the glow larger for more visibility
     meshes.push(glow);
     group.add(glow);
     
@@ -310,7 +315,7 @@ export class MeshFactory {
       // Make the curve tension tighter for smoother bends
       tentacleCurve.tension = 0.4;
 
-      // Create geometry
+      // Create geometry for tentacle and its glow
       const geometry = new THREE.TubeGeometry(
         tentacleCurve,
         32,
@@ -332,9 +337,16 @@ export class MeshFactory {
 
       const tentacleMesh = new THREE.Mesh(geometry, tentacleMaterial);
       
+      // Create glow for tentacle using the same material configuration
+      const tentacleGlowMaterial = createGlowMaterial();
+      const tentacleGlow = new THREE.Mesh(geometry, tentacleGlowMaterial);
+      tentacleGlow.scale.set(1.3, 1.3, 1.3); // Match the head glow scale
+      
       // Add to the tentacle group
       tentacleGroup.add(tentacleMesh);
+      tentacleGroup.add(tentacleGlow);
       meshes.push(tentacleMesh);
+      meshes.push(tentacleGlow);
     }
     
     // Position tentacle group at the bottom of the head
