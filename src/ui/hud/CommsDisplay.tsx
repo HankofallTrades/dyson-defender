@@ -192,8 +192,19 @@ const CommsDisplay: React.FC<CommsDisplayProps> = ({
   }
 
   return (
-    <div className="comms-display retro-hud-container">
-      <div className="comms-header retro-hud-label">COMMS LOG</div>
+    <div className="comms-display" style={{
+      border: '2px solid #ff00ff',
+      borderTopLeftRadius: '4px',
+      borderTopRightRadius: '4px',
+      boxShadow: '0 0 10px rgba(255, 0, 255, 0.3)',
+      background: 'rgba(0, 0, 0, 0.7)',
+      marginBottom: '0',
+      padding: '12px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignSelf: 'flex-end'
+    }}>
+      <div className="comms-header retro-hud-label">COMMS</div>
       <div className="comms-content console-content">
         {renderAlertOverlay()}
 
