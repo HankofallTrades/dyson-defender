@@ -54,9 +54,9 @@ export function createPlayerShip(world: World): number {
   // Add collider for collision detection
   world.addComponent(entity, 'Collider', {
     type: 'box',
-    width: 6.0, // Match the ship's model dimensions
-    height: 1.5,
-    depth: 4.0,
+    width: 7.2, // Increased from 6.0
+    height: 1.8, // Increased from 1.5
+    depth: 4.8, // Increased from 4.0
     isTrigger: false,
     layer: 'player'
   });
