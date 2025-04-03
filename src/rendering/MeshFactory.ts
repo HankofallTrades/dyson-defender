@@ -140,34 +140,38 @@ export class MeshFactory {
   private static createDysonSphereMesh(renderable: Renderable): THREE.Object3D {
     const group = new THREE.Group();
     
-    // Outer wireframe sphere - increased wireframe transparency
+    // Outer wireframe sphere - enhanced wireframe appearance
     const outerGeometry = new THREE.SphereGeometry(50, 32, 32);
     const outerMaterial = new THREE.MeshStandardMaterial({
       color: renderable.color || COLORS.DYSON_PRIMARY,
-      metalness: 0.7,
-      roughness: 0.2,
+      metalness: 0.9,
+      roughness: 0.1,
       emissive: COLORS.DYSON_EMISSIVE,
       wireframe: true,
       transparent: true,
-      opacity: 0.8,
-      depthWrite: true, // Ensure it writes to depth buffer
+      opacity: 1.0,
+      depthWrite: true,
     });
     const outerMesh = new THREE.Mesh(outerGeometry, outerMaterial);
-    outerMesh.renderOrder = 0; // Ensure it renders before the shield
+    outerMesh.renderOrder = 0;
     group.add(outerMesh);
     
-    // Inner transparent sphere - made much more transparent
-    const innerGeometry = new THREE.SphereGeometry(48, 32, 32);
-    const innerMaterial = new THREE.MeshStandardMaterial({
-      color: COLORS.DYSON_SECONDARY,
+    // Add a second wireframe with different segment count for more complex pattern
+    const outerGeometry2 = new THREE.SphereGeometry(50, 16, 16);
+    const outerMaterial2 = new THREE.MeshStandardMaterial({
+      color: renderable.color || COLORS.DYSON_PRIMARY,
+      metalness: 0.9,
+      roughness: 0.1,
+      emissive: COLORS.DYSON_EMISSIVE,
+      wireframe: true,
       transparent: true,
-      opacity: 0.1, // Significantly reduced opacity to allow more light through
-      side: THREE.DoubleSide,
-      depthWrite: true, // Ensure it writes to depth buffer
+      opacity: 0.5,
+      depthWrite: true,
     });
-    const innerMesh = new THREE.Mesh(innerGeometry, innerMaterial);
-    innerMesh.renderOrder = 0; // Ensure it renders before the shield
-    group.add(innerMesh);
+    const outerMesh2 = new THREE.Mesh(outerGeometry2, outerMaterial2);
+    outerMesh2.rotation.y = Math.PI / 4; // Rotate slightly to create offset pattern
+    outerMesh2.renderOrder = 0;
+    group.add(outerMesh2);
     
     // Apply scale
     group.scale.set(renderable.scale, renderable.scale, renderable.scale);
@@ -1542,24 +1546,24 @@ export class MeshFactory {
     const glow = new THREE.Mesh(glowGeometry, glowMaterial);
     group.add(glow);
     
-    // Add a secondary glow layer
-    const outerGlowGeometry = new THREE.SphereGeometry(1.8, 32, 32);
+    // Add a secondary glow layer - now closer to core
+    const outerGlowGeometry = new THREE.SphereGeometry(1.4, 32, 32);
     const outerGlowMaterial = new THREE.MeshBasicMaterial({
       color: COLORS.STAR_GLOW,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.4,
       blending: THREE.AdditiveBlending,
       side: THREE.FrontSide,
     });
     const outerGlow = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial);
     group.add(outerGlow);
     
-    // Add a tertiary glow layer for more visibility
-    const farGlowGeometry = new THREE.SphereGeometry(2.5, 32, 32);
+    // Add a tertiary glow layer - also closer to core
+    const farGlowGeometry = new THREE.SphereGeometry(1.5, 32, 32);
     const farGlowMaterial = new THREE.MeshBasicMaterial({
       color: COLORS.STAR_GLOW,
       transparent: true,
-      opacity: 0.15,
+      opacity: 0.2,
       blending: THREE.AdditiveBlending,
       side: THREE.FrontSide,
     });
