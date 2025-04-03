@@ -9,11 +9,11 @@ interface RadarDisplayProps {
     trackedEntities: Array<{
       entityId: number;
       entityType: string;
-      distance: number;
+      horizontalDistance: number; // Horizontal distance (XZ plane)
       direction: {
-        x: number; // Left/Right relative to player's forward
-        y: number; // Vertical difference
-        z: number; // Forward/Backward relative to player's forward
+        x: number; // Relative X on radar (left/right based on player yaw)
+        y: number; // Vertical distance (world Y difference)
+        z: number; // Relative Z on radar (forward/backward based on player yaw)
       };
       threatLevel: number;
     }>;
@@ -26,7 +26,7 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ radarData, radarVisualRadiu
     return null;
   }
 
-  const radarLogicRadius = 250; // Logical detection range
+  const radarLogicRadius = 300; // Logical detection range
 
   return (
     <div style={{
@@ -77,34 +77,27 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ radarData, radarVisualRadiu
       {/* Enemy blips */}
       {radarData.trackedEntities.map((entity) => {
         // --- Start of Blip Calculation Logic ---
-        let dirX = entity.direction.x;
-        let dirZ = entity.direction.z;
-        // Calculate distance projected onto the XZ plane first
-        const xzDist = Math.sqrt(entity.direction.x**2 + entity.direction.z**2);
-        // If xzDist is near zero, avoid division by zero; place blip near center
-        if (xzDist < 0.001) {
-            dirX = 0;
-            dirZ = 0;
-        } else {
-            // Normalize the XZ direction vector
-            dirX = entity.direction.x / xzDist;
-            dirZ = entity.direction.z / xzDist;
-        }
+        
+        // Use pre-calculated horizontal distance and relative radar coordinates
+        const { horizontalDistance, direction } = entity;
+        const radarX = direction.x; // Relative left/right on radar (-1 to 1)
+        const radarZ = direction.z; // Relative forward/backward on radar (-1 to 1)
+        const verticalDistance = direction.y; // Vertical distance
 
-        // Actual distance in the XZ plane
-        const actualXZDistance = xzDist * entity.distance;
+        // Determine how far out the blip should be based on horizontal distance
+        const distanceRatio = Math.min(horizontalDistance / radarLogicRadius, 1);
 
-        // Determine how far out the blip should be on the radar display (0 to 1)
-        const distanceRatio = Math.min(actualXZDistance / radarLogicRadius, 1);
+        // Calculate visual position using relative radar coordinates and distance ratio
+        // radarX maps to visual x, -radarZ maps to visual y
+        const x = radarX * distanceRatio * radarVisualRadius;
+        const y = -radarZ * distanceRatio * radarVisualRadius;
 
-        // Calculate visual position based on normalized direction and distance ratio
-        const x = dirX * distanceRatio * radarVisualRadius;
-        const y = -dirZ * distanceRatio * radarVisualRadius; // Invert Z for screen Y
+        // Vertical distance checks for shape (no changes needed here)
+        const verticalThreshold = 40;
+        const isAbove = verticalDistance > verticalThreshold;
+        const isBelow = verticalDistance < -verticalThreshold;
 
-        const verticalThreshold = 10; // Keep this threshold
-        const isAbove = entity.direction.y * entity.distance > verticalThreshold;
-        const isBelow = entity.direction.y * entity.distance < -verticalThreshold;
-
+        // Determine color, size, shape, etc. (most logic remains the same)
         let color = '#ff0000';
         let size = Math.max(3, 6 - distanceRatio * 2);
         let shape: 'dot' | 'diamond' | 'triangle' = 'dot';
@@ -128,6 +121,16 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ radarData, radarVisualRadiu
         if ((shape === 'dot' || shape === 'diamond') && (isAbove || isBelow) && entity.entityType !== 'dysonSphere') {
           shape = 'triangle';
         }
+
+        // Increase size specifically for asteroid triangles
+        if (shape === 'triangle' && entity.entityType === 'asteroid') {
+            size *= 1.5; // Make asteroid triangles 50% larger
+        }
+
+        // Ensure non-Dyson Sphere blips render above the Dyson Sphere
+        if (entity.entityType !== 'dysonSphere') {
+          zIndex = 11;
+        }
         // --- End of Blip Calculation Logic ---
 
         // --- Start of Blip Rendering ---
@@ -150,15 +153,15 @@ const RadarDisplay: React.FC<RadarDisplayProps> = ({ radarData, radarVisualRadiu
           );
         } else if (shape === 'triangle') {
           // Adjusted triangle positioning to be centered on the (x, y) point
-          const triangleHeight = size * 1.5; // Slightly taller triangle
           const triangleBase = size * 1.2;  // Slightly wider base
+          const triangleHeight = triangleBase * (Math.sqrt(3) / 2); // Height for equilateral triangle
           return (
             <div key={entity.entityId} style={{ ...commonStyle, width: '0', height: '0',
               borderLeft: `${triangleBase / 2}px solid transparent`,
               borderRight: `${triangleBase / 2}px solid transparent`,
               borderBottom: isAbove ? `${triangleHeight}px solid ${color}` : 'none',
               borderTop: isBelow ? `${triangleHeight}px solid ${color}` : 'none',
-              transform: `translate(${x - triangleBase / 2}px, ${y - (isAbove ? triangleHeight : 0)}px)`,
+              transform: `translate(${x - triangleBase / 2}px, ${y - (isAbove ? (2/3) * triangleHeight : (1/3) * triangleHeight)}px)`,
               boxShadow: boxShadow
             }}></div>
           );

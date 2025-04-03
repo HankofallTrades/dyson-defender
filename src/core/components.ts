@@ -182,11 +182,11 @@ export interface Radar {
   trackedEntities: Array<{     // Array of entities currently being tracked
     entityId: number;          // The entity ID
     entityType: string;        // Type of entity ('grunt', 'bomber', 'asteroid', 'warpRaider', 'shieldGuardian', 'dysonSphere')
-    distance: number;          // Distance from player to entity
-    direction: {               // Direction vector from player to entity (normalized)
-      x: number;               // Used for calculating radar blip position
-      y: number;
-      z: number;
+    horizontalDistance: number;// Horizontal distance from player to entity (XZ plane)
+    direction: {               // Relative direction/position data
+      x: number;               // Relative X on radar (left/right based on player yaw)
+      y: number;               // Vertical distance (world Y difference)
+      z: number;               // Relative Z on radar (forward/backward based on player yaw)
     };
     threatLevel: number;       // Threat level (0-1) - for color intensity
   }>;

@@ -307,16 +307,15 @@ export class HUDSystem implements System {
     const playerRot = this.world.getComponent<Rotation>(playerEntity, 'Rotation');
     if (!playerPos || !playerRot) return;
     
-    // Create a forward vector based on player's rotation
-    const playerForward = new THREE.Vector3(0, 0, -1); // Default forward in THREE.js
-    const playerQuat = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(playerRot.x, playerRot.y, playerRot.z, 'YXZ')
-    );
-    playerForward.applyQuaternion(playerQuat);
+    // Create a HORIZONTAL forward vector based ONLY on player's YAW rotation
+    const playerYaw = playerRot.y;
+    const playerHorizontalForward = new THREE.Vector3(0, 0, -1); // Default forward
+    const playerYawQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, playerYaw, 0, 'YXZ'));
+    playerHorizontalForward.applyQuaternion(playerYawQuat);
     
-    // Create right vector (perpendicular to forward)
-    const playerRight = new THREE.Vector3(1, 0, 0);
-    playerRight.applyQuaternion(playerQuat);
+    // Create HORIZONTAL right vector (perpendicular to horizontal forward)
+    const playerHorizontalRight = new THREE.Vector3(1, 0, 0); // Default right
+    playerHorizontalRight.applyQuaternion(playerYawQuat);
     
     // Find all enemy entities within range
     const enemyEntities = this.world.getEntitiesWith(['Enemy', 'Position']);
@@ -331,27 +330,35 @@ export class HUDSystem implements System {
       
       if (!enemy || !position) continue;
       
-      // Calculate distance vector from player to enemy
-      const distanceVector = new THREE.Vector3(
+      // Calculate FULL distance vector (including Y)
+      const fullDistanceVector = new THREE.Vector3(
         position.x - playerPos.x,
         position.y - playerPos.y,
         position.z - playerPos.z
       );
+
+      // Calculate HORIZONTAL distance vector (ignoring Y difference)
+      const horizontalDistanceVector = new THREE.Vector3(
+        position.x - playerPos.x,
+        0, // Ignore Y difference
+        position.z - playerPos.z
+      );
       
-      const distance = distanceVector.length();
+      const horizontalDistance = horizontalDistanceVector.length();
+      const verticalDifference = fullDistanceVector.y; // Actual Y difference
+
+      // Calculate normalized HORIZONTAL direction vector for the radar
+      // Avoid division by zero if enemy is directly above/below
+      let horizontalDirection = new THREE.Vector3(0, 0, 0);
+      if (horizontalDistance > 0.001) {
+        horizontalDirection = horizontalDistanceVector.clone().normalize();
+      }
       
-      // Track all enemies regardless of distance since we clamp in UI
-      // Calculate normalized direction vector for the radar
-      const rawDirection = distanceVector.clone().normalize();
-      
-      // Project the enemy position onto the player's local space
-      // Forward (z) will be mapped to y-axis on radar (up/down)
-      // Right (x) will be mapped to x-axis on radar (left/right)
-      const forwardProjection = playerForward.dot(rawDirection);
-      const rightProjection = playerRight.dot(rawDirection);
-      
-      // Calculate relative vertical position (how much higher/lower the enemy is)
-      const verticalDifference = position.y - playerPos.y;
+      // Project the horizontal direction onto the player's horizontal vectors
+      // Z becomes radar "forward/backward"
+      // X becomes radar "left/right"
+      const radarZ = playerHorizontalForward.dot(horizontalDirection);
+      const radarX = playerHorizontalRight.dot(horizontalDirection);
       
       // Calculate threat level based on enemy type or siege mode
       let threatLevel = 0.5; // Default threat level
@@ -382,18 +389,15 @@ export class HUDSystem implements System {
         }
       }
       
-      // Add to tracked entities - with directions relative to player's orientation
+      // Add to tracked entities - using new structure
       radar.trackedEntities.push({
         entityId: enemyEntity,
         entityType: enemy.type,
-        distance: distance,
+        horizontalDistance: horizontalDistance,
         direction: {
-          // X is left/right relative to player
-          x: rightProjection,
-          // Original Y (vertical axis in 3D) preserved for elevation indicators
-          y: verticalDifference,
-          // Z becomes Y in radar (up/down) - forward is positive, backward is negative
-          z: forwardProjection
+          x: radarX, // Relative left/right on radar
+          y: verticalDifference, // Vertical offset
+          z: radarZ  // Relative forward/backward on radar
         },
         threatLevel: threatLevel
       });
@@ -407,33 +411,36 @@ export class HUDSystem implements System {
       
       if (!renderable || !position || renderable.modelId !== 'dysonSphere') continue;
       
-      // Calculate distance vector from player to Dyson Sphere
-      const distanceVector = new THREE.Vector3(
+      // Calculate HORIZONTAL distance vector to Dyson Sphere
+      const horizontalDistanceVector = new THREE.Vector3(
         position.x - playerPos.x,
-        position.y - playerPos.y,
+        0, // Ignore Y difference
         position.z - playerPos.z
       );
-      
-      const distance = distanceVector.length();
-      
-      // Dyson sphere is always on radar regardless of distance
-      const rawDirection = distanceVector.clone().normalize();
-      
-      // Project the Dyson Sphere position onto the player's local space
-      const forwardProjection = playerForward.dot(rawDirection);
-      const rightProjection = playerRight.dot(rawDirection);
+      const horizontalDistance = horizontalDistanceVector.length();
+      const verticalDifference = position.y - playerPos.y; // Actual Y difference
+
+      // Calculate normalized HORIZONTAL direction
+      let horizontalDirection = new THREE.Vector3(0, 0, 0);
+      if (horizontalDistance > 0.001) {
+          horizontalDirection = horizontalDistanceVector.clone().normalize();
+      }
+
+      // Project onto player's horizontal vectors
+      const radarZ = playerHorizontalForward.dot(horizontalDirection);
+      const radarX = playerHorizontalRight.dot(horizontalDirection);
       
       // Add Dyson Sphere to tracked entities
       radar.trackedEntities.push({
         entityId: dysonEntity,
         entityType: 'dysonSphere',
-        distance: distance,
+        horizontalDistance: horizontalDistance,
         direction: {
-          x: rightProjection,
-          y: position.y - playerPos.y,
-          z: forwardProjection
+          x: radarX,
+          y: verticalDifference,
+          z: radarZ
         },
-        threatLevel: 0.0 // Special value for Dyson Sphere - will render differently
+        threatLevel: 0.0 // Special value for Dyson Sphere
       });
     }
   }
