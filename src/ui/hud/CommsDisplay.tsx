@@ -4,6 +4,24 @@
 import React, { useEffect, useRef, useState } from 'react';
 import '../styles/retro.css';
 
+// Add CSS styles at the top of the file
+const hideScrollbarStyles = `
+.hide-scrollbar {
+  overflow-y: auto;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+`;
+
+// Add style tag to inject CSS
+const styleSheet = document.createElement("style");
+styleSheet.innerText = hideScrollbarStyles;
+document.head.appendChild(styleSheet);
+
 interface CommsDisplayProps {
   messages: string[];
   waveCountdown?: number | null;
@@ -207,61 +225,69 @@ const CommsDisplay: React.FC<CommsDisplayProps> = ({
       alignSelf: 'flex-end'
     }}>
       <div className="comms-header retro-hud-label">COMMS</div>
-      <div className="comms-content console-content">
+      {/* NEW: Wrapper for content, scanner, and overlay */}
+      <div className="comms-body-wrapper" style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+        {/* Render overlay FIRST within the wrapper, positioned absolutely */}
         {renderAlertOverlay()}
 
-        {/* Messages with line breaks */}
-        {trackedMessages.map((trackedMsg) => {
-          const formattedLines = formatMessageWithBreaks(trackedMsg.message);
-          const isThreat = isThreatMessage(trackedMsg.message);
-          const isObjective = isObjectiveMessage(trackedMsg.message);
+        {/* Content area - overlay will cover this */}
+        <div className="comms-content console-content hide-scrollbar" style={{ 
+          flex: 1,
+        }}>
+          {/* Messages with line breaks */}
+          {trackedMessages.map((trackedMsg) => {
+            const formattedLines = formatMessageWithBreaks(trackedMsg.message);
+            const isThreat = isThreatMessage(trackedMsg.message);
+            const isObjective = isObjectiveMessage(trackedMsg.message);
 
-          return (
-            <div
-              key={`msg-${trackedMsg.id}`}
-              className="comms-message-container"
-            >
-              {formattedLines.map((line, lineIndex) => {
-                const isFirstLine = lineIndex === 0;
-                const classes = ["comms-message-line"];
+            return (
+              <div
+                key={`msg-${trackedMsg.id}`}
+                className="comms-message-container"
+              >
+                {formattedLines.map((line, lineIndex) => {
+                  const isFirstLine = lineIndex === 0;
+                  const classes = ["comms-message-line"];
 
-                if (isFirstLine) {
-                  classes.push("first-line");
-                  if (trackedMsg.isNew) {
-                    classes.push(isObjective ? "objective-typing" : "message-typing");
+                  if (isFirstLine) {
+                    classes.push("first-line");
+                    if (trackedMsg.isNew) {
+                      classes.push(isObjective ? "objective-typing" : "message-typing");
+                    }
+                    if (isThreat) classes.push("threat-message");
+                    if (isObjective) classes.push("objective-message");
+                  } else {
+                    classes.push("continuation-line");
                   }
-                  if (isThreat) classes.push("threat-message");
-                  if (isObjective) classes.push("objective-message");
-                } else {
-                  classes.push("continuation-line");
-                }
 
-                const textColor = isObjective ? '#00ff00' :
-                                 isThreat ? '#ff5555' : '#00ffff';
+                  const textColor = isObjective ? '#00ff00' :
+                                   isThreat ? '#ff5555' : '#00ffff';
 
-                return (
-                  <div
-                    key={`line-${lineIndex}`}
-                    className={classes.join(" ")}
-                    style={{ color: textColor }}
-                  >
-                    <span className="line-content">{isFirstLine ? '> ' : '  '}{line}</span>
-                    {/* Inline cursor only on the first line of the *latest* new message */}
-                    {(isFirstLine && trackedMsg.isNew && trackedMsg.isLatest) && (
-                      <span className="inline-cursor">▌</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
-        <div ref={messagesEndRef} />
-      </div>
-      <div className="console-scanner">
-        <div></div>
-        <div></div>
-      </div>
+                  return (
+                    <div
+                      key={`line-${lineIndex}`}
+                      className={classes.join(" ")}
+                      style={{ color: textColor }}
+                    >
+                      <span className="line-content">{isFirstLine ? '> ' : '  '}{line}</span>
+                      {/* Inline cursor only on the first line of the *latest* new message */}
+                      {(isFirstLine && trackedMsg.isNew && trackedMsg.isLatest) && (
+                        <span className="inline-cursor">▌</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+          <div ref={messagesEndRef} />
+        </div>
+        {/* Scanner - overlay will cover this */}
+        <div className="console-scanner">
+          <div></div>
+          <div></div>
+        </div>
+      </div> {/* END: New Wrapper */}
     </div>
   );
 };
