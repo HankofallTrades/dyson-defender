@@ -73,24 +73,16 @@ export class MovementSystem implements System {
         this.updateBoostState(entity, deltaTime, isBoostRequested);
       }
 
-      // Apply boost to velocity if active
+      // Calculate final speed multiplier
       let speedMultiplier = 1.0;
       if (hasInputReceiver) {
-        // Check if the ship boost is active
+        // Start with the power-up multiplier (defaults to 1.0)
+        speedMultiplier = velocity.powerUpMultiplier || 1.0;
+        
+        // Apply boost multiplier if active
         const boost = this.world.getComponent<Boost>(entity, 'Boost');
         if (boost && boost.active) {
-          speedMultiplier = boost.speedMultiplier;
-        }
-        
-        // Check if a speed power-up is active
-        const powerUp = this.world.getComponent<PowerUp>(entity, 'PowerUp');
-        if (powerUp && powerUp.active && powerUp.type === 'speed') {
-          speedMultiplier *= 1.5; // Reduced from 2.0 to 1.5 for a more balanced boost
-        }
-        
-        // Also check for speedBoostActive flag from PowerUpSystem
-        if ((velocity as any).speedBoostActive) {
-          speedMultiplier *= 1.5; // Reduced from 2.0 to 1.5 for a more balanced boost
+          speedMultiplier *= boost.speedMultiplier;
         }
       }
 

@@ -8,6 +8,7 @@ export interface Velocity {
   x: number;
   y: number;
   z: number;
+  powerUpMultiplier?: number; // Multiplier from speed power-ups (defaults to 1.0)
 }
 
 export interface Renderable {

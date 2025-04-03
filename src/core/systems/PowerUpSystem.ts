@@ -105,11 +105,10 @@ export class PowerUpSystem implements System {
       return;
     }
     
-    // Store original velocity multiplier if not already stored
+    // Apply the speed multiplier directly to the Velocity component
     const velocity = this.world.getComponent<Velocity>(playerEntity, 'Velocity');
-    if (velocity && !(velocity as any).originalMultiplier) {
-      (velocity as any).originalMultiplier = 1.0;
-      (velocity as any).speedBoostActive = true;
+    if (velocity) {
+      velocity.powerUpMultiplier = 1.5; // Set the power-up multiplier
     }
     
     // Add or update the effect in ActivePowerUps
@@ -210,11 +209,12 @@ export class PowerUpSystem implements System {
       const laserCooldown = this.world.getComponent<LaserCooldown>(entity, 'LaserCooldown');
       if (laserCooldown && (laserCooldown as any).originalMax) {
         laserCooldown.max = (laserCooldown as any).originalMax;
+        delete (laserCooldown as any).originalMax; // Clean up dynamic property
       }
     } else if (type === 'speed') {
       const velocity = this.world.getComponent<Velocity>(entity, 'Velocity');
-      if (velocity && (velocity as any).speedBoostActive) {
-        (velocity as any).speedBoostActive = false;
+      if (velocity) {
+        velocity.powerUpMultiplier = 1.0; // Reset the power-up multiplier
       }
     }
     // Health power-up doesn't need cleanup as it's instant
