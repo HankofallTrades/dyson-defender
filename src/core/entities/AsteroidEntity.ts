@@ -68,7 +68,7 @@ export function createAsteroid(
     entity: entity,
     width: 60,
     height: 6,
-    offsetY: -40, // Try large negative offset
+    offsetY: -100, // Try large negative offset
     showWhenDamaged: true,
     visible: false
   });

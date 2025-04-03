@@ -1706,18 +1706,21 @@ const HUD: React.FC<HUDProps> = ({
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', flex: '1' }}>
                 {/* Left Column: Ship Systems */}
-                <div style={{ flex: '1', marginRight: '8px', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ width: '48%', marginRight: '8px', display: 'flex', flexDirection: 'column' }}>
                   {/* Ship Systems Header */}
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px', height: '35px', minWidth: 0 }}>
-                    <Hologram modelType="ship" size={35} color="#00aaff" gameIsActive={gameState === 'playing'} />
+                    <div style={{ flexShrink: 0 }}>
+                      <Hologram modelType="ship" size={32} color="#00aaff" gameIsActive={gameState === 'playing'} />
+                    </div>
                     <span style={{ 
                       color: '#ff00ff', 
-                      fontSize: '0.65rem', 
+                      fontSize: '0.55rem', 
                       fontWeight: 'bold',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
-                      flex: '1'
+                      flex: '1',
+                      marginLeft: '-8px'
                     }}>SHIP:DEFENDER</span>
                   </div>
                   {/* Dotted line */}
@@ -1762,20 +1765,23 @@ const HUD: React.FC<HUDProps> = ({
                   </div>
                 </div>
                 {/* Vertical Separator */}
-                <div style={{ width: '1px', background: 'rgba(255, 0, 255, 0.3)', height: '85%', alignSelf: 'center', margin: '0 4px' }}></div>
+                <div style={{ width: '1px', background: 'rgba(255, 0, 255, 0.3)', height: '85%', alignSelf: 'center', margin: '0 8px' }}></div>
                 {/* Right Column: Dyson Systems */}
-                <div style={{ flex: '1', marginLeft: '8px', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ width: '48%', marginLeft: '8px', display: 'flex', flexDirection: 'column' }}>
                   {/* Dyson Systems Header */}
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px', height: '35px', minWidth: 0 }}>
-                    <Hologram modelType="dysonSphere" size={35} color="#00aaff" gameIsActive={gameState === 'playing'} />
+                    <div style={{ flexShrink: 0, marginTop: '3px' }}>
+                      <Hologram modelType="dysonSphere" size={32} color="#00aaff" gameIsActive={gameState === 'playing'} />
+                    </div>
                     <span style={{ 
                       color: '#ff00ff', 
-                      fontSize: '0.65rem', 
+                      fontSize: '0.55rem', 
                       fontWeight: 'bold',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
-                      flex: '1'
+                      flex: '1',
+                      marginLeft: '-8px'
                     }}>DYSON SPHERE:XR-17</span>
                   </div>
                   {/* Dotted line */}
