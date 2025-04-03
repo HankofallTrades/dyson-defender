@@ -621,7 +621,7 @@ const HUD: React.FC<HUDProps> = ({
     trackedEntities: Array<{
       entityId: number;
       entityType: string;
-      distance: number;
+      horizontalDistance: number;
       direction: {
         x: number;
         y: number;
