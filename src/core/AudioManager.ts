@@ -29,6 +29,18 @@ export class AudioManager {
       // Feature detection for Web Audio API
       this.audioEnabled = typeof AudioContext !== 'undefined' || 
                          typeof (window as any).webkitAudioContext !== 'undefined';
+      
+      // Try to resume the context immediately if it's suspended
+      if (this.audioContext.state === 'suspended') {
+        this.audioContext.resume().then(() => {
+          this.isContextResumed = true;
+          console.log('[AudioManager] AudioContext resumed during initialization');
+        }).catch(error => {
+          console.warn('[AudioManager] Failed to resume AudioContext during initialization:', error);
+        });
+      } else {
+        this.isContextResumed = true;
+      }
     } catch (e) {
       console.warn('[AudioManager] Web Audio API not supported in this browser. Audio disabled.');
       this.audioEnabled = false;
@@ -329,11 +341,22 @@ export class AudioManager {
     } else {
       // Attempt to resume context *before* trying to play anything
       await this.resumeContextIfNeeded();
+      
       // Only play soundtrack if context is active *after* attempting resume
       if (this.isContextResumed) {
-         await this.playSoundtrack();
+        await this.playSoundtrack();
+        console.log('[AudioManager] Soundtrack started after unmuting');
       } else {
-         console.warn('[AudioManager] Cannot play soundtrack on unmute, AudioContext still not active.');
+        console.warn('[AudioManager] Cannot play soundtrack on unmute, AudioContext still not active.');
+        // Try one more time to resume the context
+        try {
+          await this.audioContext.resume();
+          this.isContextResumed = true;
+          await this.playSoundtrack();
+          console.log('[AudioManager] Successfully resumed context and started soundtrack on second attempt');
+        } catch (error) {
+          console.error('[AudioManager] Failed to resume context on second attempt:', error);
+        }
       }
     }
   }
