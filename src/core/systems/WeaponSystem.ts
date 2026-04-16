@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { World, System } from '../World';
-import { InputReceiver, Position, Rotation, LaserCooldown, Enemy, Renderable, Shield, Health } from '../components';
+import { Position, Rotation, LaserCooldown, Enemy, Shield, Health, Renderable, Collider } from '../components';
 import { InputManager } from '../input/InputManager';
 import { SceneManager } from '../../rendering/SceneManager';
 import { createLaser } from '../entities/LaserEntity';
@@ -12,6 +12,23 @@ const LIGHTNING_UPDATE_INTERVAL = 100; // milliseconds
 const LIGHTNING_DAMAGE_INTERVAL = 0.1; // seconds
 const LIGHTNING_BASE_DPS = 5; // Damage per second (reduced from 10)
 const LIGHTNING_SHIELD_MULTIPLIER = 1.5; // 50% more damage to shields
+const LIGHTNING_IMPACT_RIPPLE_COUNT = 4;
+const LIGHTNING_IMPACT_RIPPLE_SPEED = 1.5;
+const LIGHTNING_IMPACT_RIPPLE_MIN_RADIUS = 1.1;
+const LIGHTNING_IMPACT_RIPPLE_MAX_RADIUS = 7.5;
+const LIGHTNING_IMPACT_RIPPLE_SURFACE_OFFSET = 0.5;
+
+interface LightningEndpoints {
+  origin: THREE.Vector3;
+  target: THREE.Vector3;
+  targetNormal: THREE.Vector3;
+}
+
+interface LightningImpactRipple {
+  group: THREE.Group;
+  glow: THREE.Mesh;
+  rings: THREE.Mesh[];
+}
 
 interface LightningWeapon {
   strands: {
@@ -25,12 +42,8 @@ interface LightningWeapon {
   target: THREE.Vector3;
   ownerEntity: number;
   damageTimer: number;
-  sparkSystem: {
-    geometry: THREE.BufferGeometry;
-    particles: THREE.Points;
-    velocities: THREE.Vector3[];
-    lifetimes: number[];
-  };
+  rippleTime: number;
+  impactRipple: LightningImpactRipple;
 }
 
 /**
@@ -57,13 +70,8 @@ export class WeaponSystem implements System {
   private lightningMaterials: {
     line: THREE.LineBasicMaterial;
     auras: THREE.MeshPhongMaterial[];
-    sparks: THREE.PointsMaterial;
   };
-  private readonly NUM_SPARKS = 75; // Keep increased number of sparks
-  private readonly SPARK_SIZE = 1.2; // Keep increased visibility
-  private readonly SPARK_SPEED = 20; // Reduced from 35
-  private readonly SPARK_SPREAD = 0.8; // Keep same spread angle
-  private readonly SPARK_DRAG = 3.0; // Add drag to slow particles down
+  private readonly ripplePlaneNormal = new THREE.Vector3(0, 0, 1);
 
   constructor(world: World, sceneManager: SceneManager, audioManager?: AudioManager) {
     this.world = world;
@@ -88,8 +96,8 @@ export class WeaponSystem implements System {
         opacity: 1.0,
         blending: THREE.AdditiveBlending,
         linewidth: 3, // Note: Due to WebGL limitations, line width may be capped at 1
-        depthTest: true, // Enable depth testing for lightning
-        depthWrite: false // Keep this false to avoid z-fighting
+        depthTest: false,
+        depthWrite: false
       }),
       auras: [
         new THREE.MeshPhongMaterial({
@@ -100,7 +108,7 @@ export class WeaponSystem implements System {
           opacity: 0.7,
           blending: THREE.AdditiveBlending,
           side: THREE.DoubleSide,
-          depthTest: true, // Enable depth testing for lightning
+          depthTest: false,
           depthWrite: false
         }),
         new THREE.MeshPhongMaterial({
@@ -111,7 +119,7 @@ export class WeaponSystem implements System {
           opacity: 0.5,
           blending: THREE.AdditiveBlending,
           side: THREE.DoubleSide,
-          depthTest: true, // Enable depth testing for lightning
+          depthTest: false,
           depthWrite: false
         }),
         new THREE.MeshPhongMaterial({
@@ -122,21 +130,10 @@ export class WeaponSystem implements System {
           opacity: 0.3,
           blending: THREE.AdditiveBlending,
           side: THREE.DoubleSide,
-          depthTest: true, // Enable depth testing for lightning
+          depthTest: false,
           depthWrite: false
         })
-      ],
-      sparks: new THREE.PointsMaterial({
-        color: 0x00ffff,
-        size: this.SPARK_SIZE,
-        transparent: true,
-        opacity: 1.0,
-        blending: THREE.AdditiveBlending,
-        depthTest: false, // Keep depth testing disabled for sparks
-        depthWrite: false,
-        map: this.createSparkTexture(),
-        vertexColors: true
-      })
+      ]
     };
   }
 
@@ -146,77 +143,6 @@ export class WeaponSystem implements System {
    */
   public setAudioManager(audioManager: AudioManager): void {
     this.audioManager = audioManager;
-  }
-
-  private createSparkTexture(): THREE.Texture {
-    const canvas = document.createElement('canvas');
-    canvas.width = 32;
-    canvas.height = 32;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return new THREE.Texture();
-
-    // Create a more intense radial gradient for the spark with cyan colors
-    const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    gradient.addColorStop(0.2, 'rgba(150, 255, 255, 0.9)');
-    gradient.addColorStop(0.4, 'rgba(0, 255, 255, 0.7)');
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 32, 32);
-
-    const texture = new THREE.Texture(canvas);
-    texture.needsUpdate = true;
-    return texture;
-  }
-
-  private createSparkSystem(position: THREE.Vector3) {
-    // Create geometry with positions and colors
-    const positions = new Float32Array(this.NUM_SPARKS * 3);
-    const colors = new Float32Array(this.NUM_SPARKS * 3);
-    const velocities: THREE.Vector3[] = [];
-    const lifetimes: number[] = [];
-
-    // Initialize all particles at the impact position
-    for (let i = 0; i < this.NUM_SPARKS; i++) {
-      positions[i * 3] = position.x;
-      positions[i * 3 + 1] = position.y;
-      positions[i * 3 + 2] = position.z;
-
-      // Set initial color (bright white-pink)
-      colors[i * 3] = 1.0;     // R
-      colors[i * 3 + 1] = 0.8; // G
-      colors[i * 3 + 2] = 1.0; // B
-
-      // Create random velocity
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * Math.PI;
-      const velocity = new THREE.Vector3(
-        Math.sin(phi) * Math.cos(theta),
-        Math.sin(phi) * Math.sin(theta),
-        Math.cos(phi)
-      );
-      velocity.multiplyScalar(this.SPARK_SPEED * (0.5 + Math.random()));
-      velocities.push(velocity);
-
-      // Random lifetime between 0.2 and 0.6 seconds
-      lifetimes.push(0.2 + Math.random() * 0.4);
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-
-    const particles = new THREE.Points(geometry, this.lightningMaterials.sparks);
-    particles.renderOrder = 2200;
-    this.scene.add(particles);
-
-    return {
-      geometry,
-      particles,
-      velocities,
-      lifetimes
-    };
   }
 
   update(deltaTime: number): void {
@@ -279,52 +205,43 @@ export class WeaponSystem implements System {
 
     // Update all active lightning weapons
     for (const [entityId, lightning] of this.lightningWeapons) {
-      // Get current positions
-      const ownerPos = this.world.getComponent<Position>(lightning.ownerEntity, 'Position');
       const enemy = this.world.getComponent<Enemy>(lightning.ownerEntity, 'Enemy');
       
-      if (!ownerPos || !enemy) {
+      if (!enemy) {
         // Owner no longer exists, remove the lightning
         this.removeLightningWeapon(entityId);
         continue;
       }
 
-      const targetPos = this.world.getComponent<Position>(enemy.targetEntity, 'Position');
-      if (!targetPos) continue;
-
-      // Calculate direction and surface point
-      const direction = new THREE.Vector3(
-        targetPos.x - ownerPos.x,
-        targetPos.y - ownerPos.y,
-        targetPos.z - ownerPos.z
-      ).normalize();
-
-      // Calculate the intersection point with the Dyson Sphere's surface
-      const DYSON_RADIUS = 50;
-      const surfacePoint = new THREE.Vector3(
-        targetPos.x - direction.x * DYSON_RADIUS,
-        targetPos.y - direction.y * DYSON_RADIUS,
-        targetPos.z - direction.z * DYSON_RADIUS
-      );
+      const endpoints = this.getLightningEndpoints(lightning.ownerEntity, enemy.targetEntity);
+      if (!endpoints) {
+        this.removeLightningWeapon(entityId);
+        continue;
+      }
 
       // Update origin and target positions
-      lightning.origin.set(ownerPos.x, ownerPos.y, ownerPos.z);
-      lightning.target.copy(surfacePoint);
+      lightning.origin.copy(endpoints.origin);
+      lightning.target.copy(endpoints.target);
 
       lightning.updateTimer += deltaTime * 1000;
       lightning.auraTime += deltaTime * 2;
       lightning.damageTimer += deltaTime;
+      lightning.rippleTime += deltaTime * LIGHTNING_IMPACT_RIPPLE_SPEED;
 
-      // Update visual effects
-      if (lightning.updateTimer >= LIGHTNING_UPDATE_INTERVAL) {
-        this.updateLightningStrands(lightning);
-        lightning.updateTimer = 0;
-      }
-
-      // Apply damage at regular intervals
+      // Damage is gameplay-critical, so keep it independent from the visual refresh path.
       if (lightning.damageTimer >= LIGHTNING_DAMAGE_INTERVAL) {
         this.applyLightningDamage(enemy.targetEntity, lightning.damageTimer);
         lightning.damageTimer = 0;
+      }
+
+      // Update visual effects
+      if (lightning.updateTimer >= LIGHTNING_UPDATE_INTERVAL) {
+        try {
+          this.updateLightningStrands(lightning);
+        } catch (error) {
+          console.error('[WeaponSystem] Failed to refresh lightning visuals:', error);
+        }
+        lightning.updateTimer = 0;
       }
 
       // Update aura materials for more dramatic pulsing effect
@@ -337,86 +254,7 @@ export class WeaponSystem implements System {
         });
       });
 
-      // Update spark particles
-      const positions = lightning.sparkSystem.geometry.attributes.position;
-      const colors = lightning.sparkSystem.geometry.attributes.color;
-      const posArray = positions.array as Float32Array;
-      const colorArray = colors.array as Float32Array;
-
-      for (let i = 0; i < this.NUM_SPARKS; i++) {
-        if (lightning.sparkSystem.lifetimes[i] > 0) {
-          // Update position
-          const velocity = lightning.sparkSystem.velocities[i];
-          
-          // Apply drag to slow down particles over time
-          velocity.multiplyScalar(1 - (this.SPARK_DRAG * deltaTime));
-          
-          posArray[i * 3] += velocity.x * deltaTime;
-          posArray[i * 3 + 1] += velocity.y * deltaTime;
-          posArray[i * 3 + 2] += velocity.z * deltaTime;
-
-          // Reduced gravity
-          velocity.y -= 10 * deltaTime;
-
-          // Update lifetime and color
-          lightning.sparkSystem.lifetimes[i] -= deltaTime;
-          const lifeRatio = lightning.sparkSystem.lifetimes[i] / 0.4;
-          
-          // Enhanced color brightness with cyan
-          colorArray[i * 3] = Math.min(1.0, lifeRatio * 0.5);     // R (reduced for cyan)
-          colorArray[i * 3 + 1] = Math.min(1.0, lifeRatio * 1.5); // G (increased for cyan)
-          colorArray[i * 3 + 2] = Math.min(1.0, lifeRatio * 1.5); // B (increased for cyan)
-        } else {
-          // Reset particle to the surface impact point
-          posArray[i * 3] = surfacePoint.x;
-          posArray[i * 3 + 1] = surfacePoint.y;
-          posArray[i * 3 + 2] = surfacePoint.z;
-
-          // Create a more varied spread of directions
-          const outwardDir = direction.clone().negate();
-          
-          // Generate a random direction in a cone around the outward direction
-          const spreadAngle = Math.PI * this.SPARK_SPREAD;
-          const theta = Math.random() * Math.PI * 2;
-          const phi = Math.random() * spreadAngle;
-          
-          const rotationMatrix = new THREE.Matrix4();
-          
-          // First, find a perpendicular vector to rotate around
-          const up = new THREE.Vector3(0, 1, 0);
-          const rotationAxis = new THREE.Vector3().crossVectors(outwardDir, up).normalize();
-          if (rotationAxis.lengthSq() < 0.1) {
-            rotationAxis.set(1, 0, 0);
-          }
-          
-          // Create our random direction starting from the outward direction
-          const velocity = lightning.sparkSystem.velocities[i];
-          velocity.copy(outwardDir);
-          
-          // Apply the spread angle
-          rotationMatrix.makeRotationAxis(rotationAxis, phi);
-          velocity.applyMatrix4(rotationMatrix);
-          
-          // Rotate around the original direction
-          rotationMatrix.makeRotationAxis(outwardDir, theta);
-          velocity.applyMatrix4(rotationMatrix);
-          
-          // Reduced speed range
-          const speed = this.SPARK_SPEED * (0.5 + Math.random() * 0.5); // 50-100% of base speed
-          velocity.multiplyScalar(speed);
-
-          // Shorter lifetime
-          lightning.sparkSystem.lifetimes[i] = 0.2 + Math.random() * 0.2; // 0.2-0.4 seconds
-          
-          // Reset to bright cyan color
-          colorArray[i * 3] = 0.5;  // R (reduced for cyan)
-          colorArray[i * 3 + 1] = 1.0; // G (full for cyan)
-          colorArray[i * 3 + 2] = 1.0; // B (full for cyan)
-        }
-      }
-
-      positions.needsUpdate = true;
-      colors.needsUpdate = true;
+      this.updateImpactRipple(lightning, endpoints);
     }
   }
   
@@ -519,32 +357,20 @@ export class WeaponSystem implements System {
     if (health.current < 0) health.current = 0;
   }
 
-  createLightningWeapon(ownerEntity: number): void {
-    const ownerPos = this.world.getComponent<Position>(ownerEntity, 'Position');
+  createLightningWeapon(ownerEntity: number): boolean {
+    if (this.lightningWeapons.has(ownerEntity)) {
+      return true;
+    }
+
     const enemy = this.world.getComponent<Enemy>(ownerEntity, 'Enemy');
     
-    if (!ownerPos || !enemy) return;
+    if (!enemy) return false;
 
-    const targetPos = this.world.getComponent<Position>(enemy.targetEntity, 'Position');
-    if (!targetPos) return;
+    const endpoints = this.getLightningEndpoints(ownerEntity, enemy.targetEntity);
+    if (!endpoints) return false;
 
-    // Calculate direction from owner to target
-    const direction = new THREE.Vector3(
-      targetPos.x - ownerPos.x,
-      targetPos.y - ownerPos.y,
-      targetPos.z - ownerPos.z
-    ).normalize();
-
-    // Calculate the intersection point with the Dyson Sphere's surface
-    const DYSON_RADIUS = 50;
-    const surfacePoint = new THREE.Vector3(
-      targetPos.x - direction.x * DYSON_RADIUS,
-      targetPos.y - direction.y * DYSON_RADIUS,
-      targetPos.z - direction.z * DYSON_RADIUS
-    );
-
-    const currentOrigin = new THREE.Vector3(ownerPos.x, ownerPos.y, ownerPos.z);
-    const currentTarget = surfacePoint;
+    const currentOrigin = endpoints.origin;
+    const currentTarget = endpoints.target;
 
     const lightning: LightningWeapon = {
       strands: [],
@@ -554,7 +380,8 @@ export class WeaponSystem implements System {
       origin: currentOrigin,
       target: currentTarget,
       ownerEntity,
-      sparkSystem: this.createSparkSystem(surfacePoint)
+      rippleTime: 0,
+      impactRipple: this.createImpactRipple()
     };
 
     // Create multiple lightning strands
@@ -567,6 +394,7 @@ export class WeaponSystem implements System {
         const tubeGeometry = this.createTubeGeometry(points, 0.15 + index * 0.2);
         const mesh = new THREE.Mesh(tubeGeometry, material);
         mesh.renderOrder = 2000 + index; // Very high render order to ensure it renders after everything
+        mesh.frustumCulled = false;
         this.scene.add(mesh);
         return mesh;
       });
@@ -575,6 +403,7 @@ export class WeaponSystem implements System {
       const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
       const line = new THREE.Line(lineGeometry, this.lightningMaterials.line);
       line.renderOrder = 2100; // Even higher render order than the auras
+      line.frustumCulled = false;
       this.scene.add(line);
 
       lightning.strands.push({ 
@@ -585,6 +414,8 @@ export class WeaponSystem implements System {
     }
 
     this.lightningWeapons.set(ownerEntity, lightning);
+    this.updateImpactRipple(lightning, endpoints);
+    return true;
   }
 
   removeLightningWeapon(entityId: number): void {
@@ -601,40 +432,19 @@ export class WeaponSystem implements System {
       });
     });
 
-    // Clean up spark system
-    if (lightning.sparkSystem) {
-      lightning.sparkSystem.geometry.dispose();
-      this.scene.remove(lightning.sparkSystem.particles);
-    }
-
+    this.disposeImpactRipple(lightning.impactRipple);
     this.lightningWeapons.delete(entityId);
   }
 
   private updateLightningStrands(lightning: LightningWeapon): void {
-    const ownerPos = this.world.getComponent<Position>(lightning.ownerEntity, 'Position');
     const enemy = this.world.getComponent<Enemy>(lightning.ownerEntity, 'Enemy');
-    if (!ownerPos || !enemy) return;
+    if (!enemy) return;
 
-    const targetPos = this.world.getComponent<Position>(enemy.targetEntity, 'Position');
-    if (!targetPos) return;
+    const endpoints = this.getLightningEndpoints(lightning.ownerEntity, enemy.targetEntity);
+    if (!endpoints) return;
 
-    // Calculate direction from owner to target
-    const direction = new THREE.Vector3(
-      targetPos.x - ownerPos.x,
-      targetPos.y - ownerPos.y,
-      targetPos.z - ownerPos.z
-    ).normalize();
-
-    // Calculate the intersection point with the Dyson Sphere's surface
-    const DYSON_RADIUS = 50;
-    const surfacePoint = new THREE.Vector3(
-      targetPos.x - direction.x * DYSON_RADIUS,
-      targetPos.y - direction.y * DYSON_RADIUS,
-      targetPos.z - direction.z * DYSON_RADIUS
-    );
-
-    const currentOrigin = new THREE.Vector3(ownerPos.x, ownerPos.y, ownerPos.z);
-    const currentTarget = surfacePoint;
+    const currentOrigin = endpoints.origin;
+    const currentTarget = endpoints.target;
 
     lightning.strands.forEach((strand, i) => {
       const points = this.generateLightningPoints(currentOrigin, currentTarget, i / lightning.strands.length * Math.PI * 2);
@@ -700,5 +510,150 @@ export class WeaponSystem implements System {
     const curve = new THREE.CatmullRomCurve3(points);
     // Increase tube detail for smoother appearance
     return new THREE.TubeGeometry(curve, LIGHTNING_SEGMENTS * 2, radius * 2, 16, false);
+  }
+
+  private createImpactRipple(): LightningImpactRipple {
+    const group = new THREE.Group();
+    group.frustumCulled = false;
+
+    const glowGeometry = new THREE.CircleGeometry(1.2, 48);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: COLORS.SHIELD_BUBBLE_INNER,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthTest: false,
+      depthWrite: false
+    });
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    glow.renderOrder = 2040;
+    glow.frustumCulled = false;
+    group.add(glow);
+
+    const rings: THREE.Mesh[] = [];
+    for (let i = 0; i < LIGHTNING_IMPACT_RIPPLE_COUNT; i++) {
+      const ringGeometry = new THREE.RingGeometry(0.82, 1.0, 64);
+      const ringMaterial = new THREE.MeshBasicMaterial({
+        color: i % 2 === 0 ? COLORS.SHIELD_BUBBLE : COLORS.DYSON_PRIMARY,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthTest: false,
+        depthWrite: false
+      });
+      const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+      ring.renderOrder = 2050 + i;
+      ring.frustumCulled = false;
+      group.add(ring);
+      rings.push(ring);
+    }
+
+    this.scene.add(group);
+
+    return { group, glow, rings };
+  }
+
+  private disposeImpactRipple(impactRipple: LightningImpactRipple): void {
+    impactRipple.group.children.forEach(child => {
+      if (child instanceof THREE.Mesh) {
+        child.geometry.dispose();
+
+        if (Array.isArray(child.material)) {
+          child.material.forEach(material => material.dispose());
+        } else {
+          child.material.dispose();
+        }
+      }
+    });
+
+    this.scene.remove(impactRipple.group);
+  }
+
+  private updateImpactRipple(lightning: LightningWeapon, endpoints: LightningEndpoints): void {
+    const surfaceNormal = endpoints.targetNormal.lengthSq() > 0
+      ? endpoints.targetNormal
+      : this.ripplePlaneNormal;
+
+    lightning.impactRipple.group.position
+      .copy(endpoints.target)
+      .addScaledVector(surfaceNormal, LIGHTNING_IMPACT_RIPPLE_SURFACE_OFFSET);
+    lightning.impactRipple.group.quaternion.setFromUnitVectors(this.ripplePlaneNormal, surfaceNormal);
+
+    const contactPulse = (Math.sin(lightning.auraTime * 4) + 1) * 0.5;
+    lightning.impactRipple.glow.scale.setScalar(1.8 + contactPulse * 1.4);
+    (lightning.impactRipple.glow.material as THREE.MeshBasicMaterial).opacity = 0.18 + contactPulse * 0.2;
+
+    lightning.impactRipple.rings.forEach((ring, index) => {
+      const phase = (lightning.rippleTime + index / lightning.impactRipple.rings.length) % 1;
+      const radius = THREE.MathUtils.lerp(
+        LIGHTNING_IMPACT_RIPPLE_MIN_RADIUS,
+        LIGHTNING_IMPACT_RIPPLE_MAX_RADIUS,
+        phase
+      );
+      const opacity = (0.08 + Math.pow(1 - phase, 1.1) * 0.34) * (1 - index * 0.08);
+
+      ring.scale.setScalar(radius);
+      (ring.material as THREE.MeshBasicMaterial).opacity = opacity;
+    });
+  }
+
+  private getLightningEndpoints(ownerEntity: number, targetEntity: number): LightningEndpoints | null {
+    const ownerPos = this.world.getComponent<Position>(ownerEntity, 'Position');
+    const targetPos = this.world.getComponent<Position>(targetEntity, 'Position');
+    if (!ownerPos || !targetPos) {
+      return null;
+    }
+
+    const ownerRotation = this.world.getComponent<Rotation>(ownerEntity, 'Rotation');
+    const ownerRenderable = this.world.getComponent<Renderable>(ownerEntity, 'Renderable');
+    const targetCollider = this.world.getComponent<Collider>(targetEntity, 'Collider');
+
+    const origin = new THREE.Vector3(ownerPos.x, ownerPos.y, ownerPos.z);
+
+    if (ownerRotation && ownerRenderable?.modelId === 'grunt') {
+      const scale = ownerRenderable.scale || 1;
+      // The grunt eyes sit around (0.2, 0.1, 0.4); this places the beam between them and slightly forward.
+      const localMouthOffset = new THREE.Vector3(0, -0.04 * scale, 0.52 * scale);
+      const mouthEuler = new THREE.Euler(ownerRotation.x, ownerRotation.y, ownerRotation.z, 'YXZ');
+      localMouthOffset.applyEuler(mouthEuler);
+      origin.add(localMouthOffset);
+    } else if (ownerRenderable?.scale) {
+      const fallbackDirection = new THREE.Vector3(
+        targetPos.x - ownerPos.x,
+        targetPos.y - ownerPos.y,
+        targetPos.z - ownerPos.z
+      ).normalize();
+      origin.addScaledVector(fallbackDirection, ownerRenderable.scale * 0.5);
+    }
+
+    const beamDirection = new THREE.Vector3(
+      targetPos.x - origin.x,
+      targetPos.y - origin.y,
+      targetPos.z - origin.z
+    );
+
+    if (beamDirection.lengthSq() === 0) {
+      return null;
+    }
+
+    beamDirection.normalize();
+
+    const targetRadius = targetCollider?.radius || 0;
+    const targetCenter = new THREE.Vector3(targetPos.x, targetPos.y, targetPos.z);
+    const target = targetCenter.clone();
+    if (targetRadius > 0) {
+      target.addScaledVector(beamDirection, -targetRadius);
+    }
+
+    const targetNormal = target.clone().sub(targetCenter);
+    if (targetNormal.lengthSq() > 0) {
+      targetNormal.normalize();
+    } else {
+      targetNormal.copy(beamDirection).multiplyScalar(-1);
+    }
+
+    return { origin, target, targetNormal };
   }
 } 

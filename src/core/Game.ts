@@ -124,6 +124,7 @@ class Game {
     const collisionSystem = new CollisionSystem(this.world, this.stateManager, this.audioManager);
     const powerUpSystem = new PowerUpSystem(this.world, this.sceneManager.getScene());
     const weaponSystem = new WeaponSystem(this.world, this.sceneManager, this.audioManager);
+    const enemySystem = new EnemySystem(this.world, this.sceneManager.getScene(), weaponSystem);
     
     // Initialize all game systems
     this.world.addSystem(new InputSystem(this.world, this.sceneManager));
@@ -133,7 +134,7 @@ class Game {
     this.world.addSystem(powerUpSystem);
     this.world.addSystem(new PortalSystem(this.world));
     this.world.addSystem(weaponSystem);
-    this.world.addSystem(new EnemySystem(this.world, this.sceneManager.getScene()));
+    this.world.addSystem(enemySystem);
     this.world.addSystem(new ShieldSystem(this.world));
     this.world.addSystem(new ShieldBubbleSystem(this.world));
     this.world.addSystem(new HealthBarSystem(this.world));

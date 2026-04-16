@@ -18,8 +18,9 @@ export class EnemySystem implements System {
   // Add a map to track which enemies have had their lightning weapon created
   private lightningWeaponCreated: Map<number, boolean> = new Map();
 
-  constructor(private world: World, scene: THREE.Scene) {
+  constructor(private world: World, scene: THREE.Scene, weaponSystem?: WeaponSystem) {
     this.scene = scene;
+    this.weaponSystem = weaponSystem ?? null;
   }
   
   update(deltaTime: number): void {
@@ -198,8 +199,7 @@ export class EnemySystem implements System {
         // Create lightning weapon only after rotation is complete
         if (enemy.type === 'grunt' && isRotationComplete && !this.lightningWeaponCreated?.get(entity)) {
           const weaponSystem = this.getWeaponSystem();
-          if (weaponSystem) {
-            weaponSystem.createLightningWeapon(entity);
+          if (weaponSystem && weaponSystem.createLightningWeapon(entity)) {
             this.lightningWeaponCreated?.set(entity, true);
           }
         }
@@ -229,6 +229,11 @@ export class EnemySystem implements System {
           enemy.inSiegeMode = false;
           this.rotationComplete.delete(entity);
           this.lightningWeaponCreated?.delete(entity);
+
+          const weaponSystem = this.getWeaponSystem();
+          if (weaponSystem) {
+            weaponSystem.removeLightningWeapon(entity);
+          }
           
           // Revert grunt eye color in normal mode
           if (enemy.type === 'grunt') {
@@ -243,12 +248,6 @@ export class EnemySystem implements System {
                 (rightEye.material as THREE.MeshPhongMaterial).color.setHex(COLORS.GRUNT_EYES);
                 (rightEye.material as THREE.MeshPhongMaterial).emissive.setHex(COLORS.GRUNT_EYES_EMISSIVE);
                 (rightEye.material as THREE.MeshPhongMaterial).emissiveIntensity = 0.5;
-
-                // Remove lightning weapon
-                const weaponSystem = this.getWeaponSystem();
-                if (weaponSystem) {
-                  weaponSystem.removeLightningWeapon(entity);
-                }
               }
             }
           }
@@ -570,15 +569,19 @@ export class EnemySystem implements System {
   }
 
   // Add helper method to get WeaponSystem
-  private getWeaponSystem(): any {
-    const systems = (this.world as any).systems;
-    if (!systems) return null;
-    
+  private getWeaponSystem(): WeaponSystem | null {
+    if (this.weaponSystem) {
+      return this.weaponSystem;
+    }
+
+    const systems = this.world.getSystems();
     for (const system of systems) {
-      if (system.constructor.name === 'WeaponSystem') {
+      if (system instanceof WeaponSystem) {
+        this.weaponSystem = system;
         return system;
       }
     }
+
     return null;
   }
-} 
+}
