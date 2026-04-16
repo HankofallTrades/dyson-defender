@@ -8,7 +8,6 @@ import { createCamera } from './entities/CameraEntity';
 import { createHUD } from './entities/HUDEntity';
 import { createStarfieldBackground } from './entities/StarfieldEntity';
 import { createCentralStar } from './entities/StarEntity';
-import { createPortal } from './entities/PortalEntity';
 import { InputSystem } from './systems/InputSystem';
 import { MovementSystem } from './systems/MovementSystem';
 import { RenderingSystem } from './systems/RenderingSystem';
@@ -31,7 +30,6 @@ import { createFireRatePowerUp } from './entities/PowerUpEntity';
 import { WaveInfo } from './components';
 import { DevSystem } from './systems/DevSystem';
 import { AudioManager } from './AudioManager';
-import { PortalSystem } from './systems/PortalSystem';
 import { UISystem } from './systems/UISystem';
 import { DysonDamageZoneSystem } from './systems/DysonDamageZoneSystem';
 
@@ -132,7 +130,6 @@ class Game {
     this.world.addSystem(new CameraSystem(this.sceneManager, this.world));
     this.world.addSystem(collisionSystem);
     this.world.addSystem(powerUpSystem);
-    this.world.addSystem(new PortalSystem(this.world));
     this.world.addSystem(weaponSystem);
     this.world.addSystem(enemySystem);
     this.world.addSystem(new ShieldSystem(this.world));
@@ -209,33 +206,6 @@ class Game {
     // Ensure the WaveSystem is properly set up
     this.waveSystem.findDysonSphereEntity();
     this.waveSystem.resetWaves();
-
-    // Handle portal parameters if present
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('portal') === 'true') {
-      const portalType = urlParams.get('type') || 'entry';
-      const portalLabel = urlParams.get('label') || 'Portal';
-      const portalX = parseFloat(urlParams.get('x') || '0');
-      const portalY = parseFloat(urlParams.get('y') || '0');
-      const portalZ = parseFloat(urlParams.get('z') || '0');
-      
-      createPortal(
-        this.world,
-        { x: portalX, y: portalY, z: portalZ },
-        portalType as 'entry' | 'exit',
-        portalLabel,
-        'http://portal.pieter.com'
-      );
-    }
-    
-    // Create exit portal at a fixed position outside the Dyson sphere but behind player spawn
-    createPortal(
-      this.world,
-      { x: 350, y: 0, z: 0 }, // Position 60 units behind player spawn (outside Dyson sphere)
-      'exit',
-      'Exit Portal',
-      'http://portal.pieter.com'
-    );
   }
 
   public startGame(): void {
