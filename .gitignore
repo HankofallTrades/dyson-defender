@@ -26,3 +26,5 @@ dist-ssr
 # Project specific
 
 .cursor-rules/
+.vercel
+.env*.local
