@@ -143,7 +143,12 @@ class Game {
     this.world.addSystem(new AutoRotateSystem(this.world));
     this.world.addSystem(new UISystem(this.world, this.sceneManager));
     this.world.addSystem(new DysonDamageZoneSystem(this.world));
-    this.world.addSystem(new RenderingSystem(this.world, this.sceneManager.getScene()));
+    const renderingSystem = new RenderingSystem(this.world, this.sceneManager.getScene());
+    const activeCamera = this.sceneManager.getCamera();
+    if (activeCamera) {
+      renderingSystem.setCamera(activeCamera);
+    }
+    this.world.addSystem(renderingSystem);
     
     // Make systems globally accessible for debugging
     (window as any).powerUpSystem = powerUpSystem;

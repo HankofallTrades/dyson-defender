@@ -468,17 +468,17 @@ export class MeshFactory {
     // Base shield bubble - main shield surface
     const icosaGeometry = new THREE.IcosahedronGeometry(1, 3); 
     const shieldMaterial = new THREE.MeshPhongMaterial({
-      color: 0x00ffff, // Pure cyan color for shield
+      color: COLORS.SHIELD_BUBBLE,
       transparent: true,
-      opacity: 0.15, // Even more transparent
+      opacity: 0.07,
       side: THREE.DoubleSide,
-      emissive: 0x0088ff, // Blue emissive for glow
-      emissiveIntensity: 1.0, // Increased emissive intensity for brighter glow
-      shininess: 200, // Increased shininess for more reflectivity
-      specular: 0x4444ff, // More blue-tinted specular highlights
+      emissive: COLORS.DYSON_PRIMARY,
+      emissiveIntensity: 0.45,
+      shininess: 180,
+      specular: 0x8fd8ff,
       flatShading: false,
-      depthWrite: false, // Don't write to depth buffer
-      depthTest: true, // But do test against it
+      depthWrite: false,
+      depthTest: true,
     });
     const shieldMesh = new THREE.Mesh(icosaGeometry, shieldMaterial);
     shieldMesh.renderOrder = 1; // Render after Dyson Sphere
@@ -487,13 +487,13 @@ export class MeshFactory {
     // Add outer glow effect with brighter blue
     const glowGeometry = new THREE.IcosahedronGeometry(1.05, 3); // Slightly larger than before
     const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x44bbff, // Brighter blue color
+      color: COLORS.SHIELD_BUBBLE,
       transparent: true,
       opacity: 0.1,
       side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending, // Add additive blending for better glow
-      depthWrite: false, // Don't write to depth buffer
-      depthTest: true, // But do test against it
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
     });
     const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
     glowMesh.renderOrder = 1; // Render after Dyson Sphere
@@ -502,12 +502,12 @@ export class MeshFactory {
     // Inner energy field with adjusted properties
     const innerGeometry = new THREE.SphereGeometry(0.94, 32, 32);
     const innerMaterial = new THREE.MeshBasicMaterial({
-      color: 0x66ffff,
+      color: COLORS.DYSON_PRIMARY,
       transparent: true,
-      opacity: 0.15, // More transparent inner field
-      blending: THREE.AdditiveBlending, // Add additive blending
-      depthWrite: false, // Don't write to depth buffer
-      depthTest: true, // But do test against it
+      opacity: 0.03,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
     });
     const innerMesh = new THREE.Mesh(innerGeometry, innerMaterial);
     innerMesh.renderOrder = 1; // Render after Dyson Sphere
@@ -540,10 +540,10 @@ export class MeshFactory {
       // Create geometry from points
       const geometry = new THREE.BufferGeometry().setFromPoints(hexPoints);
       const material = new THREE.LineBasicMaterial({
-        color: 0x88ddff, // Brighter blue for hexagons
+        color: COLORS.DYSON_PRIMARY,
         transparent: true,
-        opacity: 0.3, // Slightly more visible
-        blending: THREE.AdditiveBlending, // Add additive blending
+        opacity: 0.24,
+        blending: THREE.AdditiveBlending,
       });
       
       // Create line loop
@@ -632,9 +632,9 @@ export class MeshFactory {
       // Create arc geometry
       const arcGeometry = new THREE.BufferGeometry().setFromPoints(arcPoints);
       const arcMaterial = new THREE.LineBasicMaterial({
-        color: 0x00ffff,
+        color: i % 2 === 0 ? COLORS.SHIELD_BUBBLE : COLORS.DYSON_PRIMARY,
         transparent: true,
-        opacity: Math.random() > 0.7 ? 0.6 : 0, // Only some arcs visible
+        opacity: Math.random() > 0.7 ? 0.42 : 0,
         linewidth: 2,
       });
       
@@ -1007,187 +1007,36 @@ export class MeshFactory {
   // Create a glowing orb mesh for power-ups
   private static createPowerUpOrbMesh(renderable: Renderable): THREE.Object3D {
     const group = new THREE.Group();
-    
-    // Create multiple layered glowing spheres for a more volumetric 3D effect
-    
-    // Create a radial gradient texture for more realistic glow
-    const gradientCanvas = document.createElement('canvas');
-    gradientCanvas.width = 128;
-    gradientCanvas.height = 128;
-    const ctx = gradientCanvas.getContext('2d');
-    if (ctx) {
-      // Create radial gradient
-      const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-      
-      // Extract color components from renderable.color
-      const color = new THREE.Color(renderable.color);
-      const r = Math.floor(color.r * 255);
-      const g = Math.floor(color.g * 255);
-      const b = Math.floor(color.b * 255);
-      
-      gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.9)`);
-      gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, 0.5)`);
-      gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
-      
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 128, 128);
-    }
-    
-    const glowTexture = new THREE.CanvasTexture(gradientCanvas);
+    const powerUpType = this.getPowerUpType(renderable);
     
     // Outer volumetric glow layers
     for (let i = 0; i < 4; i++) {
-      const size = 0.9 + i * 0.2; // Increasing sizes
+      const size = 0.85 + i * 0.2;
       const glowGeometry = new THREE.SphereGeometry(size, 32, 32);
-      const glowMaterial = new THREE.MeshPhongMaterial({
+      const glowMaterial = new THREE.MeshBasicMaterial({
         color: renderable.color,
-        emissive: renderable.color,
-        emissiveIntensity: 0.7 - i * 0.15,
         transparent: true,
-        opacity: 0.4 - i * 0.08,
+        opacity: 0.28 - i * 0.05,
         side: THREE.DoubleSide,
-        blending: THREE.AdditiveBlending // For better glow effect
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
       });
       
       const glowSphere = new THREE.Mesh(glowGeometry, glowMaterial);
       group.add(glowSphere);
     }
     
-    // Add a brighter core
-    const coreGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-    const coreMaterial = new THREE.MeshPhongMaterial({
-      color: 0xffffff,
-      emissive: renderable.color,
-      emissiveIntensity: 1.0,
-      transparent: true,
-      opacity: 0.7,
-      blending: THREE.AdditiveBlending
-    });
-    const core = new THREE.Mesh(coreGeometry, coreMaterial);
-    group.add(core);
-    
     // Add a point light inside for real glow effect
-    const light = new THREE.PointLight(renderable.color, 1.0, 6);
+    const light = new THREE.PointLight(renderable.color, 1.15, 7);
     light.position.set(0, 0, 0);
     group.add(light);
     
-    // Create a billboard group for the icon
-    const symbolGroup = new THREE.Group();
-    
-    // Check power-up type based on color to determine which icon to show
-    const isSpeedPowerUp = renderable.color === COLORS.POWERUP_SPEED;
-    const isHealthPowerUp = renderable.color === COLORS.POWERUP_HEALTH;
-    
-    if (isSpeedPowerUp) {
-      // Create lightning bolt shape for speed boost power-up
-      const lightning = new THREE.Group();
-      
-      // Main bolt shape
-      const boltGeometry = new THREE.BufferGeometry();
-      const vertices = new Float32Array([
-        0, 0.3, 0,    // Top point
-        -0.1, 0.05, 0, // Left bend
-        0.05, 0.05, 0,  // Right after bend
-        -0.15, -0.2, 0, // Left point at bottom
-        0, -0.1, 0,    // Bottom center
-        0.15, 0.1, 0    // Right point
-      ]);
-      const indices = [
-        0, 1, 2,
-        1, 3, 4,
-        1, 4, 2,
-        2, 4, 5
-      ];
-      boltGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-      boltGeometry.setIndex(indices);
-      boltGeometry.computeVertexNormals();
-      
-      const boltMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-      const boltMesh = new THREE.Mesh(boltGeometry, boltMaterial);
-      boltMesh.scale.set(2.0, 2.0, 2.0); // Increased from 1.5 to 2.0 for better visibility
-      lightning.add(boltMesh);
-      
-      symbolGroup.add(lightning);
-    } else if (isHealthPowerUp) {
-      // Create cross shape for health power-up
-      const cross = new THREE.Group();
-      
-      // Vertical bar of cross
-      const verticalBar = new THREE.Mesh(
-        new THREE.BoxGeometry(0.2, 0.6, 0.15),
-        new THREE.MeshBasicMaterial({ color: 0x000000 })
-      );
-      cross.add(verticalBar);
-      
-      // Horizontal bar of cross
-      const horizontalBar = new THREE.Mesh(
-        new THREE.BoxGeometry(0.6, 0.2, 0.15),
-        new THREE.MeshBasicMaterial({ color: 0x000000 })
-      );
-      cross.add(horizontalBar);
-      
-      // Scale up the cross to make it more visible
-      cross.scale.set(2.0, 2.0, 2.0);
-      
-      symbolGroup.add(cross);
-    } else {
-      // Create double arrow shape to indicate faster fire rate (default for fireRate power-up)
-      // Arrow 1 (top)
-      const arrow1 = new THREE.Group();
-      
-      // Arrow body - thicker
-      const arrowLine1 = new THREE.Mesh(
-        new THREE.BoxGeometry(0.6, 0.15, 0.15),
-        new THREE.MeshBasicMaterial({ color: 0x000000 })
-      );
-      arrowLine1.position.set(0, 0.18, 0);
-      arrow1.add(arrowLine1);
-      
-      // Arrow head - larger
-      const arrowHead1 = new THREE.Mesh(
-        new THREE.ConeGeometry(0.15, 0.25, 8),
-        new THREE.MeshBasicMaterial({ color: 0x000000 })
-      );
-      arrowHead1.position.set(0.35, 0.18, 0);
-      arrowHead1.rotation.z = -Math.PI / 2;
-      arrow1.add(arrowHead1);
-      
-      // Arrow 2 (bottom)
-      const arrow2 = new THREE.Group();
-      
-      // Arrow body - thicker
-      const arrowLine2 = new THREE.Mesh(
-        new THREE.BoxGeometry(0.6, 0.15, 0.15),
-        new THREE.MeshBasicMaterial({ color: 0x000000 })
-      );
-      arrowLine2.position.set(0, -0.18, 0);
-      arrow2.add(arrowLine2);
-      
-      // Arrow head - larger
-      const arrowHead2 = new THREE.Mesh(
-        new THREE.ConeGeometry(0.15, 0.25, 8),
-        new THREE.MeshBasicMaterial({ color: 0x000000 })
-      );
-      arrowHead2.position.set(0.35, -0.18, 0);
-      arrowHead2.rotation.z = -Math.PI / 2;
-      arrow2.add(arrowHead2);
-      
-      // Increase size of the arrows
-      arrow1.scale.set(1.5, 1.5, 1.5);
-      arrow2.scale.set(1.5, 1.5, 1.5);
-      
-      symbolGroup.add(arrow1);
-      symbolGroup.add(arrow2);
-    }
-    
-    // Move symbol slightly further forward for better visibility
-    symbolGroup.position.z = 0.3; // Increased from 0.2 to 0.3
-    
-    // Create a billboard effect to make symbol always face camera
+    // Create a billboard effect to keep the icon readable from every camera angle.
     const billboardGroup = new THREE.Group();
-    billboardGroup.add(symbolGroup);
+    const iconPlane = this.createPowerUpIconPlane(powerUpType, renderable.color);
+    iconPlane.position.z = 0.6;
+    billboardGroup.add(iconPlane);
     
-    // Mark it as a billboard for the rendering system
     (billboardGroup as any).isBillboard = true;
     billboardGroup.name = 'billboard';
     
@@ -1258,6 +1107,129 @@ export class MeshFactory {
     group.scale.set(renderable.scale, renderable.scale, renderable.scale);
     
     return group;
+  }
+
+  private static getPowerUpType(renderable: Renderable): 'fireRate' | 'speed' | 'health' {
+    if (renderable.variant === 'fireRate' || renderable.variant === 'speed' || renderable.variant === 'health') {
+      return renderable.variant;
+    }
+
+    if (renderable.color === COLORS.POWERUP_SPEED) {
+      return 'speed';
+    }
+
+    if (renderable.color === COLORS.POWERUP_HEALTH) {
+      return 'health';
+    }
+
+    return 'fireRate';
+  }
+
+  private static createPowerUpIconPlane(
+    type: 'fireRate' | 'speed' | 'health',
+    accentColor: number
+  ): THREE.Mesh {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const center = canvas.width / 2;
+      const accent = new THREE.Color(accentColor);
+      const r = Math.round(accent.r * 255);
+      const g = Math.round(accent.g * 255);
+      const b = Math.round(accent.b * 255);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const haloGradient = ctx.createRadialGradient(center, center, 18, center, center, 92);
+      haloGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.6)`);
+      haloGradient.addColorStop(0.55, `rgba(${r}, ${g}, ${b}, 0.18)`);
+      haloGradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+      ctx.fillStyle = haloGradient;
+      ctx.beginPath();
+      ctx.arc(center, center, 94, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.95)`;
+      ctx.lineWidth = 10;
+      ctx.shadowColor = `rgba(${r}, ${g}, ${b}, 0.95)`;
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.arc(center, center, 72, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+
+      ctx.save();
+      ctx.translate(center, center);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.98)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.98)';
+      ctx.shadowColor = `rgba(${r}, ${g}, ${b}, 0.95)`;
+      ctx.shadowBlur = 16;
+
+      if (type === 'speed') {
+        ctx.lineWidth = 20;
+        ctx.beginPath();
+        ctx.moveTo(-42, -34);
+        ctx.lineTo(-8, 0);
+        ctx.lineTo(-42, 34);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(4, -34);
+        ctx.lineTo(38, 0);
+        ctx.lineTo(4, 34);
+        ctx.stroke();
+      } else if (type === 'health') {
+        ctx.lineWidth = 24;
+        ctx.beginPath();
+        ctx.moveTo(0, -42);
+        ctx.lineTo(0, 42);
+        ctx.moveTo(-42, 0);
+        ctx.lineTo(42, 0);
+        ctx.stroke();
+      } else {
+        const tracerRows = [-28, 0, 28];
+        const tracerStarts = [-42, -32, -22];
+
+        tracerRows.forEach((y, index) => {
+          ctx.lineWidth = 14;
+          ctx.beginPath();
+          ctx.moveTo(tracerStarts[index], y);
+          ctx.lineTo(20, y);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(20, y - 12);
+          ctx.lineTo(48, y);
+          ctx.lineTo(20, y + 12);
+          ctx.closePath();
+          ctx.fill();
+        });
+      }
+
+      ctx.restore();
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      depthTest: false,
+      toneMapped: false
+    });
+
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.8), material);
+    plane.renderOrder = 10;
+    return plane;
   }
 
   private static createStarfieldMesh(renderable: Renderable): THREE.Object3D {

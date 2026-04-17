@@ -15,6 +15,7 @@ export interface Renderable {
   modelId: string;  // Identifier for the model to render
   scale: number;    // Scale of the model
   color: number;    // Color in hex format
+  variant?: string; // Optional subtype identifier for shared models like power-ups
   isVisible?: boolean; // Whether the model is visible (optional, defaults to true)
   meshId?: string; // UUID of the Three.js mesh instance
 }

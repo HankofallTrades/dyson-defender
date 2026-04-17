@@ -45,7 +45,8 @@ export function createFireRatePowerUp(
   world.addComponent(entity, 'Renderable', {
     modelId: 'powerUpOrb',
     scale: 3.0, // Increased from 1.0 to 3.0 to make it 3 times larger
-    color: COLORS.POWERUP_FIRE_RATE // Use color constant
+    color: COLORS.POWERUP_FIRE_RATE, // Use color constant
+    variant: 'fireRate'
   });
   
   // Add auto-rotate for visual effect
@@ -67,7 +68,7 @@ export function createFireRatePowerUp(
 }
 
 /**
- * Creates a speed boost power-up entity that appears as a glowing green orb
+ * Creates a speed boost power-up entity with a speed-focused icon and bright glow
  * When collected, increases the player's movement speed by 1.5x for 6 seconds
  */
 export function createSpeedPowerUp(
@@ -99,7 +100,8 @@ export function createSpeedPowerUp(
   world.addComponent(entity, 'Renderable', {
     modelId: 'powerUpOrb',
     scale: 3.0, // Increased from 1.0 to 3.0 to make it 3 times larger
-    color: COLORS.POWERUP_SPEED // Use color constant
+    color: COLORS.POWERUP_SPEED, // Use color constant
+    variant: 'speed'
   });
   
   // Add auto-rotate for visual effect
@@ -121,7 +123,7 @@ export function createSpeedPowerUp(
 }
 
 /**
- * Creates a health power-up entity that appears as a glowing green orb with a heart icon
+ * Creates a health power-up entity with a medical cross icon and green glow
  * When collected, gives the player 20 hit points
  */
 export function createHealthPowerUp(
@@ -153,7 +155,8 @@ export function createHealthPowerUp(
   world.addComponent(entity, 'Renderable', {
     modelId: 'powerUpOrb',
     scale: 3.0, // Keep the same size as other power-ups
-    color: COLORS.POWERUP_HEALTH // Use green color for health
+    color: COLORS.POWERUP_HEALTH, // Use green color for health
+    variant: 'health'
   });
   
   // Add auto-rotate for visual effect
