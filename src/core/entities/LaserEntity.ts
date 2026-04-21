@@ -2,13 +2,24 @@ import { World } from '../World';
 import * as THREE from 'three';
 import { COLORS } from '../../constants/colors';
 
+export interface LaserOptions {
+  speed?: number;
+  damage?: number;
+  lifetime?: number;
+  scale?: number;
+  colliderWidth?: number;
+  colliderHeight?: number;
+  colliderDepth?: number;
+}
+
 export function createLaser(
   world: World,
   scene: THREE.Scene,
   position: { x: number, y: number, z: number },
   direction: { x: number, y: number, z: number },
   ownerEntity: number, // Entity that created this laser
-  color: number = COLORS.LASER_GREEN // Optional color parameter with default green
+  color: number = COLORS.LASER_GREEN, // Optional color parameter with default green
+  options: LaserOptions = {}
 ) {
   const entity = world.createEntity();
   
@@ -27,7 +38,7 @@ export function createLaser(
   });
   
   // Add velocity component (based on direction)
-  const laserSpeed = 500; // Units per second 
+  const laserSpeed = options.speed ?? 500; // Units per second
   const normalizedDir = new THREE.Vector3(direction.x, direction.y, direction.z).normalize();
   
   world.addComponent(entity, 'Velocity', { 
@@ -63,15 +74,16 @@ export function createLaser(
   // Add renderable component
   world.addComponent(entity, 'Renderable', {
     modelId: 'laser',
-    scale: 0.5,
+    scale: options.scale ?? 0.5,
     color: color // Use the provided color
   });
   
   // Add projectile component with damage based on owner type
+  const defaultDamage = isPlayerLaser ? 5 : isWarpRaider ? 15 : 10;
   world.addComponent(entity, 'Projectile', {
     speed: laserSpeed,
-    damage: isPlayerLaser ? 5 : isWarpRaider ? 15 : 10, // 5 for player, 15 for warp raider, 10 for other enemies
-    lifetime: 6, // 6 seconds lifetime - doubled to allow lasers to travel further
+    damage: options.damage ?? defaultDamage, // 5 for player, 15 for warp raider, 10 for other enemies
+    lifetime: options.lifetime ?? 6, // 6 seconds lifetime - doubled to allow lasers to travel further
     timeAlive: 0,
     ownerEntity: ownerEntity // Store the owner entity ID
   });
@@ -79,12 +91,12 @@ export function createLaser(
   // Add collider component for collision detection
   world.addComponent(entity, 'Collider', {
     type: 'box',
-    width: 0.25,
-    height: 0.25,
-    depth: 5,
+    width: options.colliderWidth ?? 0.25,
+    height: options.colliderHeight ?? 0.25,
+    depth: options.colliderDepth ?? 5,
     isTrigger: true,
     layer: 'projectile'
   });
   
   return entity;
-} 
+}

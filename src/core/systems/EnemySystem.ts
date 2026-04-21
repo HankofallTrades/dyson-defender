@@ -4,6 +4,7 @@ import { createLaser } from '../entities/LaserEntity';
 import * as THREE from 'three';
 import { COLORS } from '../../constants/colors';
 import { WeaponSystem } from '../systems/WeaponSystem';
+import { HUDSystem } from './HUDSystem';
 
 export class EnemySystem implements System {
   // The minimum distance grunts should maintain from the Dyson Sphere surface
@@ -554,18 +555,18 @@ export class EnemySystem implements System {
   // Modify or add this helper method to handle asteroid collision with Dyson sphere
   private triggerAsteroidImpact(asteroidEntity: number, dysonSphereEntity: number): void {
     console.log('Asteroid impacted Dyson Sphere - GAME OVER');
-    
-    // Trigger game over when an asteroid hits the Dyson Sphere
-    const gameStateEntities = this.world.getEntitiesWith(['GameStateDisplay']);
-    if (gameStateEntities.length > 0) {
-      const gameStateEntity = gameStateEntities[0];
-      const gameStateDisplay = this.world.getComponent<{currentState: string}>(gameStateEntity, 'GameStateDisplay');
-      if (gameStateDisplay) {
-        gameStateDisplay.currentState = 'game_over';
-      }
+
+    const hudSystem = this.getHUDSystem();
+    if (hudSystem) {
+      hudSystem.triggerGameOverByReason('Asteroid Impact');
+      return;
     }
-    
-    // Optional: Add explosion or impact visual effect here
+
+    const gameState = this.world.getGameState();
+    if (gameState) {
+      gameState.isGameOver = true;
+      gameState.isPaused = false;
+    }
   }
 
   // Add helper method to get WeaponSystem
@@ -578,6 +579,17 @@ export class EnemySystem implements System {
     for (const system of systems) {
       if (system instanceof WeaponSystem) {
         this.weaponSystem = system;
+        return system;
+      }
+    }
+
+    return null;
+  }
+
+  private getHUDSystem(): HUDSystem | null {
+    const systems = this.world.getSystems();
+    for (const system of systems) {
+      if (system instanceof HUDSystem) {
         return system;
       }
     }

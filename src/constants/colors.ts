@@ -38,6 +38,7 @@ export const COLORS = {
   
   // Projectile colors
   LASER_GREEN: 0x00ff00,
+  PRAETORIAN_LASER: 0xfff2a0,
   
   // Dyson sphere colors
   DYSON_PRIMARY: 0x3388ff,

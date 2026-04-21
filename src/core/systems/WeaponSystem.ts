@@ -17,6 +17,12 @@ const LIGHTNING_IMPACT_RIPPLE_SPEED = 1.5;
 const LIGHTNING_IMPACT_RIPPLE_MIN_RADIUS = 1.1;
 const LIGHTNING_IMPACT_RIPPLE_MAX_RADIUS = 7.5;
 const LIGHTNING_IMPACT_RIPPLE_SURFACE_OFFSET = 0.5;
+const PRAETORIAN_LASER_DAMAGE = 160;
+const PRAETORIAN_LASER_SPEED = 1100;
+const PRAETORIAN_LASER_LIFETIME = 0.95;
+const PRAETORIAN_LASER_COOLDOWN = 0.55;
+const PRAETORIAN_BEAM_LENGTH = 260;
+const PRAETORIAN_BEAM_DURATION = 0.7;
 
 interface LightningEndpoints {
   origin: THREE.Vector3;
@@ -46,6 +52,14 @@ interface LightningWeapon {
   impactRipple: LightningImpactRipple;
 }
 
+interface PraetorianBeam {
+  group: THREE.Group;
+  materials: THREE.Material[];
+  baseOpacities: number[];
+  timeRemaining: number;
+  duration: number;
+}
+
 /**
  * WeaponSystem
  * 
@@ -72,6 +86,8 @@ export class WeaponSystem implements System {
     auras: THREE.MeshPhongMaterial[];
   };
   private readonly ripplePlaneNormal = new THREE.Vector3(0, 0, 1);
+  private secondaryWasPressed = false;
+  private praetorianBeams: PraetorianBeam[] = [];
 
   constructor(world: World, sceneManager: SceneManager, audioManager?: AudioManager) {
     this.world = world;
@@ -198,10 +214,13 @@ export class WeaponSystem implements System {
         laserCooldown.readyToFire = false;
         laserCooldown.current = laserCooldown.max;
       }
+
+      this.updateSecondaryWeapon(entity, position, rotation, deltaTime);
     }
     
     // Update existing projectiles
     this.updateProjectiles(deltaTime);
+    this.updatePraetorianBeams(deltaTime);
 
     // Update all active lightning weapons
     for (const [entityId, lightning] of this.lightningWeapons) {
@@ -298,9 +317,190 @@ export class WeaponSystem implements System {
         z: cannonPos.z
       };
       
-      // Create the laser entity
-      createLaser(this.world, this.scene, spawnPos, forward, entity);
+      const damageLevel = this.world.getGameState()?.shipDamageLevel ?? 0;
+      createLaser(this.world, this.scene, spawnPos, forward, entity, COLORS.LASER_GREEN, {
+        damage: 5 + damageLevel * 2
+      });
     });
+  }
+
+  private updateSecondaryWeapon(entity: number, position: Position, rotation: Rotation, deltaTime: number): void {
+    const gameState = this.world.getGameState();
+    const secondaryWeapon = gameState?.secondaryWeapon;
+    if (!secondaryWeapon || !secondaryWeapon.unlocked || secondaryWeapon.type !== 'praetorianLaser') {
+      this.secondaryWasPressed = this.inputManager.isSecondaryFiring();
+      return;
+    }
+
+    if (secondaryWeapon.cooldown > 0) {
+      secondaryWeapon.cooldown = Math.max(0, secondaryWeapon.cooldown - deltaTime);
+    }
+
+    const isPressed = this.inputManager.isSecondaryFiring();
+    const canStartCharge = secondaryWeapon.charges > 0 && secondaryWeapon.cooldown <= 0;
+
+    if (isPressed && !this.secondaryWasPressed && !secondaryWeapon.isCharging && canStartCharge) {
+      secondaryWeapon.isCharging = true;
+      secondaryWeapon.chargeProgress = 0;
+    }
+
+    if (!isPressed && secondaryWeapon.isCharging) {
+      secondaryWeapon.isCharging = false;
+      secondaryWeapon.chargeProgress = 0;
+    }
+
+    if (isPressed && secondaryWeapon.isCharging) {
+      secondaryWeapon.chargeProgress = Math.min(
+        1,
+        secondaryWeapon.chargeProgress + deltaTime / secondaryWeapon.chargeDuration
+      );
+
+      if (secondaryWeapon.chargeProgress >= 1) {
+        this.firePraetorianLaser(entity, position, rotation);
+        secondaryWeapon.charges = Math.max(0, secondaryWeapon.charges - 1);
+        secondaryWeapon.isCharging = false;
+        secondaryWeapon.chargeProgress = 0;
+        secondaryWeapon.cooldown = PRAETORIAN_LASER_COOLDOWN;
+      }
+    }
+
+    this.secondaryWasPressed = isPressed;
+  }
+
+  private firePraetorianLaser(entity: number, position: Position, rotation: Rotation): void {
+    const forward = new THREE.Vector3(0, 0, -1);
+    const shipEuler = new THREE.Euler(rotation.x, rotation.y, rotation.z, 'YXZ');
+    forward.applyQuaternion(new THREE.Quaternion().setFromEuler(shipEuler)).normalize();
+
+    const spawnPos = {
+      x: position.x + forward.x * 5,
+      y: position.y + forward.y * 5,
+      z: position.z + forward.z * 5
+    };
+
+    if (this.audioManager) {
+      this.audioManager.playSound('laser', false, 0.9);
+    }
+
+    this.createPraetorianBeam(spawnPos, forward);
+
+    createLaser(this.world, this.scene, spawnPos, forward, entity, COLORS.PRAETORIAN_LASER, {
+      damage: PRAETORIAN_LASER_DAMAGE,
+      speed: PRAETORIAN_LASER_SPEED,
+      lifetime: PRAETORIAN_LASER_LIFETIME,
+      scale: 4.5,
+      colliderWidth: 2.4,
+      colliderHeight: 2.4,
+      colliderDepth: 42
+    });
+  }
+
+  private createPraetorianBeam(origin: Position, direction: THREE.Vector3): void {
+    const beamDirection = direction.clone().normalize();
+    const originVector = new THREE.Vector3(origin.x, origin.y, origin.z);
+    const midpoint = originVector.clone().addScaledVector(beamDirection, PRAETORIAN_BEAM_LENGTH / 2);
+    const beamRotation = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      beamDirection
+    );
+
+    const group = new THREE.Group();
+    group.position.copy(midpoint);
+    group.quaternion.copy(beamRotation);
+    group.renderOrder = 2500;
+    group.frustumCulled = false;
+
+    const coreMaterial = new THREE.MeshBasicMaterial({
+      color: 0xfff8d0,
+      transparent: true,
+      opacity: 1,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const hotAuraMaterial = new THREE.MeshBasicMaterial({
+      color: COLORS.PRAETORIAN_LASER,
+      transparent: true,
+      opacity: 0.58,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const outerAuraMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff7b00,
+      transparent: true,
+      opacity: 0.24,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+
+    const core = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.95, 0.95, PRAETORIAN_BEAM_LENGTH, 32),
+      coreMaterial
+    );
+    const hotAura = new THREE.Mesh(
+      new THREE.CylinderGeometry(2.2, 2.2, PRAETORIAN_BEAM_LENGTH, 32),
+      hotAuraMaterial
+    );
+    const outerAura = new THREE.Mesh(
+      new THREE.CylinderGeometry(4.2, 4.2, PRAETORIAN_BEAM_LENGTH, 32),
+      outerAuraMaterial
+    );
+
+    const muzzleFlash = new THREE.Mesh(
+      new THREE.SphereGeometry(5.5, 24, 16),
+      new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.75,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      })
+    );
+    muzzleFlash.position.y = -PRAETORIAN_BEAM_LENGTH / 2;
+
+    group.add(outerAura, hotAura, core, muzzleFlash);
+    this.scene.add(group);
+
+    this.praetorianBeams.push({
+      group,
+      materials: [coreMaterial, hotAuraMaterial, outerAuraMaterial, muzzleFlash.material],
+      baseOpacities: [1, 0.58, 0.24, 0.75],
+      timeRemaining: PRAETORIAN_BEAM_DURATION,
+      duration: PRAETORIAN_BEAM_DURATION
+    });
+  }
+
+  private updatePraetorianBeams(deltaTime: number): void {
+    if (this.praetorianBeams.length === 0) {
+      return;
+    }
+
+    const activeBeams: PraetorianBeam[] = [];
+    for (const beam of this.praetorianBeams) {
+      beam.timeRemaining -= deltaTime;
+      const progress = Math.max(0, beam.timeRemaining / beam.duration);
+      const pulse = 0.9 + Math.sin(performance.now() * 0.04) * 0.08;
+      beam.group.scale.set(pulse, 1, pulse);
+
+      beam.materials.forEach((material, index) => {
+        if ('opacity' in material) {
+          material.opacity = beam.baseOpacities[index] * progress;
+        }
+      });
+
+      if (beam.timeRemaining > 0) {
+        activeBeams.push(beam);
+      } else {
+        this.scene.remove(beam.group);
+        beam.group.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.geometry.dispose();
+          }
+        });
+        beam.materials.forEach((material) => material.dispose());
+      }
+    }
+
+    this.praetorianBeams = activeBeams;
   }
   
   private updateProjectiles(deltaTime: number): void {

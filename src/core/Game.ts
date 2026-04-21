@@ -19,7 +19,7 @@ import { WaveSystem } from './systems/WaveSystem';
 import { EnemySystem } from './systems/EnemySystem';
 import { HUDSystem } from './systems/HUDSystem';
 import { FloatingScoreSystem } from './systems/FloatingScoreSystem';
-import { GameStateDisplay, CameraMount, Position, Rotation, DevMode, MouseLook, Velocity } from './components';
+import { GameStateDisplay, CameraMount, Position, Rotation, DevMode, MouseLook, Velocity, Health, Shield, LaserCooldown } from './components';
 import { InputManager } from './input/InputManager';
 import { AnimationSystem } from './systems/AnimationSystem';
 import { ShieldSystem } from './systems/ShieldSystem';
@@ -382,6 +382,11 @@ class Game {
       const gameStateDisplay = this.world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
       
       if (gameStateDisplay) {
+        const globalState = this.stateManager.getStateReference();
+        if (globalState.isGameOver && gameStateDisplay.currentState !== 'game_over') {
+          gameStateDisplay.currentState = 'game_over';
+        }
+
         // Exit pointer lock ONLY when game is definitively OVER
         if (gameStateDisplay.currentState === 'game_over') {
           if (document.pointerLockElement === this.container) {
@@ -447,8 +452,104 @@ class Game {
     return this.stateManager;
   }
 
+  public applyUpgrade(upgradeId: string): boolean {
+    const state = this.stateManager.getStateReference();
+    if (state.upgradeCredits <= 0) {
+      return false;
+    }
+
+    const playerEntity = this.findPlayerEntity();
+    const dysonEntity = this.findDysonSphereEntity();
+    let applied = false;
+
+    if (upgradeId === 'ship-damage') {
+      state.shipDamageLevel += 1;
+      applied = true;
+    } else if (upgradeId === 'ship-fire-rate' && playerEntity !== -1) {
+      const laserCooldown = this.world.getComponent<LaserCooldown>(playerEntity, 'LaserCooldown');
+      if (laserCooldown) {
+        laserCooldown.max = Math.max(0.12, laserCooldown.max * 0.9);
+        state.shipFireRateLevel += 1;
+        applied = true;
+      }
+    } else if (upgradeId === 'ship-hull' && playerEntity !== -1) {
+      const health = this.world.getComponent<Health>(playerEntity, 'Health');
+      if (health) {
+        health.max += 25;
+        health.current = Math.min(health.max, health.current + 25);
+        state.shipHullLevel += 1;
+        applied = true;
+      }
+    } else if (upgradeId === 'dyson-shield' && dysonEntity !== -1) {
+      const shield = this.world.getComponent<Shield>(dysonEntity, 'Shield');
+      if (shield) {
+        shield.max += 50;
+        shield.current = Math.min(shield.max, shield.current + 50);
+        state.dysonShieldLevel += 1;
+        applied = true;
+      }
+    } else if (upgradeId === 'dyson-regen' && dysonEntity !== -1) {
+      const shield = this.world.getComponent<Shield>(dysonEntity, 'Shield');
+      if (shield) {
+        shield.regenRate += 5;
+        state.dysonRegenLevel += 1;
+        applied = true;
+      }
+    } else if (upgradeId === 'secondary-praetorian-laser') {
+      state.secondaryWeapon = {
+        ...state.secondaryWeapon,
+        type: 'praetorianLaser',
+        unlocked: true,
+        charges: state.secondaryWeapon.maxCharges,
+        isCharging: false,
+        chargeProgress: 0,
+        cooldown: 0
+      };
+      applied = true;
+    }
+
+    if (!applied) {
+      return false;
+    }
+
+    state.upgradeCredits -= 1;
+    state.upgradeDraftAvailable = false;
+
+    this.hudSystem.displayMessage('UPGRADE INSTALLED', 2);
+    if (this.isRunning) {
+      this.inputManager.requestPointerLock();
+    }
+
+    return true;
+  }
+
+  public skipUpgradeDraft(): void {
+    const state = this.stateManager.getStateReference();
+    state.upgradeDraftAvailable = false;
+    if (this.isRunning) {
+      this.inputManager.requestPointerLock();
+    }
+  }
+
   public getCamera(): THREE.Camera | null {
     return this.sceneManager.getCamera();
+  }
+
+  private findPlayerEntity(): number {
+    const playerEntities = this.world.getEntitiesWith(['InputReceiver']);
+    return playerEntities.length > 0 ? playerEntities[0] : -1;
+  }
+
+  private findDysonSphereEntity(): number {
+    const entities = this.world.getEntitiesWith(['Renderable']);
+    for (const entity of entities) {
+      const renderable = this.world.getComponent<{ modelId: string }>(entity, 'Renderable');
+      if (renderable?.modelId === 'dysonSphere') {
+        return entity;
+      }
+    }
+
+    return -1;
   }
 
   public dispose(): void {
@@ -653,8 +754,10 @@ class Game {
       }
     }
     
+    const isUpgradeDraftOpen = this.stateManager.getStateReference().upgradeDraftAvailable;
+
     // If pointer lock is exited while the game is actively playing, auto-pause.
-    if (this.wasPointerLocked && !isLocked && this.isRunning && currentGameState === 'playing') {
+    if (this.wasPointerLocked && !isLocked && this.isRunning && currentGameState === 'playing' && !isUpgradeDraftOpen) {
       this.pause();
     }
 

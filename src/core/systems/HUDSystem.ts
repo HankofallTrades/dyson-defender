@@ -107,6 +107,13 @@ export class HUDSystem implements System {
     const currentComponentState = gameStateDisplay.currentState;
     let newComponentState = currentComponentState;
 
+    if (globalState.isGameOver) {
+      if (currentComponentState !== 'game_over') {
+        gameStateDisplay.currentState = 'game_over';
+      }
+      return;
+    }
+
     // --- Sync with global pause state --- 
     if (globalState.isPaused) {
       // If globally paused, but component thinks it's playing, update component state
@@ -184,6 +191,20 @@ export class HUDSystem implements System {
       const inputManager = InputManager.getInstance(container);
       inputManager.exitPointerLock();
     }
+  }
+
+  public triggerGameOverByReason(reason: string): void {
+    const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
+    if (hudEntities.length === 0) {
+      const gameState = this.world.getGameState();
+      if (gameState) {
+        gameState.isGameOver = true;
+        gameState.isPaused = false;
+      }
+      return;
+    }
+
+    this.triggerGameOver(hudEntities[0], reason);
   }
   
   public displayMessage(message: string, duration: number = 3): void {

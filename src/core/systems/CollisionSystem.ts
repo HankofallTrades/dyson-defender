@@ -662,8 +662,8 @@ export class CollisionSystem implements System {
       }
     }
     
-    // Decrement shield
-    shield.currentShield -= 1;
+    // Decrement shield. Heavy secondary shots chew through guardian bubbles faster.
+    shield.currentShield -= Math.max(1, Math.ceil(projectile.damage / 25));
     
     // If shield is depleted, remove the shield bubble and kill the guardian
     if (shield.currentShield <= 0) {

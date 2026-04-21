@@ -44,6 +44,27 @@ export interface GameState {
   boostActive: boolean;
   boostRemaining: number;
   boostCooldown: number;
+
+  // Upgrade economy
+  upgradeCredits: number;
+  upgradeDraftAvailable: boolean;
+  shipDamageLevel: number;
+  shipFireRateLevel: number;
+  shipHullLevel: number;
+  dysonShieldLevel: number;
+  dysonRegenLevel: number;
+
+  // Secondary weapon system
+  secondaryWeapon: {
+    type: 'none' | 'praetorianLaser';
+    unlocked: boolean;
+    charges: number;
+    maxCharges: number;
+    isCharging: boolean;
+    chargeProgress: number;
+    chargeDuration: number;
+    cooldown: number;
+  };
 }
 
 /**
@@ -68,7 +89,26 @@ export const initialGameState: GameState = {
   // Boost system initial values
   boostActive: false,
   boostRemaining: 1.0, // Full boost (1 second)
-  boostCooldown: 0  // No cooldown - ready to use
+  boostCooldown: 0,  // No cooldown - ready to use
+
+  upgradeCredits: 0,
+  upgradeDraftAvailable: false,
+  shipDamageLevel: 0,
+  shipFireRateLevel: 0,
+  shipHullLevel: 0,
+  dysonShieldLevel: 0,
+  dysonRegenLevel: 0,
+
+  secondaryWeapon: {
+    type: 'none',
+    unlocked: false,
+    charges: 0,
+    maxCharges: 3,
+    isCharging: false,
+    chargeProgress: 0,
+    chargeDuration: 1.2,
+    cooldown: 0
+  }
 };
 
 /**
@@ -78,7 +118,10 @@ export class GameStateManager {
   private state: GameState;
   
   constructor(initialState: GameState = initialGameState) {
-    this.state = { ...initialState };
+    this.state = {
+      ...initialState,
+      secondaryWeapon: { ...initialState.secondaryWeapon }
+    };
   }
   
   /**
@@ -106,7 +149,11 @@ export class GameStateManager {
    * Reset the game state to initial values
    */
   resetState(): void {
-    this.state = { ...initialGameState, lastUpdateTime: Date.now() };
+    this.state = {
+      ...initialGameState,
+      secondaryWeapon: { ...initialGameState.secondaryWeapon },
+      lastUpdateTime: Date.now()
+    };
   }
   
   /**

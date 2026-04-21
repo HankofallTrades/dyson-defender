@@ -30,6 +30,7 @@ export class InputManager {
     up: false,
     down: false,
     shoot: false,
+    secondaryFire: false,
     boost: false,
     toggleDevMode: false
   };
@@ -79,14 +80,28 @@ export class InputManager {
   };
 
   private readonly mouseDownHandler = (event: MouseEvent) => {
-    if (this.mouseState.isPointerLocked && event.button === 0) {
-      this.inputState.shoot = true;
+    if (this.mouseState.isPointerLocked) {
+      if (event.button === 0) {
+        this.inputState.shoot = true;
+      } else if (event.button === 2) {
+        this.inputState.secondaryFire = true;
+        event.preventDefault();
+      }
     }
   };
 
   private readonly mouseUpHandler = (event: MouseEvent) => {
     if (event.button === 0) {
       this.inputState.shoot = false;
+    } else if (event.button === 2) {
+      this.inputState.secondaryFire = false;
+      event.preventDefault();
+    }
+  };
+
+  private readonly contextMenuHandler = (event: MouseEvent) => {
+    if (this.mouseState.isPointerLocked) {
+      event.preventDefault();
     }
   };
 
@@ -94,6 +109,7 @@ export class InputManager {
     this.mouseState.isPointerLocked = document.pointerLockElement === this.container;
     if (!this.mouseState.isPointerLocked) {
       this.inputState.shoot = false;
+      this.inputState.secondaryFire = false;
     }
   };
 
@@ -136,11 +152,13 @@ export class InputManager {
   private bindContainerListeners(): void {
     this.container.addEventListener('mousedown', this.mouseDownHandler);
     this.container.addEventListener('mouseup', this.mouseUpHandler);
+    this.container.addEventListener('contextmenu', this.contextMenuHandler);
   }
 
   private unbindContainerListeners(): void {
     this.container.removeEventListener('mousedown', this.mouseDownHandler);
     this.container.removeEventListener('mouseup', this.mouseUpHandler);
+    this.container.removeEventListener('contextmenu', this.contextMenuHandler);
   }
 
   private rebindContainer(container: HTMLElement | HTMLCanvasElement): void {
@@ -201,6 +219,7 @@ export class InputManager {
     document.removeEventListener('mousemove', this.mouseMoveHandler);
     this.pressedKeys.clear();
     this.inputState.shoot = false;
+    this.inputState.secondaryFire = false;
     this.inputState.boost = false;
     
     // Clear singleton instance
@@ -211,6 +230,10 @@ export class InputManager {
   // isFiring now checks BOTH keyboard/mouse AND mobile firing state
   public isFiring(): boolean {
     return this.inputState.shoot || this.isMobileFiring;
+  }
+
+  public isSecondaryFiring(): boolean {
+    return this.inputState.secondaryFire;
   }
 
   // Added method to check combined boost state

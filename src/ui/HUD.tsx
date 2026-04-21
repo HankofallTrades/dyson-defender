@@ -676,6 +676,25 @@ const HUD: React.FC<HUDProps> = ({
   // State for boost ready indicator (less critical for smoothing)
   const [boostReady, setBoostReady] = useState(true); 
   // --- End Boost Bar Smoothing ---
+  const [upgradeState, setUpgradeState] = useState({
+    credits: 0,
+    draftAvailable: false,
+    shipDamageLevel: 0,
+    shipFireRateLevel: 0,
+    shipHullLevel: 0,
+    dysonShieldLevel: 0,
+    dysonRegenLevel: 0,
+    secondaryWeapon: {
+      type: 'none' as 'none' | 'praetorianLaser',
+      unlocked: false,
+      charges: 0,
+      maxCharges: 3,
+      isCharging: false,
+      chargeProgress: 0,
+      chargeDuration: 1.2,
+      cooldown: 0
+    }
+  });
   
   // Update UI data from ECS world
   useEffect(() => {
@@ -813,12 +832,39 @@ const HUD: React.FC<HUDProps> = ({
       // Update boost state from game state - Get Target Values
       const worldGameState = world.getGameState();
       if (worldGameState) {
+        if (worldGameState.isGameOver) {
+          setGameState('game_over');
+          setGameOverStats({
+            finalScore: worldGameState.score,
+            enemiesDefeated: worldGameState.enemiesDefeated,
+            wavesCompleted: worldGameState.wavesCompleted,
+            survivalTime: 0
+          });
+        }
+
         targetBoostDataRef.current = {
           active: worldGameState.boostActive,
           remaining: worldGameState.boostRemaining,
           cooldown: worldGameState.boostCooldown,
           maxTime: 1.0 // Assuming constant
         };
+
+        const nextUpgradeState = {
+          credits: worldGameState.upgradeCredits,
+          draftAvailable: worldGameState.upgradeDraftAvailable,
+          shipDamageLevel: worldGameState.shipDamageLevel,
+          shipFireRateLevel: worldGameState.shipFireRateLevel,
+          shipHullLevel: worldGameState.shipHullLevel,
+          dysonShieldLevel: worldGameState.dysonShieldLevel,
+          dysonRegenLevel: worldGameState.dysonRegenLevel,
+          secondaryWeapon: { ...worldGameState.secondaryWeapon }
+        };
+
+        setUpgradeState(prev => (
+          JSON.stringify(prev) === JSON.stringify(nextUpgradeState)
+            ? prev
+            : nextUpgradeState
+        ));
       }
       
       // Interpolate current boost values towards the target
@@ -1274,11 +1320,69 @@ const HUD: React.FC<HUDProps> = ({
       return () => clearTimeout(timerId);
     }
   }, [waveCountdown]);
+
+  useEffect(() => {
+    if (upgradeState.draftAvailable && document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+  }, [upgradeState.draftAvailable]);
   
   // Add a dedicated handler for exit game
   const handleExitGame = () => {
     onExitGame();
   };
+
+  const upgradeOptions = [
+    {
+      id: 'ship-damage',
+      group: 'SHIP',
+      title: 'Laser Capacitors',
+      level: upgradeState.shipDamageLevel,
+      body: `Primary lasers deal +2 damage. Current: ${5 + upgradeState.shipDamageLevel * 2}.`
+    },
+    {
+      id: 'ship-fire-rate',
+      group: 'SHIP',
+      title: 'Overclocked Cannons',
+      level: upgradeState.shipFireRateLevel,
+      body: 'Primary laser cooldown drops by 10%.'
+    },
+    {
+      id: 'ship-hull',
+      group: 'SHIP',
+      title: 'Reinforced Hull',
+      level: upgradeState.shipHullLevel,
+      body: 'Increase ship max hull by 25 and repair 25.'
+    },
+    {
+      id: 'dyson-shield',
+      group: 'DYSON',
+      title: 'Shield Lattice',
+      level: upgradeState.dysonShieldLevel,
+      body: 'Increase Dyson max shield by 50 and restore 50.'
+    },
+    {
+      id: 'dyson-regen',
+      group: 'DYSON',
+      title: 'Regen Conduits',
+      level: upgradeState.dysonRegenLevel,
+      body: 'Dyson shield regenerates 5 points per second faster.'
+    },
+    {
+      id: 'secondary-praetorian-laser',
+      group: 'WEAPON',
+      title: upgradeState.secondaryWeapon.unlocked ? 'Praetorian Lazer Reload' : 'Praetorian Lazer',
+      level: upgradeState.secondaryWeapon.unlocked ? 1 : 0,
+      body: upgradeState.secondaryWeapon.unlocked
+        ? 'Refill secondary weapon charges to 3.'
+        : 'Unlock a right-click charged beam with 3 charges.'
+    }
+  ];
+
+  const secondaryWeaponUnlocked = upgradeState.secondaryWeapon.unlocked;
+  const secondaryChargeProgress = upgradeState.secondaryWeapon.isCharging
+    ? upgradeState.secondaryWeapon.chargeProgress
+    : 0;
   
   // --- Render Logic ---
   if (gameState === 'not_started') {
@@ -1304,6 +1408,40 @@ const HUD: React.FC<HUDProps> = ({
   // Main game HUD
   return (
     <>
+      {upgradeState.draftAvailable && gameState === 'playing' && (
+        <div className="upgrade-draft-screen">
+          <div className="upgrade-draft-container">
+            <div className="upgrade-draft-header">
+              <span>UPGRADE DRAFT</span>
+              <strong>{upgradeState.credits} CREDIT{upgradeState.credits === 1 ? '' : 'S'}</strong>
+            </div>
+            <div className="upgrade-draft-grid">
+              {upgradeOptions.map(option => (
+                <button
+                  key={option.id}
+                  className="upgrade-option"
+                  type="button"
+                  disabled={upgradeState.credits <= 0}
+                  onClick={() => game.applyUpgrade(option.id)}
+                >
+                  <span className="upgrade-option-group">{option.group}</span>
+                  <strong>{option.title}</strong>
+                  <span>{option.body}</span>
+                  <small>LVL {option.level}</small>
+                </button>
+              ))}
+            </div>
+            <button
+              className="upgrade-skip-button"
+              type="button"
+              onClick={() => game.skipUpgradeDraft()}
+            >
+              BANK CREDIT
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Reticle */} 
       {/* Existing ReticleDisplay logic - Ensure this is not duplicated or removed accidentally */}
       {reticle.visible && gameState === 'playing' && (
@@ -1348,6 +1486,28 @@ const HUD: React.FC<HUDProps> = ({
                 boxShadow: `0 0 8px ${reticle.color}`,
                 opacity: 0.6
               }}></div>
+
+              {/* Secondary weapon charge indicator */}
+              {secondaryWeaponUnlocked && upgradeState.secondaryWeapon.isCharging && (
+                <div
+                  className="reticle-secondary-charge"
+                  style={{
+                    ['--charge-progress' as string]: `${Math.round(secondaryChargeProgress * 360)}deg`
+                  } as CSSProperties}
+                />
+              )}
+
+              {/* Secondary weapon charges */}
+              {secondaryWeaponUnlocked && (
+                <div className="reticle-secondary-charges">
+                  {Array.from({ length: upgradeState.secondaryWeapon.maxCharges }).map((_, index) => (
+                    <span
+                      key={index}
+                      className={index < upgradeState.secondaryWeapon.charges ? 'active' : ''}
+                    />
+                  ))}
+                </div>
+              )}
               
               {/* Crosshair lines */}
               <div style={{

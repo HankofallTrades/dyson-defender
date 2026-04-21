@@ -103,6 +103,11 @@ export class WaveSystem implements System {
     
     const waveInfo = this.world.getComponent<WaveInfo>(this.waveEntity, 'WaveInfo');
     if (!waveInfo) return;
+
+    const globalState = this.world.getGameState();
+    if (globalState?.upgradeDraftAvailable && !waveInfo.isActive) {
+      return;
+    }
     
     // Count active enemies
     const activeEnemies = this.world.getEntitiesWith(['Enemy']);
@@ -193,7 +198,15 @@ export class WaveSystem implements System {
 
     // Increment wavesCompleted in global state
     const currentState = this.gameStateManager.getState();
-    this.gameStateManager.updateState({ wavesCompleted: currentState.wavesCompleted + 1 });
+    this.gameStateManager.updateState({
+      wavesCompleted: currentState.wavesCompleted + 1,
+      upgradeCredits: currentState.upgradeCredits + 1,
+      upgradeDraftAvailable: true
+    });
+
+    if (this.hudSystem) {
+      this.hudSystem.displayMessage('UPGRADE CREDIT AWARDED', 3);
+    }
   }
   
   private startNextWave(waveInfo: WaveInfo): void {
