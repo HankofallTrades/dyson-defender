@@ -1,6 +1,6 @@
 import React, { useEffect, useState, CSSProperties, useRef } from 'react';
 import { World } from '../core/World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position, WaveInfo, Radar, ShieldBarComponent, ShieldComponent, HealthBarComponent, ScreenPosition } from '../core/components';
+import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position, WaveInfo, Radar, ShieldBarComponent, ShieldComponent, HealthBarComponent, ScreenPosition, Enemy } from '../core/components';
 import { COLORS } from '../constants/colors';
 import StartScreen from './StartScreen';
 import GameOverScreen from './GameOverScreen';
@@ -13,6 +13,14 @@ import AlertsDisplay from './hud/AlertsDisplay'; // Add import for new AlertsDis
 import { GameStateManager } from '../core/State'; // Added import
 import { AudioManager } from '../core/AudioManager'; // Import AudioManager type
 import Game from '../core/Game'; // Import the Game class
+
+type AsteroidIndicator = {
+  id: number;
+  position: { x: number; y: number };
+  angle: number;
+  isOnScreen: boolean;
+  opacity: number;
+};
 
 // Hologram component for rendering small 3D wireframe models
 const Hologram: React.FC<{
@@ -558,6 +566,7 @@ interface HUDProps {
   onResumeGame: () => void;
   onPauseGame: () => void;
   onRestartGame: () => void;
+  onChooseStage?: (stage: number) => void;
   onExitGame: () => void;
   game: Game;
   camera?: Camera;
@@ -573,6 +582,7 @@ const HUD: React.FC<HUDProps> = ({
   onResumeGame,
   onPauseGame,
   onRestartGame,
+  onChooseStage,
   onExitGame,
   game, // Destructure game prop
   camera, // Re-add camera to destructuring
@@ -651,6 +661,7 @@ const HUD: React.FC<HUDProps> = ({
     height: number;
     percent: number;
   }>>([]);
+  const [asteroidIndicators, setAsteroidIndicators] = useState<AsteroidIndicator[]>([]);
   
   // State for tracking brackets position with lag effect
   const [bracketsOffset, setBracketsOffset] = useState({ x: 0, y: 0 });
@@ -658,6 +669,8 @@ const HUD: React.FC<HUDProps> = ({
   
   // Use a ref to track processed messages for the log
   const processedMessagesLogRef = useRef<Set<string>>(new Set());
+  const asteroidProjectionRef = useRef(new Vector3());
+  const asteroidCameraSpaceRef = useRef(new Vector3());
   
   // State and ref for current alerts
   const [currentObjective, setCurrentObjective] = useState<string | null>(null);
@@ -971,6 +984,98 @@ const HUD: React.FC<HUDProps> = ({
       
       // Update floating scores if camera is available
       if (camera) {
+        camera.updateMatrixWorld(true);
+
+        const asteroidEntities = world.getEntitiesWith(['Enemy', 'Position']);
+        const gameRect = containerRef.current?.getBoundingClientRect();
+        const screenLeft = gameRect?.left ?? 0;
+        const screenTop = gameRect?.top ?? 0;
+        const screenWidth = gameRect?.width ?? window.innerWidth;
+        const screenHeight = gameRect?.height ?? window.innerHeight;
+        const screenCenterX = screenLeft + screenWidth / 2;
+        const screenCenterY = screenTop + screenHeight / 2;
+        const edgeMargin = screenWidth < 768 ? 42 : 64;
+
+        const newAsteroidIndicators = asteroidEntities.map(entity => {
+          const enemy = world.getComponent<Enemy>(entity, 'Enemy');
+          const position = world.getComponent<Position>(entity, 'Position');
+          if (!enemy || enemy.type !== 'asteroid' || !position) return null;
+
+          const projected = asteroidProjectionRef.current;
+          projected.set(position.x, position.y, position.z).project(camera);
+
+          const cameraSpacePosition = asteroidCameraSpaceRef.current;
+          cameraSpacePosition.set(position.x, position.y, position.z).applyMatrix4(camera.matrixWorldInverse);
+
+          const isBehindCamera = cameraSpacePosition.z > 0;
+          let screenX = screenLeft + ((projected.x + 1) / 2) * screenWidth;
+          let screenY = screenTop + ((-projected.y + 1) / 2) * screenHeight;
+
+          if (isBehindCamera) {
+            screenX = screenLeft + screenWidth - (screenX - screenLeft);
+            screenY = screenTop + screenHeight - (screenY - screenTop);
+          }
+
+          const isOnScreen = !isBehindCamera &&
+            projected.x >= -1 && projected.x <= 1 &&
+            projected.y >= -1 && projected.y <= 1 &&
+            projected.z >= -1 && projected.z <= 1;
+
+          let deltaX = screenX - screenCenterX;
+          let deltaY = screenY - screenCenterY;
+
+          if (!isOnScreen && Math.abs(deltaX) < 0.001 && Math.abs(deltaY) < 0.001) {
+            deltaY = screenHeight / 2;
+          }
+
+          const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI + 90;
+
+          if (isOnScreen) {
+            return {
+              id: entity,
+              position: { x: screenX, y: screenY },
+              angle,
+              isOnScreen,
+              opacity: 0.75
+            };
+          }
+
+          const safeDeltaX = Math.abs(deltaX) > 0.001 ? deltaX : 0.001;
+          const safeDeltaY = Math.abs(deltaY) > 0.001 ? deltaY : 0.001;
+          const scaleX = (screenWidth / 2 - edgeMargin) / Math.abs(safeDeltaX);
+          const scaleY = (screenHeight / 2 - edgeMargin) / Math.abs(safeDeltaY);
+          const scale = Math.min(scaleX, scaleY);
+
+          return {
+            id: entity,
+            position: {
+              x: screenCenterX + deltaX * scale,
+              y: screenCenterY + deltaY * scale
+            },
+            angle,
+            isOnScreen,
+            opacity: 0.62
+          };
+        }).filter(indicator => indicator !== null) as AsteroidIndicator[];
+
+        setAsteroidIndicators(prevIndicators => {
+          if (prevIndicators.length === newAsteroidIndicators.length &&
+              prevIndicators.every((indicator, index) => {
+                const nextIndicator = newAsteroidIndicators[index];
+                return nextIndicator &&
+                  indicator.id === nextIndicator.id &&
+                  indicator.isOnScreen === nextIndicator.isOnScreen &&
+                  Math.abs(indicator.position.x - nextIndicator.position.x) < 0.5 &&
+                  Math.abs(indicator.position.y - nextIndicator.position.y) < 0.5 &&
+                  Math.abs(indicator.angle - nextIndicator.angle) < 0.5 &&
+                  Math.abs(indicator.opacity - nextIndicator.opacity) < 0.01;
+              })) {
+            return prevIndicators;
+          }
+
+          return newAsteroidIndicators;
+        });
+
         const scoreEntities = world.getEntitiesWith(['FloatingScore', 'Position', 'ScreenPosition']);
         
         const newFloatingScores = scoreEntities.map(entity => {
@@ -999,6 +1104,9 @@ const HUD: React.FC<HUDProps> = ({
         if (JSON.stringify(newFloatingScores) !== JSON.stringify(floatingScores)) {
             setFloatingScores(newFloatingScores);
         }
+      }
+      else {
+        setAsteroidIndicators(prevIndicators => prevIndicators.length > 0 ? [] : prevIndicators);
       }
       
       // Update radar data
@@ -1387,7 +1495,7 @@ const HUD: React.FC<HUDProps> = ({
   // --- Render Logic ---
   if (gameState === 'not_started') {
     // Pass audioManager down to StartScreen
-    return <StartScreen onStartGame={onStartGame} audioManager={audioManager} />;
+    return <StartScreen onStartGame={onStartGame} onChooseStage={onChooseStage} audioManager={audioManager} />;
   }
   if (gameState === 'game_over') {
     // Pass the final wave number captured by HUDSystem directly
@@ -1397,6 +1505,7 @@ const HUD: React.FC<HUDProps> = ({
     return <PauseScreen 
       onResume={onResumeGame} 
       onRestart={onRestartGame} 
+      onChooseStage={onChooseStage}
       onExit={handleExitGame} 
       containerRef={containerRef} // Pass containerRef down
     />;
@@ -1624,6 +1733,24 @@ const HUD: React.FC<HUDProps> = ({
               </div> 
             </div>
       )}
+
+      {gameState === 'playing' && asteroidIndicators.map(indicator => (
+        <div
+          key={indicator.id}
+          className={`asteroid-hud-indicator ${indicator.isOnScreen ? 'is-on-screen' : 'is-edge'}`}
+          style={{
+            left: `${indicator.position.x}px`,
+            top: `${indicator.position.y}px`,
+            opacity: indicator.opacity,
+            transform: indicator.isOnScreen
+              ? 'translate(-50%, -50%)'
+              : `translate(-50%, -50%) rotate(${indicator.angle}deg)`
+          }}
+        >
+          <div className="asteroid-hud-glow" />
+          {!indicator.isOnScreen && <div className="asteroid-hud-arrow" />}
+        </div>
+      ))}
 
       {/* Damage effect overlay */}
       {damageEffect.active && (
@@ -1865,10 +1992,10 @@ const HUD: React.FC<HUDProps> = ({
                           : `${Math.max(0, (displayedBoostData.remaining / displayedBoostData.maxTime) * 100)}%`, 
                         height: '100%',
                         background: targetBoostDataRef.current.cooldown > 0 
-                            ? 'linear-gradient(90deg, #330066, #660066)'
+                            ? '#4a176b'
                             : (targetBoostDataRef.current.active 
-                                ? 'linear-gradient(90deg, #ff00ff, #00ffff)'
-                                : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
+                                ? '#ff4dff'
+                                : '#00ffff'),
                         boxShadow: targetBoostDataRef.current.active ? '0 0 10px #ff00ff, 0 0 20px #ff00ff' : 'none',
                         transition: 'none', 
                         transform: 'translateZ(0)', 
@@ -1918,7 +2045,7 @@ const HUD: React.FC<HUDProps> = ({
                       SHIELD: {Math.round(dysonHealth.shieldPercentage)}%
                     </div>
                     <div style={{ width: '100%', height: '16px', background: 'rgba(0, 0, 0, 0.5)', border: '2px solid #555555', borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
-                      <div style={{ width: `${dysonHealth.shieldPercentage}%`, height: '100%', background: '#00ffff', transition: 'width 0.3s ease' }}></div>
+                      <div style={{ width: `${dysonHealth.shieldPercentage}%`, height: '100%', background: '#00ffff', transition: 'none', willChange: 'width' }}></div>
                     </div>
                   </div>
                   {/* Dyson Core Status */}
@@ -2021,10 +2148,10 @@ const HUD: React.FC<HUDProps> = ({
                       : `${Math.max(0, (displayedBoostData.remaining / displayedBoostData.maxTime) * 100)}%`, 
                     height: '100%',
                     background: targetBoostDataRef.current.cooldown > 0 
-                      ? 'linear-gradient(90deg, #330066, #660066)'
+                      ? '#4a176b'
                       : (targetBoostDataRef.current.active 
-                        ? 'linear-gradient(90deg, #ff00ff, #00ffff)'
-                        : 'linear-gradient(90deg, #00ffff, #ff00ff)'),
+                        ? '#ff4dff'
+                        : '#00ffff'),
                     boxShadow: targetBoostDataRef.current.active ? '0 0 10px #ff00ff' : 'none'
                   }}></div>
                 </div>

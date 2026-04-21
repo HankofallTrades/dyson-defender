@@ -7,6 +7,7 @@ import { isSafariBrowser } from '../utils/browserDetection';
 
 interface StartScreenProps {
   onStartGame: () => void;
+  onChooseStage?: (stage: number) => void;
   audioManager: AudioManager;
 }
 
@@ -27,12 +28,25 @@ const styles = {
   },
 };
 
-const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, audioManager }) => {
+const isLocalStagePickerAllowed = (): boolean => {
+  const hostname = window.location.hostname;
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+};
+
+const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, onChooseStage, audioManager }) => {
   const [isSafari, setIsSafari] = useState<boolean>(false);
+  const [stagePickerOpen, setStagePickerOpen] = useState(false);
+  const canChooseStage = Boolean(onChooseStage) && isLocalStagePickerAllowed();
   
   useEffect(() => {
     setIsSafari(isSafariBrowser());
   }, []);
+
+  const chooseStage = (stage: number) => {
+    if (!onChooseStage) return;
+    const nextStage = Math.max(1, Math.floor(stage));
+    onChooseStage(nextStage);
+  };
 
   return (
     <div className="start-screen-overlay" style={{
@@ -84,6 +98,39 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, audioManager }) 
       >
         Start Game
       </button>
+
+      {canChooseStage && (
+        <div className="local-stage-picker">
+          <button
+            className="retro-button start-screen-button"
+            type="button"
+            onClick={() => setStagePickerOpen(open => !open)}
+            style={{
+              color: 'white',
+              fontSize: '0.85rem',
+              padding: '0.8rem 1.2rem'
+            }}
+          >
+            Choose Stage
+          </button>
+
+          {stagePickerOpen && (
+            <div className="local-stage-picker-panel">
+              <div className="local-stage-picker-grid">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(stage => (
+                  <button
+                    key={stage}
+                    type="button"
+                    onClick={() => chooseStage(stage)}
+                  >
+                    {stage}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       
       {!isSafari && (
         <div style={{ marginTop: '15px' }}>
@@ -111,7 +158,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, audioManager }) 
           fontFamily: "'Press Start 2P', system-ui, -apple-system, sans-serif",
           textShadow: '0 0 5px #00ffff'
         }}>
-          <p className="start-screen-control-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+          <div className="start-screen-control-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
             <div> {/* Wrap keys */} 
               <KeyboardKey>W</KeyboardKey>
               <KeyboardKey>A</KeyboardKey>
@@ -119,26 +166,26 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, audioManager }) 
               <KeyboardKey>D</KeyboardKey>
             </div>
             <span style={{ marginLeft: '8px' }}>or Arrow Keys to move</span>
-          </p>
-          <p className="start-screen-control-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+          </div>
+          <div className="start-screen-control-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
              <div> {/* Wrap keys */} 
               <KeyboardKey>Q</KeyboardKey>
               <KeyboardKey>E</KeyboardKey>
              </div>
             <span style={{ marginLeft: '8px' }}>to move up/down</span>
-          </p>
-          <p className="start-screen-control-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+          </div>
+          <div className="start-screen-control-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
              <div> {/* Wrap keys */} 
                <KeyboardKey>Shift</KeyboardKey>
              </div>
             <span style={{ marginLeft: '8px' }}>to boost</span>
-          </p>
-          <p className="start-screen-control-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+          </div>
+          <div className="start-screen-control-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
              <div> {/* Wrap keys */} 
                <KeyboardKey>Space</KeyboardKey>
              </div>
             <span style={{ marginLeft: '8px' }}>to shoot</span>
-          </p>
+          </div>
           <p style={{ marginTop: '16px' }}>Mouse to look around</p>
         </div>
       </div>

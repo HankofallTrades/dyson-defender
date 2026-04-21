@@ -124,6 +124,10 @@ function App() {
       if (newWorld) {
         setWorld(newWorld);
       }
+      const newCamera = gameRef.current.getCamera();
+      if (newCamera) {
+        setCamera(newCamera);
+      }
     }
   };
 
@@ -138,6 +142,7 @@ function App() {
             camera={camera as Camera | undefined}
             onStartGame={handleStartGame}
             onRestartGame={handleRestartGame}
+            onChooseStage={handleRestartAtWave}
             onResumeGame={handleResumeGame}
             onPauseGame={handlePauseGame}
             onExitGame={handleExitGame}

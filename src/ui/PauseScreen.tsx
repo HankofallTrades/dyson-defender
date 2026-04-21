@@ -5,6 +5,7 @@ import './styles/retro.css';
 interface PauseScreenProps {
   onResume: () => void;
   onRestart: () => void;
+  onChooseStage?: (stage: number) => void;
   onExit: () => void;
   containerRef: React.RefObject<HTMLDivElement>;
 }
@@ -26,7 +27,15 @@ const styles = {
   },
 };
 
-const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onExit, containerRef }) => {
+const isLocalStagePickerAllowed = (): boolean => {
+  const hostname = window.location.hostname;
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+};
+
+const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onChooseStage, onExit, containerRef }) => {
+  const [stagePickerOpen, setStagePickerOpen] = useState(false);
+  const canChooseStage = Boolean(onChooseStage) && isLocalStagePickerAllowed();
+
   const handleResumeClick = () => {
     onResume();
     
@@ -40,6 +49,12 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onExit, 
     } else {
       console.warn('[PauseScreen] Container ref not available to request pointer lock.');
     }
+  };
+
+  const chooseStage = (stage: number) => {
+    if (!onChooseStage) return;
+    const nextStage = Math.max(1, Math.floor(stage));
+    onChooseStage(nextStage);
   };
 
   return (
@@ -117,6 +132,41 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onExit, 
           RESTART
         </button>
 
+        {canChooseStage && (
+          <div className="local-stage-picker">
+            <button
+              className="retro-button"
+              type="button"
+              onClick={() => setStagePickerOpen(open => !open)}
+              style={{
+                fontSize: '1.1rem',
+                padding: '0.9rem 1.4rem',
+                letterSpacing: '2px',
+                color: 'white',
+                cursor: 'pointer',
+              }}
+            >
+              CHOOSE STAGE
+            </button>
+
+            {stagePickerOpen && (
+              <div className="local-stage-picker-panel">
+                <div className="local-stage-picker-grid">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(stage => (
+                    <button
+                      key={stage}
+                      type="button"
+                      onClick={() => chooseStage(stage)}
+                    >
+                      {stage}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <button 
           className="retro-button"
           onClick={onExit}
@@ -146,4 +196,4 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onExit, 
   );
 };
 
-export default PauseScreen; 
+export default PauseScreen;

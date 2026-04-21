@@ -23,7 +23,8 @@
 }
 
 .retro-button {
-  background: linear-gradient(45deg, #ff00ff, #00ffff);
+  background: rgba(8, 20, 48, 0.92);
+  background-image: none;
   border: 3px solid #ffffff;
   color: white;
   font-family: 'Press Start 2P', system-ui;
@@ -251,22 +252,22 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #00ffff, #ff00ff);
+  background: #00ffff;
   transition: width 0.3s ease;
 }
 
 .progress-fill.shield {
-  background-color: #21a9f3;
+  background: #21a9f3;
   box-shadow: 0 0 12px 2px rgba(33, 169, 243, 0.7), 0 0 4px 1px rgba(33, 169, 243, 0.9) inset;
 }
 
 .progress-fill.player-health {
-  background-color: #ff5722;
+  background: #ff5722;
   box-shadow: 0 0 12px 2px rgba(255, 87, 34, 0.7), 0 0 4px 1px rgba(255, 87, 34, 0.9) inset;
 }
 
 .progress-fill.boost {
-  background-color: #ffeb3b;
+  background: #ffeb3b;
   box-shadow: 0 0 12px 2px rgba(255, 235, 59, 0.7), 0 0 4px 1px rgba(255, 235, 59, 0.9) inset;
 }
 
@@ -597,6 +598,48 @@
   outline: none;
 }
 
+.local-stage-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.local-stage-picker-panel {
+  width: min(360px, 90vw);
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 102, 0.72);
+  border-radius: 4px;
+  background: rgba(0, 0, 18, 0.92);
+  box-shadow: 0 0 18px rgba(255, 255, 102, 0.22);
+}
+
+.local-stage-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.local-stage-picker-grid button {
+  min-height: 34px;
+  border: 1px solid rgba(0, 255, 255, 0.72);
+  border-radius: 3px;
+  background: rgba(0, 28, 42, 0.9);
+  color: #00ffff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.local-stage-picker-grid button:hover,
+.local-stage-picker-grid button:focus-visible {
+  border-color: #ffff66;
+  color: #ffff66;
+  outline: none;
+  box-shadow: 0 0 12px rgba(255, 255, 102, 0.3);
+}
+
 /* HUD label styling */
 .retro-hud-label {
   font-family: 'Press Start 2P', system-ui;
@@ -633,6 +676,74 @@
   pointer-events: none;
   z-index: 1000;
   animation: damage-pulse 0.3s ease-out forwards;
+}
+
+@keyframes asteroidHudPulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.04);
+  }
+}
+
+.asteroid-hud-indicator {
+  position: absolute;
+  width: 76px;
+  height: 76px;
+  z-index: 18;
+  pointer-events: none;
+  filter: drop-shadow(0 0 7px rgba(255, 24, 24, 0.6));
+}
+
+.asteroid-hud-glow {
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(255, 48, 48, 0.7);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 24, 24, 0.16) 0%, rgba(255, 24, 24, 0.08) 45%, rgba(255, 24, 24, 0) 70%);
+  box-shadow:
+    0 0 18px rgba(255, 24, 24, 0.42),
+    inset 0 0 16px rgba(255, 24, 24, 0.24);
+  animation: asteroidHudPulse 1.15s ease-in-out infinite;
+}
+
+.asteroid-hud-arrow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 38px;
+  height: 38px;
+  background: transparent;
+  transform: translate(-50%, -50%);
+}
+
+.asteroid-hud-indicator.is-edge {
+  width: 46px;
+  height: 46px;
+}
+
+.asteroid-hud-indicator.is-edge .asteroid-hud-glow {
+  display: none;
+}
+
+.asteroid-hud-arrow::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  pointer-events: none;
+}
+
+.asteroid-hud-arrow::before {
+  top: 5px;
+  width: 18px;
+  height: 18px;
+  border-left: 2px solid rgba(255, 86, 86, 0.78);
+  border-top: 2px solid rgba(255, 86, 86, 0.78);
+  box-shadow: -2px -2px 8px rgba(255, 24, 24, 0.4);
+  transform: translateX(-50%) rotate(45deg);
 }
 
 /* Reticle Animations */
@@ -784,7 +895,8 @@
 
 /* Button styles */
 .retro-button {
-  background-color: rgba(0, 0, 60, 0.7);
+  background: rgba(0, 0, 60, 0.86);
+  background-image: none;
   color: #00ffff;
   border: 2px solid #00ffff;
   padding: 15px 30px;
@@ -803,14 +915,16 @@
 }
 
 .retro-button:hover {
-  background-color: rgba(0, 255, 255, 0.3);
+  background: rgba(0, 255, 255, 0.18);
+  background-image: none;
   box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
   transform: scale(1.05);
 }
 
 .retro-button:active {
   transform: scale(0.98);
-  background-color: rgba(0, 255, 255, 0.4);
+  background: rgba(0, 255, 255, 0.28);
+  background-image: none;
   box-shadow: 0 0 25px rgba(0, 255, 255, 1);
 }
 
