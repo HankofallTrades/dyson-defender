@@ -5,6 +5,7 @@ import { InputManager } from '../input/InputManager';
 import { SceneManager } from '../../rendering/SceneManager';
 import { createLaser } from '../entities/LaserEntity';
 import { AudioManager } from '../AudioManager';
+import { createAccuracyShot, resetAccuracy, resolveAccuracyProjectile } from '../accuracy';
 import { COLORS } from '../../constants/colors';
 
 const LIGHTNING_SEGMENTS = 20;
@@ -23,6 +24,16 @@ const PRAETORIAN_LASER_LIFETIME = 0.95;
 const PRAETORIAN_LASER_COOLDOWN = 0.55;
 const PRAETORIAN_BEAM_LENGTH = 260;
 const PRAETORIAN_BEAM_DURATION = 0.7;
+const STAR_POWER_FIRE_COOLDOWN = 0.08;
+const RAINBOW_LASER_COLORS = [
+  0xff3030,
+  0xff9f1c,
+  0xfff04a,
+  0x36ff5f,
+  0x2efcff,
+  0x3d7dff,
+  0xb24cff
+];
 
 interface LightningEndpoints {
   origin: THREE.Vector3;
@@ -88,6 +99,7 @@ export class WeaponSystem implements System {
   private readonly ripplePlaneNormal = new THREE.Vector3(0, 0, 1);
   private secondaryWasPressed = false;
   private praetorianBeams: PraetorianBeam[] = [];
+  private rainbowLaserIndex = 0;
 
   constructor(world: World, sceneManager: SceneManager, audioManager?: AudioManager) {
     this.world = world;
@@ -196,9 +208,14 @@ export class WeaponSystem implements System {
         this.world.addComponent(entity, 'LaserCooldown', laserCooldown);
       }
       
+      const starPowerActive = this.world.getGameState()?.starPowerActive ?? false;
+
       // Update cooldown
       if (!laserCooldown.canFire) {
         laserCooldown.current -= deltaTime;
+        if (starPowerActive) {
+          laserCooldown.current = Math.min(laserCooldown.current, STAR_POWER_FIRE_COOLDOWN);
+        }
         if (laserCooldown.current <= 0) {
           laserCooldown.canFire = true;
           laserCooldown.current = 0;
@@ -207,12 +224,14 @@ export class WeaponSystem implements System {
       
       // Check if shooting and can fire
       if (laserCooldown && (inputState.shoot || isFiring || laserCooldown.readyToFire) && laserCooldown.canFire) {
-        this.fireWeapon(entity, position, rotation);
+        this.fireWeapon(entity, position, rotation, starPowerActive);
         
         // Reset cooldown and ready state
         laserCooldown.canFire = false;
         laserCooldown.readyToFire = false;
-        laserCooldown.current = laserCooldown.max;
+        laserCooldown.current = starPowerActive
+          ? Math.min(laserCooldown.max, STAR_POWER_FIRE_COOLDOWN)
+          : laserCooldown.max;
       }
 
       this.updateSecondaryWeapon(entity, position, rotation, deltaTime);
@@ -277,7 +296,7 @@ export class WeaponSystem implements System {
     }
   }
   
-  private fireWeapon(entity: number, position: Position, rotation: Rotation): void {
+  private fireWeapon(entity: number, position: Position, rotation: Rotation, rainbowLasers: boolean = false): void {
     // Calculate weapon muzzle position (slightly in front of the ship)
     // Create forward vector based on rotation
     const forward = new THREE.Vector3(0, 0, -1);
@@ -302,6 +321,7 @@ export class WeaponSystem implements System {
     }
     
     // Fire from both cannons
+    const accuracyShotId = createAccuracyShot(cannonOffsets.length);
     cannonOffsets.forEach(offset => {
       // Calculate the cannon position
       const cannonPos = new THREE.Vector3(
@@ -318,8 +338,13 @@ export class WeaponSystem implements System {
       };
       
       const damageLevel = this.world.getGameState()?.shipDamageLevel ?? 0;
-      createLaser(this.world, this.scene, spawnPos, forward, entity, COLORS.LASER_GREEN, {
-        damage: 5 + damageLevel * 2
+      const laserColor = rainbowLasers
+        ? RAINBOW_LASER_COLORS[this.rainbowLaserIndex++ % RAINBOW_LASER_COLORS.length]
+        : COLORS.LASER_GREEN;
+
+      createLaser(this.world, this.scene, spawnPos, forward, entity, laserColor, {
+        damage: 5 + damageLevel * 2,
+        accuracyShotId
       });
     });
   }
@@ -508,7 +533,7 @@ export class WeaponSystem implements System {
     const projectiles = this.world.getEntitiesWith(['Projectile', 'Position']);
     
     for (const entity of projectiles) {
-      const projectile = this.world.getComponent<{lifetime: number, timeAlive: number}>(entity, 'Projectile');
+      const projectile = this.world.getComponent<{lifetime: number, timeAlive: number, ownerEntity: number, accuracyShotId?: number}>(entity, 'Projectile');
       
       if (!projectile) continue;
       
@@ -517,6 +542,14 @@ export class WeaponSystem implements System {
       
       // Remove projectile if it exceeds its lifetime
       if (projectile.timeAlive >= projectile.lifetime) {
+        const isPlayerProjectile = this.world.hasComponent(projectile.ownerEntity, 'InputReceiver');
+        if (isPlayerProjectile && resolveAccuracyProjectile(projectile.accuracyShotId)) {
+          const gameState = this.world.getGameState();
+          if (gameState) {
+            resetAccuracy(gameState);
+          }
+        }
+
         // This will indirectly remove the mesh via the RenderingSystem
         this.world.removeEntity(entity);
       }

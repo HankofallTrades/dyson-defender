@@ -32,6 +32,8 @@ import { DevSystem } from './systems/DevSystem';
 import { AudioManager } from './AudioManager';
 import { UISystem } from './systems/UISystem';
 import { DysonDamageZoneSystem } from './systems/DysonDamageZoneSystem';
+import { getUpgradeCost } from './upgrades';
+import { clearAccuracyShots, updateStarPower } from './accuracy';
 
 /**
  * Main Game Controller
@@ -247,6 +249,7 @@ class Game {
     
     // Reset the game state
     this.stateManager.resetState();
+    clearAccuracyShots();
     
     // Clear all entities by creating a new World instance
     this.world = new World();
@@ -407,6 +410,7 @@ class Game {
     else if (isPlaying && this.isRunning) {
       // Normal game update - all systems
       this.world.update(deltaTime);
+      updateStarPower(this.stateManager.getStateReference(), deltaTime);
       this.stateManager.updateState({ lastUpdateTime: Date.now() });
     }
     
@@ -454,7 +458,8 @@ class Game {
 
   public applyUpgrade(upgradeId: string): boolean {
     const state = this.stateManager.getStateReference();
-    if (state.upgradeCredits <= 0) {
+    const upgradeCost = getUpgradeCost(upgradeId, this.getUpgradeLevel(upgradeId));
+    if (state.upgradeCredits < upgradeCost) {
       return false;
     }
 
@@ -512,15 +517,33 @@ class Game {
       return false;
     }
 
-    state.upgradeCredits -= 1;
-    state.upgradeDraftAvailable = false;
+    state.upgradeCredits -= upgradeCost;
 
     this.hudSystem.displayMessage('UPGRADE INSTALLED', 2);
-    if (this.isRunning) {
-      this.inputManager.requestPointerLock();
-    }
 
     return true;
+  }
+
+  private getUpgradeLevel(upgradeId: string): number {
+    const state = this.stateManager.getStateReference();
+
+    if (upgradeId === 'ship-damage') {
+      return state.shipDamageLevel;
+    }
+    if (upgradeId === 'ship-fire-rate') {
+      return state.shipFireRateLevel;
+    }
+    if (upgradeId === 'ship-hull') {
+      return state.shipHullLevel;
+    }
+    if (upgradeId === 'dyson-shield') {
+      return state.dysonShieldLevel;
+    }
+    if (upgradeId === 'dyson-regen') {
+      return state.dysonRegenLevel;
+    }
+
+    return 0;
   }
 
   public skipUpgradeDraft(): void {
@@ -617,6 +640,8 @@ class Game {
     
     // Reset the game state
     this.stateManager.resetState();
+    clearAccuracyShots();
+    clearAccuracyShots();
     
     // Clear all entities by creating a new World instance
     this.world = new World();

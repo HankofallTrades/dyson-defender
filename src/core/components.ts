@@ -82,6 +82,7 @@ export interface Projectile {
   lifetime: number;  // How long the projectile exists in seconds
   timeAlive: number; // Current time the projectile has been alive
   ownerEntity: number; // ID of the entity that created this projectile
+  accuracyShotId?: number; // Shared ID for projectiles fired by the same player volley
 }
 
 export interface LaserCooldown {

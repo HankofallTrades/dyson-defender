@@ -1,6 +1,6 @@
 import React, { useEffect, useState, CSSProperties, useRef } from 'react';
 import { World } from '../core/World';
-import { Health, UIDisplay, HealthDisplay, ScoreDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position, WaveInfo, Radar, ShieldBarComponent, ShieldComponent, HealthBarComponent, ScreenPosition, Enemy } from '../core/components';
+import { Health, UIDisplay, HealthDisplay, MessageDisplay, DysonSphereStatus, DamageEffect, GameStateDisplay, GameOverStats, Reticle, FloatingScore, Position, WaveInfo, Radar, ShieldBarComponent, ShieldComponent, HealthBarComponent, ScreenPosition, Enemy } from '../core/components';
 import { COLORS } from '../constants/colors';
 import StartScreen from './StartScreen';
 import GameOverScreen from './GameOverScreen';
@@ -13,6 +13,7 @@ import AlertsDisplay from './hud/AlertsDisplay'; // Add import for new AlertsDis
 import { GameStateManager } from '../core/State'; // Added import
 import { AudioManager } from '../core/AudioManager'; // Import AudioManager type
 import Game from '../core/Game'; // Import the Game class
+import { getUpgradeCost } from '../core/upgrades';
 
 type AsteroidIndicator = {
   id: number;
@@ -594,6 +595,13 @@ const HUD: React.FC<HUDProps> = ({
   // State to hold UI data
   const [playerHealth, setPlayerHealth] = useState<Health>({ current: 100, max: 100 });
   const [score, setScore] = useState(0);
+  const [accuracyState, setAccuracyState] = useState({
+    streak: 0,
+    multiplier: 1,
+    starPowerCharge: 0,
+    starPowerActive: false,
+    starPowerTimeRemaining: 0
+  });
   const [dysonHealth, setDysonHealth] = useState({ 
     shieldPercentage: 100, 
     healthPercentage: 100 
@@ -738,12 +746,6 @@ const HUD: React.FC<HUDProps> = ({
         }
       }
       
-      // Update score
-      const scoreDisplay = world.getComponent<ScoreDisplay>(hudEntity, 'ScoreDisplay');
-      if (scoreDisplay) {
-        setScore(scoreDisplay.score);
-      }
-      
       // --- Handle Messages ---
       const messageDisplay = world.getComponent<MessageDisplay>(hudEntity, 'MessageDisplay');
       const newMessage = messageDisplay?.message;
@@ -861,6 +863,26 @@ const HUD: React.FC<HUDProps> = ({
           cooldown: worldGameState.boostCooldown,
           maxTime: 1.0 // Assuming constant
         };
+
+        setScore(prev => prev === worldGameState.score ? prev : worldGameState.score);
+
+        const nextAccuracyState = {
+          streak: worldGameState.accuracyStreak,
+          multiplier: worldGameState.scoreMultiplier,
+          starPowerCharge: worldGameState.starPowerCharge,
+          starPowerActive: worldGameState.starPowerActive,
+          starPowerTimeRemaining: worldGameState.starPowerTimeRemaining
+        };
+
+        setAccuracyState(prev => (
+          prev.streak === nextAccuracyState.streak &&
+          prev.multiplier === nextAccuracyState.multiplier &&
+          Math.abs(prev.starPowerCharge - nextAccuracyState.starPowerCharge) < 0.01 &&
+          prev.starPowerActive === nextAccuracyState.starPowerActive &&
+          Math.abs(prev.starPowerTimeRemaining - nextAccuracyState.starPowerTimeRemaining) < 0.1
+            ? prev
+            : nextAccuracyState
+        ));
 
         const nextUpgradeState = {
           credits: worldGameState.upgradeCredits,
@@ -1446,6 +1468,7 @@ const HUD: React.FC<HUDProps> = ({
       group: 'SHIP',
       title: 'Laser Capacitors',
       level: upgradeState.shipDamageLevel,
+      cost: getUpgradeCost('ship-damage', upgradeState.shipDamageLevel),
       body: `Primary lasers deal +2 damage. Current: ${5 + upgradeState.shipDamageLevel * 2}.`
     },
     {
@@ -1453,6 +1476,7 @@ const HUD: React.FC<HUDProps> = ({
       group: 'SHIP',
       title: 'Overclocked Cannons',
       level: upgradeState.shipFireRateLevel,
+      cost: getUpgradeCost('ship-fire-rate', upgradeState.shipFireRateLevel),
       body: 'Primary laser cooldown drops by 10%.'
     },
     {
@@ -1460,6 +1484,7 @@ const HUD: React.FC<HUDProps> = ({
       group: 'SHIP',
       title: 'Reinforced Hull',
       level: upgradeState.shipHullLevel,
+      cost: getUpgradeCost('ship-hull', upgradeState.shipHullLevel),
       body: 'Increase ship max hull by 25 and repair 25.'
     },
     {
@@ -1467,6 +1492,7 @@ const HUD: React.FC<HUDProps> = ({
       group: 'DYSON',
       title: 'Shield Lattice',
       level: upgradeState.dysonShieldLevel,
+      cost: getUpgradeCost('dyson-shield', upgradeState.dysonShieldLevel),
       body: 'Increase Dyson max shield by 50 and restore 50.'
     },
     {
@@ -1474,12 +1500,14 @@ const HUD: React.FC<HUDProps> = ({
       group: 'DYSON',
       title: 'Regen Conduits',
       level: upgradeState.dysonRegenLevel,
+      cost: getUpgradeCost('dyson-regen', upgradeState.dysonRegenLevel),
       body: 'Dyson shield regenerates 5 points per second faster.'
     },
     {
       id: 'secondary-praetorian-laser',
       group: 'WEAPON',
       title: upgradeState.secondaryWeapon.unlocked ? 'Praetorian Lazer Reload' : 'Praetorian Lazer',
+      cost: getUpgradeCost('secondary-praetorian-laser'),
       level: upgradeState.secondaryWeapon.unlocked ? 1 : 0,
       body: upgradeState.secondaryWeapon.unlocked
         ? 'Refill secondary weapon charges to 3.'
@@ -1521,7 +1549,7 @@ const HUD: React.FC<HUDProps> = ({
         <div className="upgrade-draft-screen">
           <div className="upgrade-draft-container">
             <div className="upgrade-draft-header">
-              <span>UPGRADE DRAFT</span>
+              <span>UPGRADE</span>
               <strong>{upgradeState.credits} CREDIT{upgradeState.credits === 1 ? '' : 'S'}</strong>
             </div>
             <div className="upgrade-draft-grid">
@@ -1530,9 +1558,10 @@ const HUD: React.FC<HUDProps> = ({
                   key={option.id}
                   className="upgrade-option"
                   type="button"
-                  disabled={upgradeState.credits <= 0}
+                  disabled={upgradeState.credits < option.cost}
                   onClick={() => game.applyUpgrade(option.id)}
                 >
+                  <span className="upgrade-option-cost">{option.cost} CR</span>
                   <span className="upgrade-option-group">{option.group}</span>
                   <strong>{option.title}</strong>
                   <span>{option.body}</span>
@@ -1545,8 +1574,25 @@ const HUD: React.FC<HUDProps> = ({
               type="button"
               onClick={() => game.skipUpgradeDraft()}
             >
-              BANK CREDIT
+              NEXT WAVE
             </button>
+          </div>
+        </div>
+      )}
+
+      {gameState === 'playing' && (
+        <div className="score-display" aria-label="Score">
+          <div>
+            <span>SCORE</span>
+            <strong>{score}</strong>
+            <small>
+              X{accuracyState.multiplier.toFixed(2)} / HIT {accuracyState.streak}
+            </small>
+            <small className={accuracyState.starPowerActive ? 'active' : ''}>
+              {accuracyState.starPowerActive
+                ? `STAR POWER ${Math.ceil(accuracyState.starPowerTimeRemaining)}S`
+                : `STAR ${Math.round(accuracyState.starPowerCharge * 100)}%`}
+            </small>
           </div>
         </div>
       )}

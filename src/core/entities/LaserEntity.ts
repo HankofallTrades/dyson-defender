@@ -10,6 +10,7 @@ export interface LaserOptions {
   colliderWidth?: number;
   colliderHeight?: number;
   colliderDepth?: number;
+  accuracyShotId?: number;
 }
 
 export function createLaser(
@@ -85,7 +86,8 @@ export function createLaser(
     damage: options.damage ?? defaultDamage, // 5 for player, 15 for warp raider, 10 for other enemies
     lifetime: options.lifetime ?? 6, // 6 seconds lifetime - doubled to allow lasers to travel further
     timeAlive: 0,
-    ownerEntity: ownerEntity // Store the owner entity ID
+    ownerEntity: ownerEntity, // Store the owner entity ID
+    accuracyShotId: options.accuracyShotId
   });
   
   // Add collider component for collision detection

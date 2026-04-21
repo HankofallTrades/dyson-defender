@@ -27,6 +27,11 @@ export interface GameState {
   // Player stats
   score: number;
   enemiesDefeated: number;
+  accuracyStreak: number;
+  scoreMultiplier: number;
+  starPowerCharge: number;
+  starPowerActive: boolean;
+  starPowerTimeRemaining: number;
   
   // Dyson Sphere properties
   dysonSphereHealth: number;
@@ -76,6 +81,11 @@ export const initialGameState: GameState = {
   
   score: 0,
   enemiesDefeated: 0,
+  accuracyStreak: 0,
+  scoreMultiplier: 1,
+  starPowerCharge: 0,
+  starPowerActive: false,
+  starPowerTimeRemaining: 0,
   
   dysonSphereHealth: 100,
   dysonSphereMaxHealth: 100,

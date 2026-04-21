@@ -200,12 +200,11 @@ export class WaveSystem implements System {
     const currentState = this.gameStateManager.getState();
     this.gameStateManager.updateState({
       wavesCompleted: currentState.wavesCompleted + 1,
-      upgradeCredits: currentState.upgradeCredits + 1,
       upgradeDraftAvailable: true
     });
 
     if (this.hudSystem) {
-      this.hudSystem.displayMessage('UPGRADE CREDIT AWARDED', 3);
+      this.hudSystem.displayMessage('UPGRADE AVAILABLE', 3);
     }
   }
   

@@ -9,6 +9,9 @@ import { createFloatingScore } from '../entities/FloatingScoreEntity';
 import { AudioManager } from '../AudioManager';
 import { UISystem } from './UISystem';
 import { GameStateManager } from '../State';
+import { applyAccuracyHit, recordAccuracyHit, resolveAccuracyProjectile } from '../accuracy';
+
+const SCORE_MULTIPLIER = 10;
 
 /**
  * Collision System
@@ -324,12 +327,11 @@ export class CollisionSystem implements System {
     // Get HUD system for notifications
     const hudSystem = this.getHUDSystem();
     const shieldSystem = this.getShieldSystem();
+    const isPlayerProjectile = this.world.hasComponent(projectile.ownerEntity, 'InputReceiver');
     
     // Check if this is the Dyson Sphere
     if (this.isDysonSphere(targetEntity)) {
       // Check if this is a player projectile - if so, ignore the collision
-      const ownerEntity = projectile.ownerEntity;
-      const isPlayerProjectile = this.world.hasComponent(ownerEntity, 'InputReceiver');
       if (isPlayerProjectile) {
         return; // Skip collision for player projectiles with Dyson sphere
       }
@@ -394,6 +396,10 @@ export class CollisionSystem implements System {
         }
         // Check if entity is an enemy
         else if (this.world.hasComponent(targetEntity, 'Enemy')) {
+          if (isPlayerProjectile) {
+            this.registerPlayerAccuracyHit(projectile);
+          }
+
           // Get the enemy component to check its type
           const enemy = this.world.getComponent<Enemy>(targetEntity, 'Enemy');
           
@@ -417,13 +423,13 @@ export class CollisionSystem implements System {
             
             if (enemyPosition && enemy) {
               // Add score based on enemy type
-              let scoreValue = 10; // Default for 'grunt' enemies
+              let scoreValue = 10 * SCORE_MULTIPLIER; // Default for 'grunt' enemies
               
               // Special score values for different enemy types
               if (enemy.type === 'warpRaider') {
-                scoreValue = 25; // Warp Raiders are worth more points
+                scoreValue = 25 * SCORE_MULTIPLIER; // Warp Raiders are worth more points
               } else if (enemy.type === 'asteroid') {
-                scoreValue = 50; // Asteroids are worth even more points
+                scoreValue = 50 * SCORE_MULTIPLIER; // Asteroids are worth even more points
                 
                 // Create a special explosion effect for asteroids
                 if (this.world.hasComponent(targetEntity, 'Position')) {
@@ -460,6 +466,9 @@ export class CollisionSystem implements System {
                 z: enemyPosition.z
               };
               
+              const scoreMultiplier = this.gameStateManager.getStateReference().scoreMultiplier;
+              scoreValue = Math.round(scoreValue * scoreMultiplier);
+
               // Create floating score at enemy position (Visual only)
               createFloatingScore(this.world, scorePosition, scoreValue);
 
@@ -467,6 +476,7 @@ export class CollisionSystem implements System {
               const currentState = this.gameStateManager.getState();
               this.gameStateManager.updateState({
                 score: currentState.score + scoreValue,
+                upgradeCredits: currentState.upgradeCredits + scoreValue,
                 enemiesDefeated: currentState.enemiesDefeated + 1
               });
               // --- End State Update --- 
@@ -497,6 +507,9 @@ export class CollisionSystem implements System {
     }
     
     // Remove the projectile
+    if (isPlayerProjectile) {
+      resolveAccuracyProjectile(projectile.accuracyShotId);
+    }
     this.world.removeEntity(projectileEntity);
   }
   
@@ -585,6 +598,8 @@ export class CollisionSystem implements System {
     if (!isPlayerProjectile) {
       return; // Skip collision for enemy projectiles with shields
     }
+
+    this.registerPlayerAccuracyHit(projectile);
     
     // Get the shield bubble component
     const bubbleComponent = this.world.getComponent<ShieldBubbleComponent>(shieldEntity, 'ShieldBubbleComponent');
@@ -690,7 +705,7 @@ export class CollisionSystem implements System {
       // Create score entity if the bubble position is known
       if (bubblePos) {
         // Score value for Shield Guardian
-        const scoreValue = 20; 
+        const scoreValue = 20 * SCORE_MULTIPLIER; 
 
         // Create a proper copy of the position
         const scorePosition = {
@@ -699,13 +714,17 @@ export class CollisionSystem implements System {
           z: bubblePos.z
         };
 
+        const scoreMultiplier = this.gameStateManager.getStateReference().scoreMultiplier;
+        const multipliedScoreValue = Math.round(scoreValue * scoreMultiplier);
+
         // Create floating score (Visual only)
-        createFloatingScore(this.world, scorePosition, scoreValue);
+        createFloatingScore(this.world, scorePosition, multipliedScoreValue);
 
         // --- Update Score and Enemies Defeated in Global State --- 
         const currentState = this.gameStateManager.getState();
         this.gameStateManager.updateState({
-          score: currentState.score + scoreValue,
+          score: currentState.score + multipliedScoreValue,
+          upgradeCredits: currentState.upgradeCredits + multipliedScoreValue,
           enemiesDefeated: currentState.enemiesDefeated + 1 // Count guardian as defeated enemy
         });
         // --- End State Update ---
@@ -713,7 +732,13 @@ export class CollisionSystem implements System {
     }
     
     // Remove the projectile
+    resolveAccuracyProjectile(projectile.accuracyShotId);
     this.world.removeEntity(projectileEntity);
+  }
+
+  private registerPlayerAccuracyHit(projectile: Projectile): void {
+    recordAccuracyHit(projectile.accuracyShotId);
+    applyAccuracyHit(this.gameStateManager.getStateReference());
   }
 
   // Make this public for debugging

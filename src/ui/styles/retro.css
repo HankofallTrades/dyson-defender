@@ -532,12 +532,13 @@
 }
 
 .upgrade-option {
+  position: relative;
   min-height: 154px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
-  padding: 14px;
+  padding: 16px 14px 14px;
   border: 1px solid rgba(0, 255, 255, 0.65);
   border-radius: 4px;
   background: rgba(0, 16, 34, 0.86);
@@ -562,6 +563,16 @@
 .upgrade-option-group {
   color: #ff00ff;
   font-size: 0.55rem;
+}
+
+.upgrade-option-cost {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #ffff66;
+  font-size: 0.5rem;
+  line-height: 1;
+  text-shadow: 0 0 8px rgba(255, 255, 102, 0.7);
 }
 
 .upgrade-option strong {
@@ -596,6 +607,51 @@
 .upgrade-skip-button:focus-visible {
   box-shadow: 0 0 16px rgba(255, 255, 102, 0.4);
   outline: none;
+}
+
+.score-display {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 120;
+  font-family: 'Press Start 2P', monospace;
+  pointer-events: none;
+}
+
+.score-display div {
+  min-width: 142px;
+}
+
+.score-display span,
+.score-display strong,
+.score-display small {
+  display: block;
+}
+
+.score-display span {
+  margin-bottom: 6px;
+  color: #00ffff;
+  font-size: 0.48rem;
+}
+
+.score-display strong {
+  color: #ffff66;
+  font-size: 0.68rem;
+  line-height: 1.25;
+  text-shadow: 0 0 8px rgba(255, 255, 102, 0.75);
+}
+
+.score-display small {
+  margin-top: 6px;
+  color: #00ffff;
+  font-size: 0.46rem;
+  line-height: 1.5;
+  text-shadow: 0 0 7px rgba(0, 255, 255, 0.65), 1px 1px 0 #000;
+}
+
+.score-display small.active {
+  color: #ff4dff;
+  text-shadow: 0 0 8px rgba(255, 77, 255, 0.85), 1px 1px 0 #000;
 }
 
 .local-stage-picker {
