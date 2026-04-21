@@ -87,12 +87,19 @@ export class GameStateManager {
   getState(): GameState {
     return { ...this.state };
   }
+
+  /**
+   * Get the authoritative mutable state object shared with the ECS world.
+   */
+  getStateReference(): GameState {
+    return this.state;
+  }
   
   /**
    * Update the game state
    */
   updateState(partialState: Partial<GameState>): void {
-    this.state = { ...this.state, ...partialState };
+    Object.assign(this.state, partialState);
   }
   
   /**
@@ -115,7 +122,7 @@ export class GameStateManager {
   deserializeState(jsonState: string): void {
     try {
       const parsedState = JSON.parse(jsonState) as GameState;
-      this.state = parsedState;
+      this.state = { ...parsedState };
     } catch (error) {
       console.error('Failed to deserialize game state:', error);
     }

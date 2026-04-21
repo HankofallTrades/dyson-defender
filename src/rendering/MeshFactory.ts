@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { COLORS } from '../constants/colors';
 import { Renderable } from '../core/components';
+import { World } from '../core/World';
 
 /**
  * MeshFactory
@@ -14,7 +15,7 @@ export class MeshFactory {
   /**
    * Creates a mesh based on the provided renderable component
    */
-  public static createMesh(renderable: Renderable): THREE.Object3D {
+  public static createMesh(renderable: Renderable, world?: World): THREE.Object3D {
     let mesh: THREE.Object3D;
 
     switch (renderable.modelId) {
@@ -46,7 +47,7 @@ export class MeshFactory {
         mesh = this.createPowerUpOrbMesh(renderable);
         break;
       case 'starfield':
-        mesh = this.createStarfieldMesh(renderable);
+        mesh = this.createStarfieldMesh(renderable, world);
         break;
       case 'centralStar':
         mesh = this.createCentralStarMesh(renderable);
@@ -1232,12 +1233,9 @@ export class MeshFactory {
     return plane;
   }
 
-  private static createStarfieldMesh(renderable: Renderable): THREE.Object3D {
+  private static createStarfieldMesh(renderable: Renderable, world?: World): THREE.Object3D {
     const group = new THREE.Group();
-    
-    // Get the World instance to access StarfieldBackground component data
-    const world = (window as any).gameWorld;
-    
+
     // Find the entity with the StarfieldBackground component
     const entities = world ? world.getEntitiesWith(['StarfieldBackground']) : [];
     if (entities.length === 0) {
@@ -1245,7 +1243,7 @@ export class MeshFactory {
       return group;
     }
     
-    const starfieldConfig = world.getComponent(entities[0], 'StarfieldBackground');
+    const starfieldConfig = world?.getComponent<any>(entities[0], 'StarfieldBackground');
     if (!starfieldConfig) {
       console.warn('StarfieldBackground component not found on entity');
       return group;

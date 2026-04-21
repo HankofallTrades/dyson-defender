@@ -10,6 +10,11 @@ import { HUDSystem } from './HUDSystem';
 import * as THREE from 'three';
 import { GameStateManager } from '../State';
 
+interface DelayedSpawn {
+  timeRemaining: number;
+  spawn: () => void;
+}
+
 export class WaveSystem implements System {
   private dysonSphereEntity: number = -1; // Initialize with invalid entity ID
   private waveEntity: number;
@@ -24,6 +29,7 @@ export class WaveSystem implements System {
   private hasAnnouncedWarpRaider: boolean = false;
   private hasAnnouncedAsteroid: boolean = false;
   private gameStateManager: GameStateManager;
+  private delayedSpawns: DelayedSpawn[] = [];
   
   constructor(private world: World, gameStateManager: GameStateManager) {
     this.gameStateManager = gameStateManager;
@@ -71,6 +77,8 @@ export class WaveSystem implements System {
   }
   
   update(deltaTime: number): void {
+    this.updateDelayedSpawns(deltaTime);
+
     // Try to find the Dyson Sphere entity if we haven't found it yet
     if (this.dysonSphereEntity === -1) {
       this.findDysonSphereEntity();
@@ -152,6 +160,31 @@ export class WaveSystem implements System {
       this.hasAnnouncedWave = true;
     }
   }
+
+  private updateDelayedSpawns(deltaTime: number): void {
+    if (this.delayedSpawns.length === 0) {
+      return;
+    }
+
+    const remainingSpawns: DelayedSpawn[] = [];
+    for (const delayedSpawn of this.delayedSpawns) {
+      delayedSpawn.timeRemaining -= deltaTime;
+      if (delayedSpawn.timeRemaining <= 0) {
+        delayedSpawn.spawn();
+      } else {
+        remainingSpawns.push(delayedSpawn);
+      }
+    }
+
+    this.delayedSpawns = remainingSpawns;
+  }
+
+  private scheduleSpawn(delaySeconds: number, spawn: () => void): void {
+    this.delayedSpawns.push({
+      timeRemaining: delaySeconds,
+      spawn
+    });
+  }
   
   private completeWave(waveInfo: WaveInfo): void {
     waveInfo.isActive = false;
@@ -202,16 +235,19 @@ export class WaveSystem implements System {
       
       // For wave 2, spawn a Shield Guardian alongside the first enemy with a 0.5 second delay
       if (waveInfo.currentWave === 2) {
-        // Use setTimeout to delay the spawn by 0.5 seconds
-        setTimeout(() => {
+        this.scheduleSpawn(0.5, () => {
+          if (!this.world.hasEntity(this.dysonSphereEntity)) {
+            return;
+          }
+
           console.log('Spawning guaranteed Shield Guardian in wave 2');
-          const guardianEntity = createShieldGuardian(this.world, enemyPosition, this.dysonSphereEntity);
+          createShieldGuardian(this.world, enemyPosition, this.dysonSphereEntity);
           
           if (this.hudSystem) {
             this.hudSystem.displayMessage("NEW THREAT: Shield Guardian detected!", 4);
             this.hasAnnouncedShieldGuardian = true;
           }
-        }, 500); // 500ms = 0.5 seconds
+        });
       }
     }
     
@@ -384,5 +420,6 @@ export class WaveSystem implements System {
     this.hasAnnouncedShieldGuardian = false;
     this.hasAnnouncedWarpRaider = false;
     this.hasAnnouncedAsteroid = false;
+    this.delayedSpawns = [];
   }
-} 
+}

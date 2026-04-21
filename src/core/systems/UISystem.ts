@@ -13,11 +13,15 @@ export class UISystem implements System {
   constructor(world: World, sceneManager: SceneManager) {
     this.world = world;
     this.sceneManager = sceneManager;
-    // Initialize screen dimensions (these might need updating if the screen resizes)
     this.screenWidth = window.innerWidth;
     this.screenHeight = window.innerHeight;
-    // TODO: Add resize listener to update screenWidth/screenHeight
+    window.addEventListener('resize', this.handleResize);
   }
+
+  private handleResize = (): void => {
+    this.screenWidth = window.innerWidth;
+    this.screenHeight = window.innerHeight;
+  };
 
   private calculateScreenPosition(worldPosition: Position, camera: THREE.Camera): { x: number; y: number; isOnScreen: boolean } | null {
     this.tempVector.set(worldPosition.x, worldPosition.y, worldPosition.z);

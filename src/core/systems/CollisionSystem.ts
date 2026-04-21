@@ -635,13 +635,8 @@ export class CollisionSystem implements System {
                 currentEmissive.g + 0.3,
                 currentEmissive.b + 0.3
               );
-              
-              // Reset emissive after short delay using animation system
-              setTimeout(() => {
-                if (shell.material instanceof THREE.MeshPhongMaterial) {
-                  shell.material.emissive.copy(currentEmissive);
-                }
-              }, 100);
+              shell.userData.baseEmissive = currentEmissive;
+              shell.userData.flashTimeRemaining = 0.1;
             }
           }
           

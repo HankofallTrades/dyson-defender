@@ -13,6 +13,8 @@ export class World {
   private systems: System[] = [];
   private activeEntities: Set<Entity> = new Set();
   private gameState: GameState | null = null;
+  private componentVersion = 0;
+  private queryCache: Map<string, { version: number; entities: Entity[] }> = new Map();
 
   public createEntity(): Entity {
     const entity = this.nextEntityId++;
@@ -28,7 +30,13 @@ export class World {
     if (!this.components.has(componentType)) {
       this.components.set(componentType, new Map());
     }
-    this.components.get(componentType)!.set(entity, component);
+    const componentMap = this.components.get(componentType)!;
+    const hadComponent = componentMap.has(entity);
+    componentMap.set(entity, component);
+
+    if (!hadComponent) {
+      this.componentVersion++;
+    }
   }
 
   public getComponent<T>(entity: Entity, componentType: string): T | undefined {
@@ -42,19 +50,51 @@ export class World {
   }
 
   public getEntitiesWith(componentTypes: string[]): Entity[] {
-    const entities = new Set<Entity>();
-    for (const type of componentTypes) {
+    if (componentTypes.length === 0) {
+      return [];
+    }
+
+    const normalizedTypes = [...componentTypes].sort();
+    const cacheKey = normalizedTypes.join('|');
+    const cached = this.queryCache.get(cacheKey);
+    if (cached && cached.version === this.componentVersion) {
+      return cached.entities;
+    }
+
+    let seedMap: Map<Entity, any> | null = null;
+    for (const type of normalizedTypes) {
       const componentMap = this.components.get(type);
-      if (componentMap) {
-        for (const entity of componentMap.keys()) {
-          if (componentTypes.every(t => this.hasComponent(entity, t))) {
-            entities.add(entity);
-          }
-        }
+      if (!componentMap) {
+        this.queryCache.set(cacheKey, { version: this.componentVersion, entities: [] });
+        return [];
+      }
+
+      if (!seedMap || componentMap.size < seedMap.size) {
+        seedMap = componentMap;
       }
     }
-    const result = Array.from(entities);
-    return result;
+
+    if (!seedMap) {
+      return [];
+    }
+
+    const entities: Entity[] = [];
+    for (const entity of seedMap.keys()) {
+      let matches = true;
+      for (const type of normalizedTypes) {
+        if (!this.components.get(type)?.has(entity)) {
+          matches = false;
+          break;
+        }
+      }
+
+      if (matches) {
+        entities.push(entity);
+      }
+    }
+
+    this.queryCache.set(cacheKey, { version: this.componentVersion, entities });
+    return entities;
   }
 
   public addSystem(system: System): void {
@@ -91,13 +131,15 @@ export class World {
       for (const componentMap of this.components.values()) {
         componentMap.delete(entity);
       }
+
+      this.componentVersion++;
     }
   }
   
   public removeComponent(entity: Entity, componentType: string): void {
     const componentMap = this.components.get(componentType);
-    if (componentMap) {
-      componentMap.delete(entity);
+    if (componentMap && componentMap.delete(entity)) {
+      this.componentVersion++;
     }
   }
   

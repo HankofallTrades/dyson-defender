@@ -69,8 +69,9 @@ export class RenderingSystem implements System {
       // Get or create mesh
       let mesh = this.meshes.get(entity);
       if (!mesh) {
-        mesh = MeshFactory.createMesh(renderable);
+        mesh = MeshFactory.createMesh(renderable, this.world);
         this.meshes.set(entity, mesh);
+        (renderable as any).mesh = mesh;
         this.scene.add(mesh); // Add mesh to scene when created
       }
 
@@ -93,7 +94,7 @@ export class RenderingSystem implements System {
       
       // Special case for powerup orbs: Handle custom auto-rotation
       if (renderable.modelId === 'powerUpOrb') {
-        this.updatePowerUpVisuals(mesh, deltaTime);
+        this.updatePowerUpVisuals(mesh, renderable, deltaTime);
       }
       
     }
@@ -102,6 +103,7 @@ export class RenderingSystem implements System {
     for (const [entityId, mesh] of this.meshes.entries()) {
       if (!this.world.hasEntity(entityId)) {
         mesh.parent?.remove(mesh);
+        this.disposeObject3D(mesh);
         this.meshes.delete(entityId);
       }
     }
@@ -110,7 +112,11 @@ export class RenderingSystem implements System {
   /**
    * Updates custom rotation and effects for power-up orbs
    */
-  private updatePowerUpVisuals(mesh: THREE.Object3D, deltaTime: number): void {
+  private updatePowerUpVisuals(
+    mesh: THREE.Object3D,
+    renderableComp: Renderable,
+    deltaTime: number
+  ): void {
     // Directly look for the rings by name
     const horizontalRing = mesh.getObjectByName('horizontalRing');
     const verticalRing = mesh.getObjectByName('verticalRing');
@@ -154,27 +160,21 @@ export class RenderingSystem implements System {
     });
     
     // Handle fade-out effect for expiring power-ups
-    const renderable = this.world.getEntitiesWith(['Renderable', 'PowerUp'])
-      .find(entity => this.meshes.get(entity) === mesh);
-    
-    if (renderable) {
-      const renderableComp = this.world.getComponent<any>(renderable, 'Renderable');
-      if (renderableComp && renderableComp.fadeOut) {
-        // Apply fade-out to all materials
-        mesh.traverse((child) => {
-          if (child instanceof THREE.Mesh && child.material) {
-            if (Array.isArray(child.material)) {
-              child.material.forEach(mat => {
-                if (mat.transparent) {
-                  mat.opacity = renderableComp.opacity || 0.5;
-                }
-              });
-            } else if (child.material.transparent) {
-              child.material.opacity = renderableComp.opacity || 0.5;
-            }
+    if ((renderableComp as any).fadeOut) {
+      // Apply fade-out to all materials
+      mesh.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(mat => {
+              if (mat.transparent) {
+                mat.opacity = (renderableComp as any).opacity || 0.5;
+              }
+            });
+          } else if (child.material.transparent) {
+            child.material.opacity = (renderableComp as any).opacity || 0.5;
           }
-        });
-      }
+        }
+      });
     }
     
     // Make any billboard elements face the camera
@@ -210,8 +210,27 @@ export class RenderingSystem implements System {
     // Clean up all meshes
     for (const mesh of this.meshes.values()) {
       mesh.parent?.remove(mesh);
+      this.disposeObject3D(mesh);
     }
     this.meshes.clear();
+  }
+
+  private disposeObject3D(object: THREE.Object3D): void {
+    object.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.geometry.dispose();
+
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach((material) => {
+          for (const value of Object.values(material)) {
+            if (value instanceof THREE.Texture) {
+              value.dispose();
+            }
+          }
+          material.dispose();
+        });
+      }
+    });
   }
 
   /**

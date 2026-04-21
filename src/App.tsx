@@ -67,7 +67,6 @@ function App() {
   const handleStartGame = () => {
     if (gameRef.current) {
       gameRef.current.startGame();
-      gameRef.current.requestPointerLock(); // Request pointer lock *after* starting game
     }
   };
 
@@ -120,7 +119,6 @@ function App() {
   const handleRestartAtWave = (wave: number) => {
     if (gameRef.current) {
       gameRef.current.restartAtWave(wave);
-      gameRef.current.requestPointerLock(); // Added pointer lock request
       // Restore setting world state after restart at wave
       const newWorld = gameRef.current.getWorld();
       if (newWorld) {

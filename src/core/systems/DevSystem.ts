@@ -83,7 +83,7 @@ export class DevSystem implements System {
       this.wasGameRunning = !gameState.isPaused;
       // Pause the game state
       this.stateManager.updateState({ isPaused: true });
-      this.world.setGameState(this.stateManager.getState());
+      this.world.setGameState(this.stateManager.getStateReference());
     }
     
     // Create a dev entity to track dev mode
@@ -156,7 +156,7 @@ export class DevSystem implements System {
       const gameState = this.world.getGameState();
       if (gameState) {
         this.stateManager.updateState({ isPaused: false });
-        this.world.setGameState(this.stateManager.getState());
+        this.world.setGameState(this.stateManager.getStateReference());
       }
       
       // Then update the UI game state display

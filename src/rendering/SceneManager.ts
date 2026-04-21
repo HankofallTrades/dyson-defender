@@ -25,6 +25,7 @@ export class SceneManager {
   private scene: THREE.Scene = new THREE.Scene();
   private renderer: THREE.WebGLRenderer | null = null;
   private activeCamera: THREE.PerspectiveCamera | null = null;
+  private readonly maxPixelRatio = 1.5;
   
   // Container element
   private container: HTMLElement;
@@ -86,7 +87,7 @@ export class SceneManager {
       throw new Error('Failed to create WebGL renderer');
     }
     
-    this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.maxPixelRatio));
     this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
     
     this.container.appendChild(this.renderer.domElement);
@@ -117,6 +118,7 @@ export class SceneManager {
     
     this.activeCamera.aspect = width / height;
     this.activeCamera.updateProjectionMatrix();
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.maxPixelRatio));
     this.renderer.setSize(width, height);
   }
   

@@ -57,6 +57,21 @@ export class ShieldBubbleSystem implements System {
           if (mesh.children.length > 0) {
             const outerShell = mesh.children[0];
             outerShell.rotation.y += deltaTime * 0.1;
+
+            if (outerShell instanceof THREE.Mesh &&
+                outerShell.material instanceof THREE.MeshPhongMaterial &&
+                outerShell.userData.flashTimeRemaining !== undefined) {
+              outerShell.userData.flashTimeRemaining = Math.max(
+                0,
+                outerShell.userData.flashTimeRemaining - deltaTime
+              );
+
+              if (outerShell.userData.flashTimeRemaining <= 0 && outerShell.userData.baseEmissive) {
+                outerShell.material.emissive.copy(outerShell.userData.baseEmissive);
+                delete outerShell.userData.flashTimeRemaining;
+                delete outerShell.userData.baseEmissive;
+              }
+            }
           }
         }
       }

@@ -690,7 +690,10 @@ const HUD: React.FC<HUDProps> = ({
       
       const hudEntities = world.getEntitiesWith(['UIDisplay']);
       // Use requestAnimationFrame for the next update even if we return early
-      if (hudEntities.length === 0) return requestAnimationFrame(updateHUD);
+      if (hudEntities.length === 0) {
+        animationFrameId = requestAnimationFrame(updateHUD);
+        return;
+      }
       
       const hudEntity = hudEntities[0];
       
@@ -823,18 +826,6 @@ const HUD: React.FC<HUDProps> = ({
 
       let needsUpdate = false;
       const tolerance = 0.001;
-
-      // --- V4 Fix: Use existing worldGameState, Correct Scope --- 
-      
-      // Get the latest game state (Ensure worldGameState is accessible here, declared earlier)
-      if (worldGameState) { // worldGameState should already be defined from earlier in updateHUD
-        targetBoostDataRef.current = {
-          active: worldGameState.boostActive,
-          remaining: worldGameState.boostRemaining,
-          cooldown: worldGameState.boostCooldown,
-          maxTime: 1.0 // Assuming constant
-        };
-      }
       
       // Determine the values to display in *this* frame
       let displayActive = target.active;
@@ -1013,11 +1004,23 @@ const HUD: React.FC<HUDProps> = ({
           percent: number;
         }>;
         
-        // Update state if changed
-        // REMOVED Conditional Check: Always update state to reflect current query
-        // if (newShieldBars.length !== shieldBars.length || JSON.stringify(newShieldBars) !== JSON.stringify(shieldBars)) {
-             setShieldBars(newShieldBars);
-        // }
+        setShieldBars((prevBars) => {
+          if (prevBars.length === newShieldBars.length &&
+              prevBars.every((bar, index) => {
+                const nextBar = newShieldBars[index];
+                return nextBar &&
+                  bar.id === nextBar.id &&
+                  bar.position.x === nextBar.position.x &&
+                  bar.position.y === nextBar.position.y &&
+                  bar.width === nextBar.width &&
+                  bar.height === nextBar.height &&
+                  bar.percent === nextBar.percent;
+              })) {
+            return prevBars;
+          }
+
+          return newShieldBars;
+        });
         
         // Update health bars
         const healthBarEntities = world.getEntitiesWith(['HealthBarComponent', 'Position', 'ScreenPosition']);
@@ -1058,11 +1061,23 @@ const HUD: React.FC<HUDProps> = ({
           percent: number;
         }>;
         
-        // Update state if changed
-        // REMOVED Conditional Check: Always update state to reflect current query
-        // if (newHealthBars.length !== healthBars.length || JSON.stringify(newHealthBars) !== JSON.stringify(healthBars)) {
-            setHealthBars(newHealthBars);
-        // }
+        setHealthBars((prevBars) => {
+          if (prevBars.length === newHealthBars.length &&
+              prevBars.every((bar, index) => {
+                const nextBar = newHealthBars[index];
+                return nextBar &&
+                  bar.id === nextBar.id &&
+                  bar.position.x === nextBar.position.x &&
+                  bar.position.y === nextBar.position.y &&
+                  bar.width === nextBar.width &&
+                  bar.height === nextBar.height &&
+                  bar.percent === nextBar.percent;
+              })) {
+            return prevBars;
+          }
+
+          return newHealthBars;
+        });
       }
       
       // Request next frame update
@@ -1260,58 +1275,9 @@ const HUD: React.FC<HUDProps> = ({
     }
   }, [waveCountdown]);
   
-  // Add effect to ensure that state changes from Game are reflected correctly
-  useEffect(() => {
-    // This effect is for when the game state needs to be manually synced
-    // with the Game component state (for example, after a reset or on mount)
-    const syncGameState = () => {
-      const hudEntities = world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
-      if (hudEntities.length === 0) return;
-      
-      const hudEntity = hudEntities[0];
-      const gameStateDisplay = world.getComponent<GameStateDisplay>(hudEntity, 'GameStateDisplay');
-      
-      // Sync if the world state differs from the local HUD state
-      if (gameStateDisplay && gameStateDisplay.currentState !== gameState) {
-        console.log(`[HUD SyncEffect] Syncing local state (${gameState}) to world state (${gameStateDisplay.currentState})`);
-        setGameState(gameStateDisplay.currentState);
-      }
-    };
-    
-    // Check on mount and whenever world changes
-    syncGameState();
-    
-    // Add interval check to ensure UI stays in sync with game state
-    // This is important when pointer lock changes or other events occur
-    const intervalId = setInterval(syncGameState, 100);
-    
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [world, gameState]); // Keep dependencies
-
   // Add a dedicated handler for exit game
   const handleExitGame = () => {
-    // First call the parent handler to reset the game
     onExitGame();
-    
-    // Force update local state after a small delay to ensure Game.reset() has time to complete
-    setTimeout(() => {
-      // This direct state update ensures the HUD component immediately renders the start screen
-      setGameState('not_started');
-      
-      // Clear any old game data
-      setScore(0);
-      setAlertMessages([]);
-      processedMessagesLogRef.current.clear();
-      setCurrentObjective(null);
-      setCurrentTempAlert(null);
-      
-      if (alertTimeoutRef.current) {
-        clearTimeout(alertTimeoutRef.current);
-        alertTimeoutRef.current = null;
-      }
-    }, 50); // Small delay to let Game.reset() complete its work
   };
   
   // --- Render Logic ---

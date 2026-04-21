@@ -19,6 +19,7 @@ import * as THREE from 'three';
 export class InputManager {
   private static instance: InputManager | null = null;
   private container: HTMLElement;
+  private isInitialized = false;
   
   // Input state (Keyboard/Mouse)
   private inputState = {
@@ -47,6 +48,62 @@ export class InputManager {
   private isMobileFiring: boolean = false;
   private isMobileBoosting: boolean = false;
 
+  private readonly keydownHandler = (event: KeyboardEvent) => {
+    this.pressedKeys.add(event.code);
+    switch (event.code) {
+      case 'KeyW': this.inputState.forward = true; break;
+      case 'KeyS': this.inputState.backward = true; break;
+      case 'KeyA': this.inputState.left = true; break;
+      case 'KeyD': this.inputState.right = true; break;
+      case 'KeyE': this.inputState.up = true; break;
+      case 'KeyQ': this.inputState.down = true; break;
+      case 'Space': this.inputState.shoot = true; break;
+      case 'ShiftLeft': case 'ShiftRight': this.inputState.boost = true; break;
+      case 'KeyP': this.inputState.toggleDevMode = true; event.preventDefault(); break;
+    }
+  };
+
+  private readonly keyupHandler = (event: KeyboardEvent) => {
+    this.pressedKeys.delete(event.code);
+    switch (event.code) {
+      case 'KeyW': this.inputState.forward = false; break;
+      case 'KeyS': this.inputState.backward = false; break;
+      case 'KeyA': this.inputState.left = false; break;
+      case 'KeyD': this.inputState.right = false; break;
+      case 'KeyE': this.inputState.up = false; break;
+      case 'KeyQ': this.inputState.down = false; break;
+      case 'Space': this.inputState.shoot = false; break;
+      case 'ShiftLeft': case 'ShiftRight': this.inputState.boost = false; break;
+      case 'KeyP': this.inputState.toggleDevMode = false; event.preventDefault(); break;
+    }
+  };
+
+  private readonly mouseDownHandler = (event: MouseEvent) => {
+    if (this.mouseState.isPointerLocked && event.button === 0) {
+      this.inputState.shoot = true;
+    }
+  };
+
+  private readonly mouseUpHandler = (event: MouseEvent) => {
+    if (event.button === 0) {
+      this.inputState.shoot = false;
+    }
+  };
+
+  private readonly pointerLockChangeHandler = () => {
+    this.mouseState.isPointerLocked = document.pointerLockElement === this.container;
+    if (!this.mouseState.isPointerLocked) {
+      this.inputState.shoot = false;
+    }
+  };
+
+  private readonly mouseMoveHandler = (event: MouseEvent) => {
+    if (this.mouseState.isPointerLocked) {
+      this.mouseState.movementX = event.movementX;
+      this.mouseState.movementY = event.movementY;
+    }
+  };
+
   private constructor(container: HTMLElement | HTMLCanvasElement) {
     this.container = container;
     this.initInputHandling();
@@ -57,94 +114,40 @@ export class InputManager {
       InputManager.instance = new InputManager(container);
     } else {
       if (InputManager.instance.container !== container) {
-         InputManager.instance.container = container;
-         // Avoid calling this again if listeners are on window/document
-         // this.initInputHandling(); 
+         InputManager.instance.rebindContainer(container);
       }
     }
     return InputManager.instance;
   }
 
   private initInputHandling(): void {
-    // Keyboard input handling
-    const keydownHandler = (event: KeyboardEvent) => {
-      this.pressedKeys.add(event.code);
-      switch (event.code) {
-        case 'KeyW': this.inputState.forward = true; break;
-        case 'KeyS': this.inputState.backward = true; break;
-        case 'KeyA': this.inputState.left = true; break;
-        case 'KeyD': this.inputState.right = true; break;
-        case 'KeyE': this.inputState.up = true; break;
-        case 'KeyQ': this.inputState.down = true; break;
-        case 'Space': this.inputState.shoot = true; break;
-        case 'ShiftLeft': case 'ShiftRight': this.inputState.boost = true; break;
-        case 'KeyP': this.inputState.toggleDevMode = true; event.preventDefault(); break;
-      }
-    };
+    if (this.isInitialized) {
+      return;
+    }
 
-    const keyupHandler = (event: KeyboardEvent) => {
-      this.pressedKeys.delete(event.code);
-      switch (event.code) {
-        case 'KeyW': this.inputState.forward = false; break;
-        case 'KeyS': this.inputState.backward = false; break;
-        case 'KeyA': this.inputState.left = false; break;
-        case 'KeyD': this.inputState.right = false; break;
-        case 'KeyE': this.inputState.up = false; break;
-        case 'KeyQ': this.inputState.down = false; break;
-        case 'Space': this.inputState.shoot = false; break;
-        case 'ShiftLeft': case 'ShiftRight': this.inputState.boost = false; break;
-        case 'KeyP': this.inputState.toggleDevMode = false; event.preventDefault(); break;
-      }
-    };
+    window.addEventListener('keydown', this.keydownHandler);
+    window.addEventListener('keyup', this.keyupHandler);
+    document.addEventListener('pointerlockchange', this.pointerLockChangeHandler);
+    document.addEventListener('mousemove', this.mouseMoveHandler);
+    this.bindContainerListeners();
+    this.isInitialized = true;
+  }
 
-    window.removeEventListener('keydown', keydownHandler);
-    window.removeEventListener('keyup', keyupHandler);
-    window.addEventListener('keydown', keydownHandler);
-    window.addEventListener('keyup', keyupHandler);
+  private bindContainerListeners(): void {
+    this.container.addEventListener('mousedown', this.mouseDownHandler);
+    this.container.addEventListener('mouseup', this.mouseUpHandler);
+  }
 
-    // Mouse input handling - use mousedown for reliable interaction
-    const clickHandler = (event: MouseEvent) => {
-      if (this.mouseState.isPointerLocked) {
-         // Only handle shooting if pointer is locked
-         if (event.button === 0) { // Left mouse button
-           this.inputState.shoot = true;
-           
-           // Reset shoot state after a short delay (we want it to be a single shot per click)
-           setTimeout(() => {
-             this.inputState.shoot = false;
-           }, 100);
-         }
-      } else {
-         // If pointer is not locked, clicking should do nothing regarding game input
-         // REMOVED: Pointer lock request on click - this is handled by Game.ts now.
-         // try {
-         //   this.container.requestPointerLock();
-         // } catch (e) {
-         //   // Silently handle errors
-         // }
-      }
-    };
-    
-    this.container.removeEventListener('mousedown', clickHandler);
-    this.container.addEventListener('mousedown', clickHandler);
-    
-    // REINSTATED: Pointer lock change listener to keep internal state accurate
-    const pointerLockChangeHandler = () => {
-      this.mouseState.isPointerLocked = document.pointerLockElement === this.container;
-    };
-    document.removeEventListener('pointerlockchange', pointerLockChangeHandler);
-    document.addEventListener('pointerlockchange', pointerLockChangeHandler);
+  private unbindContainerListeners(): void {
+    this.container.removeEventListener('mousedown', this.mouseDownHandler);
+    this.container.removeEventListener('mouseup', this.mouseUpHandler);
+  }
 
-    // Mouse movement handling
-    const mouseMoveHandler = (event: MouseEvent) => {
-      if (this.mouseState.isPointerLocked) {
-        this.mouseState.movementX = event.movementX;
-        this.mouseState.movementY = event.movementY;
-      }
-    };
-
-    document.removeEventListener('mousemove', mouseMoveHandler);
-    document.addEventListener('mousemove', mouseMoveHandler);
+  private rebindContainer(container: HTMLElement | HTMLCanvasElement): void {
+    this.unbindContainerListeners();
+    this.container = container;
+    this.bindContainerListeners();
+    this.pointerLockChangeHandler();
   }
 
   public getInputState(): typeof this.inputState {
@@ -191,9 +194,18 @@ export class InputManager {
   public dispose(): void {
     // Exit pointer lock if active
     this.exitPointerLock();
+    this.unbindContainerListeners();
+    window.removeEventListener('keydown', this.keydownHandler);
+    window.removeEventListener('keyup', this.keyupHandler);
+    document.removeEventListener('pointerlockchange', this.pointerLockChangeHandler);
+    document.removeEventListener('mousemove', this.mouseMoveHandler);
+    this.pressedKeys.clear();
+    this.inputState.shoot = false;
+    this.inputState.boost = false;
     
     // Clear singleton instance
     InputManager.instance = null;
+    this.isInitialized = false;
   }
 
   // isFiring now checks BOTH keyboard/mouse AND mobile firing state

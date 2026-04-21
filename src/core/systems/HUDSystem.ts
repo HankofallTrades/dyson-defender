@@ -172,6 +172,11 @@ export class HUDSystem implements System {
     
     // Update game state to game over
     gameStateDisplay.currentState = 'game_over';
+    const gameState = this.world.getGameState();
+    if (gameState) {
+      gameState.isGameOver = true;
+      gameState.isPaused = false;
+    }
     
     // Exit pointer lock so the cursor is available for the game over screen
     const container = document.getElementById('game-container');

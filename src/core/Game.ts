@@ -68,7 +68,7 @@ class Game {
   private inputManager!: InputManager;
   private isFirstFrameLogged: boolean = false;
   private audioManager: AudioManager;
-  private isTransitioningState: boolean = false; // Flag for state transitions
+  private wasPointerLocked: boolean = false;
 
   constructor(container: HTMLElement, audioManager?: AudioManager) {
     console.log('[Game] Initializing...');
@@ -78,12 +78,9 @@ class Game {
     this.stateManager.updateState({ lastUpdateTime: Date.now() });
     this.sceneManager = SceneManager.getInstance(container);
     this.world = new World();
-    
-    // Make world available globally for MeshFactory to access component data
-    (window as any).gameWorld = this.world;
-    
+
     // Set the game state in the world
-    this.world.setGameState(this.stateManager.getState());
+    this.world.setGameState(this.stateManager.getStateReference());
 
     // Use provided audio manager or create a new one if not provided
     this.audioManager = audioManager || new AudioManager();
@@ -106,6 +103,7 @@ class Game {
 
     // Add pointer lock change event listener to keep game state in sync
     document.addEventListener('pointerlockchange', this.handlePointerLockChange);
+    this.wasPointerLocked = document.pointerLockElement === this.container;
 
     console.log('[Game] Game initialized');
   }
@@ -211,11 +209,15 @@ class Game {
     // Ensure the WaveSystem is properly set up
     this.waveSystem.findDysonSphereEntity();
     this.waveSystem.resetWaves();
+
+    this.stateManager.updateState({
+      isPaused: false,
+      isGameOver: false
+    });
   }
 
   public startGame(): void {
     console.log('[Game] startGame() called'); // Added log
-    this.isTransitioningState = true; // Set flag before state changes
 
     // Update the game state to playing through the HUD system
     this.hudSystem.startGame();
@@ -233,12 +235,6 @@ class Game {
     // Request pointer lock when starting the game
     console.log('[Game] Requesting pointer lock in startGame'); // Added log
     this.inputManager.requestPointerLock();
-
-    // Reset flag after a short delay
-    setTimeout(() => {
-      console.log('[Game] Transition period ended after startGame'); // Added log
-      this.isTransitioningState = false;
-    }, 200); // 200ms delay
   }
 
   public restart(): void {
@@ -256,7 +252,7 @@ class Game {
     this.world = new World();
     
     // Set the game state in the world
-    this.world.setGameState(this.stateManager.getState());
+    this.world.setGameState(this.stateManager.getStateReference());
     
     // Reinitialize systems and entities
     this.initSystems();
@@ -270,7 +266,7 @@ class Game {
     
     // Make sure the global game state is also properly synchronized
     this.isRunning = true;
-    this.stateManager.updateState({ isPaused: false });
+    this.stateManager.updateState({ isPaused: false, isGameOver: false });
     this.lastFrameTime = performance.now();
     
     // Double-check that GameStateDisplay is properly set to 'playing'
@@ -303,8 +299,6 @@ class Game {
   }
 
   public pause(): void {
-    this.isTransitioningState = false; // Ensure flag is false when pausing
-    
     // Always set running to false immediately, even if we were already paused
     this.isRunning = false;
     
@@ -330,11 +324,11 @@ class Game {
     } else {
       console.warn('[Game] No HUD entities found to update GameStateDisplay');
     }
+
+    this.inputManager.exitPointerLock();
   }
 
   public resumeGame(): void {
-    this.isTransitioningState = true; // Set flag before state changes
-
     // Update the game state component first
     const hudEntities = this.world.getEntitiesWith(['UIDisplay', 'GameStateDisplay']);
     if (hudEntities.length > 0) {
@@ -359,13 +353,8 @@ class Game {
     }
     
     // Update game state manager immediately
-    this.stateManager.updateState({ isPaused: false });
-
-    // Reset transition flag (can happen sooner now)
-    // Use a short delay still to cover the state updates fully
-    setTimeout(() => {
-      this.isTransitioningState = false;
-    }, 50); // Shorter delay is fine now
+    this.stateManager.updateState({ isPaused: false, isGameOver: false });
+    this.inputManager.requestPointerLock();
   }
 
   private animate = (): void => {
@@ -477,9 +466,6 @@ class Game {
     this.sceneManager.destroy();
     
     // Clean up global references if set
-    if ((window as any).gameWorld === this.world) {
-        delete (window as any).gameWorld;
-    }
     if ((window as any).powerUpSystem) {
         delete (window as any).powerUpSystem;
     }
@@ -516,7 +502,7 @@ class Game {
     this.audioManager = null;
 
     this.isRunning = false;
-    this.isTransitioningState = false; // Reset flag on dispose
+    this.wasPointerLocked = false;
     console.log('[Game] Disposed');
   }
 
@@ -535,7 +521,7 @@ class Game {
     this.world = new World();
     
     // Set the game state in the world
-    this.world.setGameState(this.stateManager.getState());
+    this.world.setGameState(this.stateManager.getStateReference());
     
     // Reinitialize systems and entities
     this.initSystems();
@@ -568,7 +554,7 @@ class Game {
     
     // Make sure the global game state is also properly synchronized
     this.isRunning = true;
-    this.stateManager.updateState({ isPaused: false });
+    this.stateManager.updateState({ isPaused: false, isGameOver: false });
     this.lastFrameTime = performance.now();
     
     // Double-check that GameStateDisplay is properly set to 'playing'
@@ -620,7 +606,7 @@ class Game {
     this.world = new World();
     
     // Set the game state in the world
-    this.world.setGameState(this.stateManager.getState());
+    this.world.setGameState(this.stateManager.getStateReference());
     
     // Reinitialize systems and entities
     this.initSystems();
@@ -650,8 +636,6 @@ class Game {
     if (document.pointerLockElement === this.container) {
       document.exitPointerLock();
     }
-
-    this.isTransitioningState = false; // Reset flag on reset
   }
 
   // Handle pointer lock changes to ensure game state stays in sync
@@ -669,11 +653,12 @@ class Game {
       }
     }
     
-    // If pointer lock is exited *while* the game is actively playing AND not transitioning, auto-pause
-    if (!isLocked && this.isRunning && currentGameState === 'playing' && !this.isTransitioningState) {
+    // If pointer lock is exited while the game is actively playing, auto-pause.
+    if (this.wasPointerLocked && !isLocked && this.isRunning && currentGameState === 'playing') {
       this.pause();
-    } else if (!isLocked) {
     }
+
+    this.wasPointerLocked = isLocked;
   };
 }
 
