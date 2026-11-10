@@ -411,6 +411,10 @@ export class CollisionSystem implements System {
             }
           }
           
+          if (health.current > 0 && isPlayerProjectile) {
+            this.audioManager?.playSynth('hit');
+          }
+
           // Check if entity is destroyed
           if (health.current <= 0) {
             // Play explosion sound when enemy is destroyed

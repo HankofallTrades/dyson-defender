@@ -448,12 +448,9 @@ export class MeshFactory {
       color: COLORS.SHIELD_GUARDIAN_CORE,
     });
     
-    // Add a point light inside the core for extra glow effect
-    const coreLight = new THREE.PointLight(COLORS.SHIELD_GUARDIAN_CRYSTAL, 1.5, 10);
-    coreLight.position.set(0, 0, 0);
-    
+    // No point light here: lights added/removed mid-game change the scene's light count,
+    // which forces every lit shader to recompile (a visible freeze).
     const core = new THREE.Mesh(coreGeometry, coreMaterial);
-    core.add(coreLight); // Add light as a child of the core
     mesh.add(core);
     
     // Apply scale
@@ -1027,11 +1024,8 @@ export class MeshFactory {
       group.add(glowSphere);
     }
     
-    // Add a point light inside for real glow effect
-    const light = new THREE.PointLight(renderable.color, 1.15, 7);
-    light.position.set(0, 0, 0);
-    group.add(light);
-    
+    // No point light: see createShieldGuardianMesh (light count changes recompile shaders).
+
     // Create a billboard effect to keep the icon readable from every camera angle.
     const billboardGroup = new THREE.Group();
     const iconPlane = this.createPowerUpIconPlane(powerUpType, renderable.color);

@@ -1,4 +1,15 @@
 import * as THREE from 'three';
+import { playSfx, SFX_MIN_INTERVAL, SfxName } from './sfx';
+
+const MUTED_KEY = 'dyson-defender:muted';
+
+const readStoredMuted = (): boolean => {
+  try {
+    return window.localStorage.getItem(MUTED_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Audio Manager for Dyson Sphere Defender
@@ -7,44 +18,27 @@ import * as THREE from 'three';
  * Handles the soundtrack and sound effects using Three.js Audio capabilities.
  */
 export class AudioManager {
-  private audioContext: AudioContext;
-  private soundBuffers: Map<string, AudioBuffer>;
   private sounds: Map<string, THREE.Audio['buffer']> = new Map();
   private audioSources: Map<string, THREE.Audio> = new Map();
   private audioLoader: THREE.AudioLoader = new THREE.AudioLoader();
   private listener: THREE.AudioListener = new THREE.AudioListener();
   private soundtrackVolume: number = 0.8;
   private sfxVolume: number = 0.3;
-  private muted: boolean = true;
+  // Sound is on unless the player turned it off before (remembered across visits).
+  private muted: boolean = readStoredMuted();
+  private sfxLastPlayed: Map<SfxName, number> = new Map();
+  private sfxOutput: GainNode | null = null;
   private audioEnabled: boolean = true;
-  private isContextResumed: boolean = false; // Track AudioContext state
+  private mutedListeners = new Set<(muted: boolean) => void>();
 
   constructor() {
-    // console.log('[AudioManager] Initializing...'); // REMOVED
-    this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    this.soundBuffers = new Map<string, AudioBuffer>();
-    
-    // Check if audio is supported in this browser
-    try {
-      // Feature detection for Web Audio API
-      this.audioEnabled = typeof AudioContext !== 'undefined' || 
-                         typeof (window as any).webkitAudioContext !== 'undefined';
-      
-      // Try to resume the context immediately if it's suspended
-      if (this.audioContext.state === 'suspended') {
-        this.audioContext.resume().then(() => {
-          this.isContextResumed = true;
-          console.log('[AudioManager] AudioContext resumed during initialization');
-        }).catch(error => {
-          console.warn('[AudioManager] Failed to resume AudioContext during initialization:', error);
-        });
-      } else {
-        this.isContextResumed = true;
-      }
-    } catch (e) {
-      console.warn('[AudioManager] Web Audio API not supported in this browser. Audio disabled.');
-      this.audioEnabled = false;
-    }
+    this.audioEnabled = typeof AudioContext !== 'undefined' ||
+      typeof (window as any).webkitAudioContext !== 'undefined';
+  }
+
+  /** True once the shared (Three.js) AudioContext is running. */
+  private get isContextResumed(): boolean {
+    return this.listener.context.state === 'running';
   }
 
   /**
@@ -63,22 +57,11 @@ export class AudioManager {
    */
   public async resumeContextIfNeeded(): Promise<void> {
     if (!this.audioEnabled || this.isContextResumed) return;
-
-    const context = this.listener.context;
-    if (context.state === 'suspended') {
-      console.log('[AudioManager] AudioContext suspended, attempting to resume...');
-      try {
-        await context.resume();
-        this.isContextResumed = true;
-        console.log('[AudioManager] AudioContext resumed successfully.');
-      } catch (error) {
-        console.warn('[AudioManager] Failed to resume AudioContext:', error);
-        // It might remain suspended until another interaction
-        // isContextResumed remains false
-      }
-    } else {
-      this.isContextResumed = true; // Already running or closed
-      console.log(`[AudioManager] AudioContext state is ${context.state}, no resume needed.`);
+    try {
+      await this.listener.context.resume();
+    } catch (error) {
+      // Stays suspended until the next user gesture.
+      console.warn('[AudioManager] Failed to resume AudioContext:', error);
     }
   }
 
@@ -186,6 +169,30 @@ export class AudioManager {
     }
 
     return sound;
+  }
+
+  /**
+   * Play a synthesised effect (see sfx.ts). Fire-and-forget; repeated calls within the
+   * effect's minimum interval are dropped.
+   */
+  public playSynth(name: SfxName): void {
+    if (!this.audioEnabled || this.muted) return;
+    const ctx = this.listener.context;
+    if (ctx.state !== 'running') {
+      void this.resumeContextIfNeeded();
+      return;
+    }
+    const now = ctx.currentTime;
+    const last = this.sfxLastPlayed.get(name);
+    if (last !== undefined && now - last < SFX_MIN_INTERVAL[name]) return;
+    this.sfxLastPlayed.set(name, now);
+
+    if (!this.sfxOutput) {
+      this.sfxOutput = ctx.createGain();
+      this.sfxOutput.connect(ctx.destination);
+    }
+    this.sfxOutput.gain.value = this.sfxVolume / 0.3; // 0.3 is the default SFX volume
+    playSfx(ctx, this.sfxOutput, name);
   }
 
   /**
@@ -326,7 +333,12 @@ export class AudioManager {
     if (!this.audioEnabled) return;
 
     this.muted = muted;
-    console.log(`[AudioManager] Setting muted state to: ${muted}`);
+    this.mutedListeners.forEach((listener) => listener(muted));
+    try {
+      window.localStorage.setItem(MUTED_KEY, muted ? '1' : '0');
+    } catch {
+      // Storage unavailable (private mode, sandboxed iframe): keep the in-memory state.
+    }
 
     if (muted) {
       this.pauseSoundtrack();
@@ -346,19 +358,21 @@ export class AudioManager {
       if (this.isContextResumed) {
         await this.playSoundtrack();
         console.log('[AudioManager] Soundtrack started after unmuting');
-      } else {
-        console.warn('[AudioManager] Cannot play soundtrack on unmute, AudioContext still not active.');
-        // Try one more time to resume the context
-        try {
-          await this.audioContext.resume();
-          this.isContextResumed = true;
-          await this.playSoundtrack();
-          console.log('[AudioManager] Successfully resumed context and started soundtrack on second attempt');
-        } catch (error) {
-          console.error('[AudioManager] Failed to resume context on second attempt:', error);
-        }
       }
     }
+  }
+
+  /** Subscribe to mute changes. Returns an unsubscribe function. */
+  public onMutedChange(listener: (muted: boolean) => void): () => void {
+    this.mutedListeners.add(listener);
+    return () => {
+      this.mutedListeners.delete(listener);
+    };
+  }
+
+  /** Flip sound on/off. */
+  public toggleMuted(): Promise<void> {
+    return this.setMuted(!this.muted);
   }
 
   /**

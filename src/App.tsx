@@ -64,6 +64,17 @@ function App() {
     }
   }, [audioManager]); // Only depends on audioManager instance
 
+  // M toggles sound anywhere in the game.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'KeyM' && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        void audioManager.toggleMuted();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [audioManager]);
+
   const handleStartGame = () => {
     if (gameRef.current) {
       gameRef.current.startGame();

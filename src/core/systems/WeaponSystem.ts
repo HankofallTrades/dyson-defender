@@ -403,9 +403,7 @@ export class WeaponSystem implements System {
       z: position.z + forward.z * 5
     };
 
-    if (this.audioManager) {
-      this.audioManager.playSound('laser', false, 0.9);
-    }
+    this.audioManager?.playSynth('praetorian');
 
     this.createPraetorianBeam(spawnPos, forward);
 
@@ -647,6 +645,7 @@ export class WeaponSystem implements System {
     }
 
     this.lightningWeapons.set(ownerEntity, lightning);
+    this.audioManager?.playSynth('lightning');
     this.updateImpactRipple(lightning, endpoints);
     return true;
   }

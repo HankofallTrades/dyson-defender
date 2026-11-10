@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { COLORS } from '../constants/colors';
 import './styles/retro.css';
+import { AudioManager } from '../core/AudioManager';
+import { AudioToggle } from './components/AudioToggle';
 
 interface PauseScreenProps {
   onResume: () => void;
@@ -8,6 +10,7 @@ interface PauseScreenProps {
   onChooseStage?: (stage: number) => void;
   onExit: () => void;
   containerRef: React.RefObject<HTMLDivElement>;
+  audioManager: AudioManager;
 }
 
 const styles = {
@@ -32,7 +35,7 @@ const isLocalStagePickerAllowed = (): boolean => {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
 };
 
-const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onChooseStage, onExit, containerRef }) => {
+const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onChooseStage, onExit, containerRef, audioManager }) => {
   const [stagePickerOpen, setStagePickerOpen] = useState(false);
   const canChooseStage = Boolean(onChooseStage) && isLocalStagePickerAllowed();
 
@@ -191,6 +194,10 @@ const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onRestart, onChoose
         >
           EXIT
         </button>
+
+        <div style={{ marginTop: '1.5rem' }}>
+          <AudioToggle audioManager={audioManager} />
+        </div>
       </div>
     </div>
   );

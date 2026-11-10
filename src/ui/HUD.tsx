@@ -1536,6 +1536,7 @@ const HUD: React.FC<HUDProps> = ({
       onChooseStage={onChooseStage}
       onExit={handleExitGame} 
       containerRef={containerRef} // Pass containerRef down
+      audioManager={audioManager}
     />;
   }
   

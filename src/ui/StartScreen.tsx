@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import './styles/retro.css';
 import KeyboardKey from './components/KeyboardKey';
 import { AudioManager } from '../core/AudioManager';
 import { AudioToggle } from './components/AudioToggle';
-import { isSafariBrowser } from '../utils/browserDetection';
 
 interface StartScreenProps {
   onStartGame: () => void;
@@ -34,14 +33,9 @@ const isLocalStagePickerAllowed = (): boolean => {
 };
 
 const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, onChooseStage, audioManager }) => {
-  const [isSafari, setIsSafari] = useState<boolean>(false);
   const [stagePickerOpen, setStagePickerOpen] = useState(false);
   const canChooseStage = Boolean(onChooseStage) && isLocalStagePickerAllowed();
   
-  useEffect(() => {
-    setIsSafari(isSafariBrowser());
-  }, []);
-
   const chooseStage = (stage: number) => {
     if (!onChooseStage) return;
     const nextStage = Math.max(1, Math.floor(stage));
@@ -132,11 +126,9 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, onChooseStage, a
         </div>
       )}
       
-      {!isSafari && (
-        <div style={{ marginTop: '15px' }}>
-          <AudioToggle audioManager={audioManager} />
-        </div>
-      )}
+      <div style={{ marginTop: '15px' }}>
+        <AudioToggle audioManager={audioManager} />
+      </div>
       
       {/* Controls Section - Hidden on mobile via CSS */}
       <div className="start-screen-controls" style={{ textAlign: 'center', margin: '0 0 20px 0' }}>
@@ -186,7 +178,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, onChooseStage, a
              </div>
             <span style={{ marginLeft: '8px' }}>to shoot</span>
           </div>
-          <p style={{ marginTop: '16px' }}>Mouse to look around</p>
+          <p style={{ marginTop: '16px' }}>Mouse to look around · M to mute</p>
         </div>
       </div>
       

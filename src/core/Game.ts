@@ -32,7 +32,9 @@ import { DevSystem } from './systems/DevSystem';
 import { AudioManager } from './AudioManager';
 import { UISystem } from './systems/UISystem';
 import { DysonDamageZoneSystem } from './systems/DysonDamageZoneSystem';
+import { AudioSystem } from './systems/AudioSystem';
 import { getUpgradeCost } from './upgrades';
+import { warmShaders } from '../rendering/warmShaders';
 import { clearAccuracyShots, updateStarPower } from './accuracy';
 
 /**
@@ -71,6 +73,7 @@ class Game {
   private isFirstFrameLogged: boolean = false;
   private audioManager: AudioManager;
   private wasPointerLocked: boolean = false;
+  private renderingSystem!: RenderingSystem;
 
   constructor(container: HTMLElement, audioManager?: AudioManager) {
     console.log('[Game] Initializing...');
@@ -95,6 +98,7 @@ class Game {
 
     this.initSystems();
     this.initEntities();
+    this.warmUpRenderer();
 
     this.render();
     
@@ -143,12 +147,14 @@ class Game {
     this.world.addSystem(new AutoRotateSystem(this.world));
     this.world.addSystem(new UISystem(this.world, this.sceneManager));
     this.world.addSystem(new DysonDamageZoneSystem(this.world));
+    this.world.addSystem(new AudioSystem(this.world, this.audioManager));
     const renderingSystem = new RenderingSystem(this.world, this.sceneManager.getScene());
     const activeCamera = this.sceneManager.getCamera();
     if (activeCamera) {
       renderingSystem.setCamera(activeCamera);
     }
     this.world.addSystem(renderingSystem);
+    this.renderingSystem = renderingSystem;
     
     // Make systems globally accessible for debugging
     (window as any).powerUpSystem = powerUpSystem;
@@ -218,6 +224,18 @@ class Game {
     });
   }
 
+  /**
+   * Create the meshes for the starting entities (so the scene has its real lights) and
+   * compile every shader up front, instead of freezing mid-game on first use.
+   */
+  private warmUpRenderer(): void {
+    const renderer = this.sceneManager.getRenderer();
+    const camera = this.sceneManager.getCamera();
+    if (!renderer || !camera) return;
+    this.renderingSystem.update(0);
+    warmShaders(renderer, this.sceneManager.getScene(), camera);
+  }
+
   public startGame(): void {
     console.log('[Game] startGame() called'); // Added log
 
@@ -234,6 +252,9 @@ class Game {
       this.lastFrameTime = performance.now();
     }
     
+    // Start music from the Start click (a user gesture, so the browser allows audio).
+    this.audioManager.resumeSoundtrack();
+
     // Request pointer lock when starting the game
     console.log('[Game] Requesting pointer lock in startGame'); // Added log
     this.inputManager.requestPointerLock();
@@ -370,7 +391,9 @@ class Game {
     
     // Always get the current time for consistent timing
     const currentTime = performance.now();
-    const deltaTime = (currentTime - this.lastFrameTime) / 1000;
+    // Clamp so a long frame (tab switch, GC, slow device) can't teleport entities through
+    // each other or burn through timers in one step.
+    const deltaTime = Math.min((currentTime - this.lastFrameTime) / 1000, 0.05);
     this.lastFrameTime = currentTime;
     
     // Check if in dev mode
@@ -518,6 +541,7 @@ class Game {
     }
 
     state.upgradeCredits -= upgradeCost;
+    this.audioManager.playSynth('upgrade');
 
     this.hudSystem.displayMessage('UPGRADE INSTALLED', 2);
 

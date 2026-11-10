@@ -7,20 +7,10 @@ interface AudioToggleProps {
 }
 
 export const AudioToggle: React.FC<AudioToggleProps> = ({ audioManager }) => {
-  // Initialize state based on the AudioManager's current muted status
   const [isOn, setIsOn] = useState(!audioManager.isMuted());
 
-  // Update internal state if AudioManager state changes externally (e.g., initial load)
-  // This might not be strictly necessary if only the toggle controls it, but good practice.
-  useEffect(() => {
-    const checkMutedStatus = () => {
-      setIsOn(!audioManager.isMuted());
-    };
-    // Check initially
-    checkMutedStatus();
-    // Add a listener or interval if AudioManager state could change elsewhere
-    // For simplicity now, we assume the toggle is the sole controller after mount.
-  }, [audioManager]);
+  // Stay in sync when sound is toggled elsewhere (the M key).
+  useEffect(() => audioManager.onMutedChange((muted) => setIsOn(!muted)), [audioManager]);
 
 
   const handleToggle = async () => {
@@ -46,13 +36,13 @@ export const AudioToggle: React.FC<AudioToggleProps> = ({ audioManager }) => {
   return (
     <div
       className={`audio-toggle ${isOn ? 'on' : 'off'}`}
+      // onClick only: a tap fires both touchend and click, which toggled twice.
       onClick={handleToggle}
-      onTouchEnd={handleToggle} // Basic mobile support
       role="switch"
       aria-checked={isOn}
       aria-label="Toggle game audio"
       tabIndex={0} // Make it focusable
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleToggle(); }} // Keyboard support
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleToggle(); } }}
     >
       <div className="audio-toggle-switch">
         <div className="audio-toggle-knob" />
